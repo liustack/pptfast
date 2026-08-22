@@ -209,7 +209,7 @@ export const SELF_VISUAL_TYPES: ReadonlySet<ComponentType> = typesWith("selfVisu
 export const SCALABLE_TYPES: ReadonlySet<ComponentType> = typesWith("scalable")
 
 /**
- * Component types that already draw their own internal chrome per node —
+ * Component types that already draw their own internal frame per node —
  * steps' numbered-badge cards, flowchart's bordered node boxes,
  * architecture's filled layer bands, timeline's axis/dots — plus paragraph
  * (bare text reads better unframed in a bento grid, 2026-07-09 redesign) and

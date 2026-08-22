@@ -6,7 +6,7 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { NarrowColumnContent } from "./content-narrow-column"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 import type { Component, PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =

@@ -15,7 +15,7 @@ import { accessibleOpacity, readableOn } from "../ink"
  * descenders and 0.167-0.171 on CJK; the sans stacks (YaHei / Inter
  * families) at 0.213-0.215 and 0.107-0.109. 0.22 rounds the deepest of them
  * up, so the air below is a floor rather than an average — the same
- * discipline `chrome-geometry.ts`'s `FOOTNOTE_DESCENT_RATIO` states for the
+ * discipline `branding-geometry.ts`'s `FOOTNOTE_DESCENT_RATIO` states for the
  * footnote it keeps off the footer divider.
  */
 const LATIN_DESCENT_RATIO = 0.22
@@ -213,9 +213,9 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CHAPTER_LAYOUT_DEFS["banner-chapter"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CHAPTER_LAYOUT_DEFS["banner-chapter"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {

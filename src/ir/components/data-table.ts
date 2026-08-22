@@ -100,7 +100,7 @@ export const aliases = {} satisfies ComponentAliasSpec
 // the code never falls through to the later `PASSTHROUGH_SHELL_TYPES` check
 // (line ~684) that would actually consult this flag. Left as `true` anyway
 // (matches the plan's explicit contract, and is the semantically correct
-// declaration — data_table genuinely does draw its own internal chrome with
+// declaration — data_table genuinely does draw its own internal frame with
 // no enclosing card, independent of which consumer happens to read it today)
 // — flagged here for a future reader who traces a bento-panel render and
 // finds no behavioral difference from toggling it, not fixed, since there is

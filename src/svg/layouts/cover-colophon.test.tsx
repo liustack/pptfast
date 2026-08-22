@@ -135,7 +135,7 @@ describe("cover-colophon — the 1a design's own geometry", () => {
     const texts = Array.from(root.querySelectorAll("text"))
     expect(texts).toHaveLength(1)
     expect(texts[0].textContent).toBe(HEADING)
-    // The leader block is chrome, not content — it stays.
+    // The leader block is frame, not content — it stays.
     expect(root.querySelectorAll("rect")).toHaveLength(1)
   })
 })
@@ -153,7 +153,7 @@ describe("cover-colophon — shared pool, not ink's private layout", () => {
       "meta",
     ])
     // cover layouts never read `slide.components` — no body slot, and every
-    // slot is chrome (`accepts: []`), same as every other cover in the pool.
+    // slot is frame (`accepts: []`), same as every other cover in the pool.
     for (const s of layoutDef.slots) expect(s.accepts).toEqual([])
   })
 

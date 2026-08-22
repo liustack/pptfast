@@ -31,7 +31,7 @@ import type { DecorProps } from "./types"
  * ## 偏离设计板：末两段彩虹划让开右下 logo 盒
  *
  * 板上 24 段划到 x1180，其中 i=22、i=23 的墨迹（含圆头半宽 2.5px）横穿
- * `brand-chrome.tsx` 的右下 logo 盒 (1120,630,96×40)——正是
+ * `branding.tsx` 的右下 logo 盒 (1120,630,96×40)——正是
  * `docs/designing-themes.md` 第 5 条五个保护区里的右下 logo 盒。campaign
  * 的底带纸屑整条退役是同一条先例。这里少画末两段、前 22 段坐标一字不改，
  * 24 段的节奏和四色轮换都还在，只是右缘在 logo 盒左沿停住。

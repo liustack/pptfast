@@ -10,7 +10,7 @@ import { sparseFace } from "./sparse/registry"
 /**
  * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
- * stat-hero 通用脸：整页只落地一个数字或短语。`pinOnly` + `chrome: "none"`。
+ * stat-hero 通用脸：整页只落地一个数字或短语。`pinOnly` + `branding: "none"`。
  * 和 `arrangement: big_number` 的差别是这一页没有标题槽、没有下方配角、
  * 没有页脚，四周空到只剩这一件事。品牌页脚 / logo 不画。motif 仍画。
  *
@@ -181,13 +181,13 @@ function GenericStatHeroContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 export const layoutDef = {
   // content-stat-hero.tsx: a pinOnly whole-page number. Hero value from
   // kpi_cards[0] or the heading, one caption line, optional source.
-  // chrome: "none" skips brand footer, logo, and page numbers. The theme
+  // branding: "none" skips brand footer, logo, and page numbers. The theme
   // motif still paints. The fifth-band decoration safe-zone does not apply
   // — the whole canvas is the layout's.
   id: "stat-hero",
   kind: "archetype",
   pinOnly: true,
-  chrome: "none",
+  branding: "none",
   slideTypes: ["content"],
   slots: [
     { name: "kicker", accepts: [] },

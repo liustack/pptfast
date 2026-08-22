@@ -8,8 +8,8 @@ import { readableOn } from "../ink"
 import { RailNumberedContent } from "./content-rail-numbered"
 import type { PptxIR, Slide } from "@/ir"
 
-// BrandChrome's brand logo bands (see templates/academic.test.tsx's own
-// LOGO_BANDS) — any theme chrome placed near a page corner must stay clear
+// Branding's brand logo bands (see templates/academic.test.tsx's own
+// LOGO_BANDS) — any brand frame placed near a page corner must stay clear
 // of these; the number badge sits top-left (BADGE_Y=96, not 64, specifically
 // to clear TL_LOGO).
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -167,7 +167,7 @@ describe("RailNumberedContent", () => {
     expect(rail?.getAttribute("fill")).toBe(ctx.colors.primary)
 
     // number badge: rect(96, 96, 64, 32) rx=6 — y=96 (not 64) keeps it clear
-    // of BrandChrome's tl logo band (x 64-160, y 48-88)
+    // of Branding's tl logo band (x 64-160, y 48-88)
     const badge = Array.from(root.querySelectorAll("rect")).find(
       (r) =>
         r.getAttribute("x") === "96" &&

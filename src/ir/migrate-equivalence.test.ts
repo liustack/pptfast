@@ -416,7 +416,7 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // Targeted diff (`equiv-diff.mts`, the wave's own tool): the only
       // difference anywhere is inside `<g data-decor="true">` — stripping
       // that one group makes old and new byte-identical on every changed
-      // slide, so no text, geometry or chrome moved.
+      // slide, so no text, geometry or frame moved.
       //   - `basic` (`consulting`): untouched. consulting does not carry
       //     `heritage-motif` in its candidate set.
       //   - `scenarioBearing` (`journal`): slides 0, 3, 4
@@ -446,7 +446,7 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // difference anywhere is inside `<g data-decor="true">` — stripping
       // that one group (nesting-aware, since a motif's own colour groups
       // now live inside it) makes old and new byte-identical on every
-      // changed slide, so no text, geometry or chrome moved.
+      // changed slide, so no text, geometry or frame moved.
       //   - `basic` (`consulting`): slides 0 and 4
       //     (`ppt/slides/slide{1,5}.xml`).
       //   - `scenarioBearing` / `annualReviewPreset` (`journal`):
@@ -666,8 +666,8 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `scenarioBearing`: SVG slides 1/2/3. PPTX three slide parts.
       //   - `annualReviewPreset`: SVG slides 2/3. PPTX two slide parts.
       //
-      // Re-recaptured (chrome default flip, 2026-08-21 — omitted deck chrome
-      // now equals cover-only, so content pages drop the BrandChrome footer
+      // Re-recaptured (branding default flip, 2026-08-21 — omitted deck branding
+      // now equals cover-only, so content pages drop the Branding footer
       // rule, meta, and logo). Drift is the footer trio leaving, nothing
       // else. Verified with a temporary recapture script: stripping the
       // footer rule (`<line x1="56" y1="664" x2="1224">`), the meta row
@@ -687,7 +687,7 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     only. PPTX `slide{3,4}.xml` lose one shape each.
       //
       // Re-recaptured (meta default hide, 2026-08-21 — confidentiality and
-      // date on cover/ending meta rows paint only under chrome:"full").
+      // date on cover/ending meta rows paint only under branding:"full").
       // Drift is the date leaving the cover, nothing else. Only `basic`
       // moved: it is the one fixture that carries `meta.date`, and its
       // cover (`left-anchor`) had a divider plus a date tspan as the whole

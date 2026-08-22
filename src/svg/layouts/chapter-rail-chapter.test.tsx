@@ -107,7 +107,7 @@ describe("RailChapter", () => {
   /**
    * 标题簇呼吸感（2026-08-20 第四轮评审，批 2 波 H）。退休的定值 `+46` 在
    * 本版式的 84px 标题下只留 6px 墨隙。这条按墨（不是按 em 框）量净空，
-   * 与 `chrome-geometry.ts` 的 footnote 净空同一套约定。标题收缩时净空跟着
+   * 与 `branding-geometry.ts` 的 footnote 净空同一套约定。标题收缩时净空跟着
    * 收缩但不塌，所以两档都测。把 `subheadingDrop` 换回定值 46 这条立刻红。
    */
   it("副标题与大标题之间留出与字号成比例的墨隙（84px 标题 >=16px，收缩后仍 >=8px）", () => {

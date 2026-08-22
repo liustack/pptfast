@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * rail-numbered content layout（spec §3.2，Wave 3 Task 18）：grammar break
@@ -70,7 +70,7 @@ const RAIL_W = 4
 const RAIL_H = 544
 const RAIL_NODE_R = 7
 
-// BADGE_Y=96 (not 64) keeps the badge clear of BrandChrome's tl logo band
+// BADGE_Y=96 (not 64) keeps the badge clear of Branding's tl logo band
 // (x 64-160, y 48-88) — mirrors the Cover confLabel fix (see
 // cover-left-anchor.tsx's own y=104 equivalent).
 const BADGE_X = 96
@@ -249,7 +249,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
       {/* Content components below the title row (was a divider + foreignObject) */}
       <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />
 
-      {/* Footnote only — BrandChrome already renders the y=664 footer
+      {/* Footnote only — Branding already renders the y=664 footer
        * hairline for content pages, so this layout must not draw its own
        * line down there (see consulting.tsx's fix-wave note on the same
        * double-hairline bug). */}
@@ -272,9 +272,9 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["rail-numbered"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CONTENT_LAYOUT_DEFS["rail-numbered"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means. The body
 // slot's capacity comment is reworded from "see file header derivation" to

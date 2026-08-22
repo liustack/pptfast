@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * split-band content layout (content-layout expansion wave, task T2 —
@@ -96,7 +96,7 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * Region set (T3's own corrected diversity judgment — count *every*
  * `data-audit-box`, not just the first, and its (x, w) tuple): `header`'s
  * own box is `(0, 1280)` — genuinely full-bleed, unlike every other
- * layout's chrome (even `banner-heading`'s own filled assertion banner
+ * layout's frame (even `banner-heading`'s own filled assertion banner
  * stops at x=96 w=1088, inset from the page edge — this layout's own
  * differentiator per research note §3.3's own contrast with that file) —
  * paired with `body`'s ordinary `(96, 1088)` from `SvgContent`. No other
@@ -133,7 +133,7 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * for, escalated to genuinely full-bleed (see that table's own doc comment).
  * It stays out of every strategy's `layoutTendencies` (`@/narrative`)
  * deliberately, the same "万金油" neutral treatment `tone-adaptive-content`
- * gets: the full-bleed color treatment is a chrome/visual-weight choice
+ * gets: the full-bleed color treatment is a frame/visual-weight choice
  * layered on top of an otherwise ordinary single-stack body, not an argument-
  * style signal any one strategy's rhetorical register (MECE evidence,
  * editorial restraint, step-by-step procedure, glossy visual punch, plain
@@ -152,7 +152,7 @@ const TEXT_X = 96
 const TEXT_MAX_W = 1088
 
 // KICKER_Y/hasTlLogo dodge: same treatment `content-banner-heading.tsx`
-// already established for a kicker sharing a filled band with BrandChrome's
+// already established for a kicker sharing a filled band with Branding's
 // tl-positioned logo band (y 48-88) — sidesteps into the same x=176 dodge
 // only when a real tl logo resolves, aligns with the band's own left edge
 // otherwise.

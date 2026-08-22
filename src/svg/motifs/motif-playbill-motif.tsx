@@ -17,7 +17,7 @@ import type { DecorProps } from "./types"
  *   - 没有：整片不画。**空黑块在任何情况下都不再出现**
  *   - 与密级/日期缺省隐藏（2026-08-22 `showsDocumentMeta`）的关系：
  *     motif 的日期衍生件按该案任务书豁免（journal 期号、ink 年月同批），
- *     贴片不看 `ir.chrome`
+ *     贴片不看 `ir.branding`
  *
  * 几何：150×34 方片绕 (1136, 25) 顺时针 4°（对齐板上 CSS `rotate(4deg)`）。
  * 方片四角在模块加载时烘焙成 `<polygon points>`——导出侧 `svg2pptx/dispatch.ts`

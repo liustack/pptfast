@@ -32,7 +32,7 @@ function renderCover(
   return { out, root: parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`), tokens }
 }
 
-// BrandChrome's brand logo bands (see templates/academic.test.tsx's own
+// Branding's brand logo bands (see templates/academic.test.tsx's own
 // LOGO_BANDS) — the confidentiality badge sits top-right (y=104, not 64,
 // specifically to clear TR_LOGO).
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -320,7 +320,7 @@ describe("LeftAnchorCover", () => {
     })
   })
 
-  it("confidentiality 徽标 (1064,104,120,48) 避让 BrandChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {
+  it("confidentiality 徽标 (1064,104,120,48) 避让 Branding 四个 logo 带（迁移自 academic.test.tsx）", () => {
     const ctx = buildCtx(tokensWithoutCover("academic"), {})
     const deck: PptxIR = {
       version: "3",

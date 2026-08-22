@@ -43,10 +43,10 @@ const zeroSlide: Slide = {
 } as Slide
 
 describe("layoutDef", () => {
-  it("declares pinOnly, chrome none, capacity-1 body, content slide type", () => {
+  it("declares pinOnly, branding none, capacity-1 body, content slide type", () => {
     expect(layoutDef.id).toBe("statement")
     expect(layoutDef.pinOnly).toBe(true)
-    expect(layoutDef.chrome).toBe("none")
+    expect(layoutDef.branding).toBe("none")
     expect(layoutDef.slideTypes).toEqual(["content"])
     expect(layoutDef.slots.find((s) => s.name === "body")?.capacity).toBe(1)
   })

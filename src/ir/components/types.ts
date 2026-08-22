@@ -76,7 +76,7 @@ export interface ComponentTraits {
   readonly selfVisual: boolean
   /** Feeds `SCALABLE_TYPES` — is this component's content a rendered graphic safe to scale uniformly (not reflowable text)? */
   readonly scalable: boolean
-  /** Feeds `PASSTHROUGH_SHELL_TYPES` — does this component draw its own internal chrome, so the bento shell paint should be skipped? */
+  /** Feeds `PASSTHROUGH_SHELL_TYPES` — does this component draw its own internal frame, so the bento shell paint should be skipped? */
   readonly passthroughShell: boolean
   /** Feeds `FULL_BODY_TYPES` — must this component be the slide's sole component, filling the whole content rect itself? */
   readonly fullBody: boolean

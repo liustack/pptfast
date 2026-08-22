@@ -10,7 +10,7 @@ import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeI
 
 /**
  * A theme = distributable bundle: `style` (style tokens) + `brand` (brand
- * chrome) + affinity tags (filled in W4).
+ * frame) + affinity tags (filled in W4).
  *
  * `id` is a plain `string`, not `CanonicalThemeId` — the 13 builtins satisfy
  * this (`CanonicalThemeId` is a subtype of `string`), but `registerTheme`
@@ -766,7 +766,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
   // 楷体靠 tokens + 专属 ink-motif。**v3 重设计（2026-08-18 第一期）**把
   // motif 换成了右缘落款列 + 一角残山（旧的版框线/大远山/旧印位全部删，见
-  // `../svg/motifs/motif-ink-motif.tsx` 的文件头），页脚 chrome 的两个抑制
+  // `../svg/motifs/motif-ink-motif.tsx` 的文件头），页脚 branding 的两个抑制
   // 开关见上方 `BRANDS.ink`。
   //
   // layoutTendencies（本期新声明——ink 此前是 `structure-map.md` 点名的七个
@@ -1302,7 +1302,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // MEMORANDUM 眉行 + 红双线 + 标题末词下划。历史曾软倾向 banner-title /
   // editorial-masthead）。
   // chapter / ending 的 layouts 收窄待下版本设计板后锁定。content 走全集加
-  // 分配表倾向。chrome 仍归 deck 声明，不在本行绑定。
+  // 分配表倾向。branding 仍归 deck 声明，不在本行绑定。
   memo: {
     // 第七波封面保真：板面是 MEMORANDUM 眉行 + 红双线 + 标题末词下划。
     // 新建 memo-head 进共享池并收窄 cover。motif 在封面退让，避免双份公文头。
@@ -1465,7 +1465,7 @@ const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", 
  * Deliberately duplicated (byte-identical logic) from `svg/full-slide-svg.tsx`'s
  * exported `resolveBackgroundHex` rather than imported: that file already
  * imports back from this one (`getThemeDefinition`), and it further pulls in
- * the render-orchestration subtree (`brand-chrome.tsx`/`layout-selection.ts`/
+ * the render-orchestration subtree (`branding.tsx`/`layout-selection.ts`/
  * `motif-selection.ts`, confirmed via `npx madge --circular`) — importing it
  * here would fold that whole subtree into a cycle with this foundational
  * theme-registration module just to reuse a 3-line pure function. `ink.ts`'s

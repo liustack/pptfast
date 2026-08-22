@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, accessibleOpacity, readableOn } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * side-highlight content layout (P1 variety wave, task 4 — content-pool
@@ -14,7 +14,7 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * a standard-width body column (kicker/heading/subheading/`SvgContent`,
  * unchanged geometry from the pool's other single-stack layouts) paired
  * with a *persistent, opaque, self-painted `colors.primary` panel* running
- * the page's full content height on the right edge. The panel is chrome, not
+ * the page's full content height on the right edge. The panel is frame, not
  * a `body` slot — it never depends on `slide.components` at all, so it draws
  * identically whether the page has 0 or 4 components.
  *
@@ -161,7 +161,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
 
   return (
     <>
-      {/* Body column: standard kicker/heading/subheading/content chrome */}
+      {/* Body column: standard kicker/heading/subheading/content band */}
       {kicker && (
         <text
           data-truncated={kicker.truncated ? "1" : undefined}
@@ -276,9 +276,9 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["side-highlight"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CONTENT_LAYOUT_DEFS["side-highlight"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means. The body
 // slot's capacity comment is reworded from "see file header derivation" to
@@ -287,7 +287,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
 export const layoutDef: LayoutDefinition = {
   // content-side-highlight.tsx: standard-width body column (kicker/
   // heading/subheading/SvgContent body, arrangement passed through) plus
-  // a persistent, unconditional highlight panel (chrome, not a
+  // a persistent, unconditional highlight panel (frame, not a
   // component-fed slot) running the page's full content height on the
   // right edge — badge/watermark/org label, never empty regardless of
   // `slide.components`.

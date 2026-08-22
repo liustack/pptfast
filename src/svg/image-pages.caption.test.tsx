@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { slideToSvgMarkup } from "./render-slide"
 import type { PptxIR, Slide } from "@/ir"
 
-// image-bottom 的 caption 遮罩条只在 BrandChrome 真会画内容页脚时才上移
+// image-bottom 的 caption 遮罩条只在 Branding 真会画内容页脚时才上移
 // 让位。页脚绘制条件是 branding:"full"（cover-only 默认与 minimal 都不画
 // meta 行），caption 让位谓词必须与它一致，否则默认姿态下条带为不存在的
 // 页脚悬空 40px（2026-08-22 根因修复的回归钉）。
@@ -36,14 +36,14 @@ function makeIr(branding?: PptxIR["branding"]): PptxIR {
 }
 
 function bandYs(markup: string): number[] {
-  // 整宽 40 高的半透明黑 rect（caption 条与 full 姿态下 BrandChrome 的
+  // 整宽 40 高的半透明黑 rect（caption 条与 full 姿态下 Branding 的
   // 页脚遮罩同款），收全部 y 值再断言。
   return [...markup.matchAll(/<rect x="0" y="(\d+)" width="1280" height="40" fill="#0A0E14"/g)].map(
     (m) => Number(m[1]),
   )
 }
 
-describe("image-bottom caption band vs chrome posture", () => {
+describe("image-bottom caption band vs branding posture", () => {
   it("sits flush at the page edge under the default cover-only posture", () => {
     expect(bandYs(slideToSvgMarkup(makeIr(), slide, 0))).toEqual([680])
   })

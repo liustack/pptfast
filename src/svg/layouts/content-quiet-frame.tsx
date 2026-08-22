@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * quiet-frame content layout (P1 variety wave, task 4 — content-pool
@@ -212,9 +212,9 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["quiet-frame"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CONTENT_LAYOUT_DEFS["quiet-frame"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means. The body
 // slot's capacity comment is reworded from "see file header derivation" to

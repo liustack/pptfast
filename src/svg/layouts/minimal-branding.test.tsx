@@ -7,15 +7,15 @@ import { parseSvgRoot } from "../serialize"
 import { THEME_DEFINITIONS, themeOffersSparse } from "../../themes/definitions"
 import { resolveEffectiveLayoutId } from "../layout-selection"
 import { LAYOUT_REGISTRY } from "./registry"
-import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
+import { FOOTER_DIVIDER_Y } from "../branding-geometry"
 
 const LOGO_SRC =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 
-function chromeDeck(theme: string, slides: Slide[]): PptxIR {
+function brandingDeck(theme: string, slides: Slide[]): PptxIR {
   return {
     version: "4",
-    filename: "minimal-chrome.pptx",
+    filename: "minimal-branding.pptx",
     theme: { id: theme },
     branding: "full",
     meta: { organization: "ACME", date: "2026", version: "v1" },
@@ -26,14 +26,14 @@ function chromeDeck(theme: string, slides: Slide[]): PptxIR {
   } as PptxIR
 }
 
-function assertNoBrandChrome(markup: string) {
+function assertNoBranding(markup: string) {
   const root = parseSvgRoot(markup)
   expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).toBeNull()
   expect(markup).not.toContain("ACME")
   expect(root.querySelector("image")).toBeNull()
 }
 
-describe("layout-declared chrome:none (editorial-verse wave)", () => {
+describe("layout-declared branding:none (editorial-verse wave)", () => {
   it("statement skips footer rule, footer meta, and logo on consulting", () => {
     const slide: Slide = {
       type: "content",
@@ -41,9 +41,9 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "记得的事会变成下个世纪的天气",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("consulting", [slide]), 0)
     expect(markup).toContain("下个世纪")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
   it("statement on lecture still paints the theme motif while skipping the footer", () => {
@@ -53,7 +53,7 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "记得的事会变成下个世纪的天气",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("lecture", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("lecture", [slide]), 0)
     const root = parseSvgRoot(markup)
     expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).toBeNull()
     expect(markup).not.toContain("ACME")
@@ -61,16 +61,16 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
     expect(root.querySelector("g[data-decor]")).not.toBeNull()
   })
 
-  it("pull-quote skips chrome on heritage (light) the same way", () => {
+  it("pull-quote skips branding on heritage (light) the same way", () => {
     const slide: Slide = {
       type: "content",
       layout: "pull-quote",
       heading: "A parrot never forgets a face.",
       components: [{ type: "paragraph", text: "Alex could count to six." }],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("heritage", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("heritage", [slide]), 0)
     expect(markup).toContain("parrot")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
   it("verse-chapter skips logo (chapter already has no footer)", () => {
@@ -80,24 +80,24 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "羽毛下的智识",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("consulting", [slide]), 0)
     expect(markup).toContain("羽毛下的智识")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
-  it("stat-hero skips chrome on insight (dark)", () => {
+  it("stat-hero skips branding on insight (dark)", () => {
     const slide: Slide = {
       type: "content",
       layout: "stat-hero",
       heading: "3.2 亿",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("insight", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("insight", [slide]), 0)
     expect(markup).toContain("3.2")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
-  it("one-evidence skips chrome on consulting (light)", () => {
+  it("one-evidence skips branding on consulting (light)", () => {
     const slide: Slide = {
       type: "content",
       layout: "one-evidence",
@@ -110,21 +110,21 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
         },
       ],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("consulting", [slide]), 0)
     expect(markup).toContain("迁徙路线")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
-  it("mono-bleed skips chrome and paints its own primary field", () => {
+  it("mono-bleed skips branding and paints its own primary field", () => {
     const slide: Slide = {
       type: "content",
       layout: "mono-bleed",
       heading: "把灯关掉",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("playbill", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("playbill", [slide]), 0)
     expect(markup).toContain("把灯关掉")
-    assertNoBrandChrome(markup)
+    assertNoBranding(markup)
   })
 
   it("quote-stage still draws footer meta and motif (negative control)", () => {
@@ -134,7 +134,7 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "简洁是最终的复杂",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    const markup = renderSlideSvg(brandingDeck("luxe", [slide]), 0)
     const root = parseSvgRoot(markup)
     expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).not.toBeNull()
     expect(markup).toContain("ACME")
@@ -219,7 +219,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
   it("never auto-selects statement / pull-quote / verse-chapter / speech layouts across a seed spread", () => {
     const slide: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "y" }] } as Slide
     for (let seed = 0; seed < 40; seed++) {
-      const doc = { ...chromeDeck("consulting", [slide]), seed } as PptxIR
+      const doc = { ...brandingDeck("consulting", [slide]), seed } as PptxIR
       const picked = resolveEffectiveLayoutId(doc, slide, 0)
       expect(picked).not.toBe("statement")
       expect(picked).not.toBe("pull-quote")
@@ -233,7 +233,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
 
 describe("sparse pages are not density-blocked", () => {
   it("statement with 0 components (two-line heading) has no density warning", () => {
-    const doc = chromeDeck("consulting", [
+    const doc = brandingDeck("consulting", [
       {
         type: "content",
         layout: "statement",
@@ -245,7 +245,7 @@ describe("sparse pages are not density-blocked", () => {
   })
 
   it("pull-quote with 1 paragraph has no density warning", () => {
-    const doc = chromeDeck("consulting", [
+    const doc = brandingDeck("consulting", [
       {
         type: "content",
         layout: "pull-quote",
@@ -257,14 +257,14 @@ describe("sparse pages are not density-blocked", () => {
   })
 
   it("stat-hero with 0 components has no density warning", () => {
-    const doc = chromeDeck("consulting", [
+    const doc = brandingDeck("consulting", [
       { type: "content", layout: "stat-hero", heading: "95.7%", components: [] } as Slide,
     ])
     expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
   })
 
   it("mono-bleed with 0 components has no density warning", () => {
-    const doc = chromeDeck("consulting", [
+    const doc = brandingDeck("consulting", [
       { type: "content", layout: "mono-bleed", heading: "把灯关掉", components: [] } as Slide,
     ])
     expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
@@ -316,13 +316,13 @@ describe("schema / validate accept the three new layout ids", () => {
       heading: "把灯关掉",
       components: [],
     } as Slide
-    const v = validateIr(chromeDeck("consulting", [cover, statement, pull, verse, stat, evidence, bleed]))
+    const v = validateIr(brandingDeck("consulting", [cover, statement, pull, verse, stat, evidence, bleed]))
     expect(v.ok, JSON.stringify(v.errors)).toBe(true)
   })
 
   it("verse-chapter still cannot carry a footnote (existing chapter boundary)", () => {
     const v = validateIr(
-      chromeDeck("consulting", [
+      brandingDeck("consulting", [
         {
           type: "chapter",
           layout: "verse-chapter",
@@ -384,7 +384,7 @@ describe("19-theme smoke: each new layout renders on every built-in theme", () =
       heading: "把灯关掉",
       components: [],
     } as Slide
-    const doc = chromeDeck(themeId, [statement, pull, verse, stat, evidence, bleed])
+    const doc = brandingDeck(themeId, [statement, pull, verse, stat, evidence, bleed])
     const a = renderSlideSvg(doc, 0)
     const b = renderSlideSvg(doc, 1)
     const c = renderSlideSvg(doc, 2)
@@ -400,12 +400,12 @@ describe("19-theme smoke: each new layout renders on every built-in theme", () =
     expect(textOf(f)).toContain("把灯关掉")
     // consulting still offers every sparse id (omitted list). luxe only
     // offers its boarded faces plus verse-chapter. Unoffered pins fall
-    // back to a regular layout and keep ordinary chrome.
+    // back to a regular layout and keep ordinary branding.
     if (themeId === light || themeId === dark) {
       const markups = [a, b, c, d, e, f]
       const layoutIds = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"]
       for (let i = 0; i < layoutIds.length; i++) {
-        if (themeOffersSparse(themeId, layoutIds[i]!)) assertNoBrandChrome(markups[i]!)
+        if (themeOffersSparse(themeId, layoutIds[i]!)) assertNoBranding(markups[i]!)
       }
     }
   })

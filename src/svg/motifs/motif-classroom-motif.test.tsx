@@ -23,7 +23,7 @@ const BOARD_ZONES = {
   brLogo: { x: 1120, y: 630, w: 96, h: 40 },
 } as const
 
-/** `brand-chrome.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
+/** `branding.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
 const LOGO_BOXES = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },
@@ -114,7 +114,7 @@ describe("ClassroomMotif（拍纸簿）", () => {
    * 第四轮评审（bloom p03）的返工点：用户原话「底部那个虚线是干什么用的，
    * 放这里太拥挤了，空的页面放放还差不多，这个有 footer 的页面还放，太拥挤
    * 不好看了。」页脚 meta 行在 y700、虚线在 y712，有页脚的页上两条挨着排。
-   * `brand-chrome.tsx` 的 `showFooter` 以 `slide.type === "content"` 打头，
+   * `branding.tsx` 的 `showFooter` 以 `slide.type === "content"` 打头，
    * 所以「非 content」是「无页脚」的保守子集。
    */
   it("铅笔虚线只在没有页脚的页上画：cover/ending 有，content 没有", () => {
@@ -250,7 +250,7 @@ describe("ClassroomMotif（拍纸簿）", () => {
     }
   })
 
-  it("安全区：两件装饰都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
+  it("安全区：两件装饰都不进 branding 的四个 logo 位（tl/tr/bl/br）", () => {
     const { root } = draw("classroom", coverSlide)
     for (const { label, box } of inkBoxes(root)) {
       for (const zone of LOGO_BOXES) {

@@ -494,7 +494,7 @@ describe("BentoPanelContent", () => {
       expect(markup).toContain(item.title)
       expect(markup).toContain(item.text)
     }
-    // Double-shell governance: steps already draws its own chrome, so its
+    // Double-shell governance: steps already draws its own frame, so its
     // cell skips bento's own outline shell entirely — only the paragraph
     // cell gets one.
     const bentoShells = Array.from(root.querySelectorAll("rect")).filter(isBentoOutlineShell)
@@ -534,7 +534,7 @@ describe("BentoPanelContent", () => {
     ["architecture", architectureComponent, "展现层"],
     ["timeline", timelineComponent, "启动"],
   ] as const)(
-    "renders a %s component bare in the grid (double-shell governance) — no outline shell, own chrome intact",
+    "renders a %s component bare in the grid (double-shell governance) — no outline shell, own frame intact",
     (_label, component, expectedText) => {
       const ctx = buildCtx(resolveStyle("tech"), {})
       const paragraphComponent: Component = para("普通块仍然有卡壳")
@@ -930,7 +930,7 @@ describe("BentoPanelContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
 
     // 3 units → 3 bento cells, but only the plain paragraph cell gets a
-    // surface-filled shell — callout/code paint their own chrome instead.
+    // surface-filled shell — callout/code paint their own frame instead.
     const boxes = root.querySelectorAll("[data-audit-box]")
     expect(boxes.length).toBe(3)
     const surfaceFills = Array.from(root.querySelectorAll("rect")).filter(isBentoOutlineShell)
@@ -939,7 +939,7 @@ describe("BentoPanelContent", () => {
       (r) => r.getAttribute("height") === "3" && Number(r.getAttribute("width") ?? 0) <= 8,
     )
     expect(stripes).toHaveLength(0)
-    // callout/code still render their own chrome — this isn't "no chrome at
+    // callout/code still render their own frame — this isn't "no frame at
     // all".
     expect(markup).toContain("自带视觉的提示块。")
     expect(markup).toContain("const a = 1")
@@ -977,7 +977,7 @@ describe("BentoPanelContent", () => {
       (r) => r.getAttribute("height") === "3",
     )
     expect(stripes).toHaveLength(0)
-    // verdict_banner still renders its own chrome. Its short editorial mark
+    // verdict_banner still renders its own frame. Its short editorial mark
     // resolves to tech's dark-theme bright variant without restoring a card.
     expect(markup).toContain("自带视觉的结论条。")
     const bannerMark = Array.from(root.querySelectorAll("rect")).find(

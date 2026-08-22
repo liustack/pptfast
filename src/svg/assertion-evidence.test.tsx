@@ -175,7 +175,7 @@ describe("assertion_evidence variant", () => {
     // contentY=228 at this heading's line count, contentBottom=620) and
     // pinned here as a literal so this test doesn't silently drift if
     // quiet-frame's own geometry changes later. quiet-frame's own footer
-    // chrome sits at y=664 (divider) / y=700 (text) — well below 620, so
+    // brand footer sits at y=664 (divider) / y=700 (text) — well below 620, so
     // *any* v-overflow finding against this rect is unambiguous evidence of
     // spill, not a "getting close" false alarm.
     const quietFrameRect = { x: 200, y: 271, w: 880, h: 349 }

@@ -339,7 +339,7 @@ export function assembleDeck(spec: unknown, pages: Record<string, PageContent>):
  *   untouched" true by construction, not by coincidence of what the resolver
  *   happens to do with it.
  * - The resolver returns `null` — the image-cover takeover
- *   (`ImageCoverPage`'s bespoke chrome, no `LAYOUT_REGISTRY` id to name, see
+ *   (`ImageCoverPage`'s bespoke frame, no `LAYOUT_REGISTRY` id to name, see
  *   `resolveEffectiveLayoutId`'s own doc comment). `null` has no home in
  *   `layout`'s `string | undefined` shape, and this function's job is to
  *   materialize *exactly* what the resolver already means by its return
@@ -454,7 +454,7 @@ const UNTITLED_HEADING = "Untitled"
  *   string (`DeckSpecSchema.theme` has no shape for either) — only `theme.id`
  *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
  *   — `suppressFooterOnCardContent`/`suppressFooterRule`/`suppressFooterMeta`,
- *   footer-chrome flags owned by the *theme*) — not to be confused with the deck-level
+ *   brand-footer flags owned by the *theme*) — not to be confused with the deck-level
  *   `brand` field below, a different, unrelated schema despite the shared
  *   name.
  * - `ir.assets.images` is not part of this function's return value at all —
@@ -475,8 +475,8 @@ const UNTITLED_HEADING = "Untitled"
  *
  * Round-trip-safe despite the above, worth calling out because of that name
  * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /
- * `position`, the deck logo/position `BrandChrome` reads,
- * `src/svg/brand-chrome.tsx`) is a plain passthrough on both sides
+ * `position`, the deck logo/position `Branding` reads,
+ * `src/svg/branding.tsx`) is a plain passthrough on both sides
  * ({@link assembleDeck} step 6 reads `spec.brand` into `ir.brand` — this
  * function reads `ir.brand` back into `spec.brand` below) — carried through
  * unmodified, same as `narrative`/`filename`/`seed`/`branding`, never

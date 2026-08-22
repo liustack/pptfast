@@ -12,7 +12,7 @@ import type { Component, PptxIR, Slide } from "@/ir"
 // component count (the T1 handoff's "dense-tendency layouts must be
 // visibly different from two-column/rail-numbered at n=1" hard requirement)
 // — this file's core assertions are about that structural persistence, not
-// the heading chrome (shared convention, covered elsewhere).
+// the heading band (shared convention, covered elsewhere).
 
 function para(text: string): Component {
   return { type: "paragraph", text }
@@ -41,7 +41,7 @@ function render(deck: PptxIR, slide: Slide, index: number): string {
 }
 
 describe("AsymmetricTriptychContent", () => {
-  it("with 0 components, the lead/divider/top/bottom frames still render (persistent chrome, not derived from slide.components)", () => {
+  it("with 0 components, the lead/divider/top/bottom frames still render (persistent frame, not derived from slide.components)", () => {
     const slide = slideWith([])
     const markup = render(ir([chapter1, slide]), slide, 1)
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)

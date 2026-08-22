@@ -71,16 +71,16 @@ import type { DecorProps } from "./types"
  * 板上那四条红虚线是「意图」，而版式们真实的排字外沿比它宽得多：
  *   - 最高的一行字顶在 y34（poster-chapter/roman-chapter 的右上引首）
  *   - 最低的一行字底在 y708.6（image-bottom 的遮罩页脚）
- *   - 最左的一行字起于 x56（fashion 家族的 meta 行、`brand-chrome.tsx` 的
+ *   - 最左的一行字起于 x56（fashion 家族的 meta 行、`branding.tsx` 的
  *     页脚两行）
  *   - 最右的一行字止于 x1224（同上，右对齐那一列）
  * 于是页面真正空着的四条边分别是 y<34、y>708.6、x<56、x>1224。同一条
  * 先例在冷调组已经踩过一次：设计板把 academic 的点轨画在 y648，那正是
- * `chrome-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`，实测后点轨整条搬去顶带。
+ * `branding-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`，实测后点轨整条搬去顶带。
  *
  * 三条边够用，第四条不够：底边只剩 y708.6 到页缘 720 的十来个像素，塞不下
  * 一条读得出来的带（`FOOTNOTE_BASELINE_Y = 648`、`FOOTER_DIVIDER_Y = 664`、
- * `brand-chrome.tsx` 自己的两行页脚 y700/705 把 596-710 整段占满了）。
+ * `branding.tsx` 自己的两行页脚 y700/705 把 596-710 整段占满了）。
  * **底带因此退役**，它的点数并进顶带。板上的「半场」算术反而更准了：
  * 顶带 60 枚 = 总数 120 的一半，降档就是顶带一条，见下。
  *
@@ -95,7 +95,7 @@ import type { DecorProps } from "./types"
  *     本就不相交），下不进页脚 meta 带（y664）
  * 板上四条红虚线禁区（标题区 96,48,1040×122 / 正文区 96,200,1040×420 /
  * 页脚 meta 带 48,664,1184×44 / 右下 logo 盒 1120,630,96×40）与
- * `brand-chrome.tsx` **四个** logo 位（tl/tr/bl/br，各 96×40）全部清空——
+ * `branding.tsx` **四个** logo 位（tl/tr/bl/br，各 96×40）全部清空——
  * 比板上生成器自己做到的还严一档（板上的底带横穿它自己画的那只右下
  * logo 盒）。`motif-campaign-motif.test.tsx` 对 120 枚逐枚量包围盒。
  *

@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../chrome-geometry"
+import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../branding-geometry"
 import { goldenTopCap } from "../layout"
 
 /**
@@ -85,12 +85,12 @@ const BANNER_Y = KICKER_Y + BANNER_KICKER_GAP
 // pathologically long titles.
 
 // `brand.logo_asset_id` is unset (no image at all) unless a deck explicitly
-// opts a logo into `position: "tl"` — so `hasTlLogo` mirrors BrandChrome's
+// opts a logo into `position: "tl"` — so `hasTlLogo` mirrors Branding's
 // own `logo?.src && !logo.error` gate to check the *real* IR instead of
 // assuming the worst: align with the banner's own left edge (BANNER_X)
 // whenever no tl logo actually resolves, and only fall back to the sideways
 // dodge (x=176) when one genuinely does. Kicker and banner still sit inside
-// BrandChrome's tl/tr logo bands' y-range (48-88). The banner fill is
+// Branding's tl/tr logo bands' y-range (48-88). The banner fill is
 // allowed to touch those corners (solid color, no text).
 
 function hasTlLogo(ir: PptxIR): boolean {
@@ -251,7 +251,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       {/* Content components below the banner (was a divider + foreignObject) */}
       <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />
 
-      {/* Footnote only — BrandChrome already renders the y=664 footer
+      {/* Footnote only — Branding already renders the y=664 footer
        * hairline for content pages, so this layout must not draw its own
        * source line at y=648 (16px apart, doubled hairline). */}
       {footnote && (
@@ -273,9 +273,9 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["banner-heading"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CONTENT_LAYOUT_DEFS["banner-heading"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means. The body
 // slot's capacity comment is reworded from "see file header derivation" to

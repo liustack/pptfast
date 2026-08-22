@@ -43,7 +43,7 @@ describe("THEME_DEFINITIONS", () => {
     }
   })
 
-  it("carries the two legacy chrome flags to their owners", () => {
+  it("carries the two legacy branding flags to their owners", () => {
     expect(THEME_DEFINITIONS.enterprise.brand.suppressFooterOnCardContent).toBe(true)
     expect(THEME_DEFINITIONS.ink.brand.suppressFooterRule).toBe(true)
     // ink v3：落款列吞并页脚 meta 文字（`BRANDS.ink` 自己的注释交代了代价）

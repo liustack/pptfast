@@ -36,10 +36,10 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
 }
 
 describe("layoutDef", () => {
-  it("declares pinOnly, chrome none, paintsOwnBackground, capacity-0 body", () => {
+  it("declares pinOnly, branding none, paintsOwnBackground, capacity-0 body", () => {
     expect(layoutDef.id).toBe("mono-bleed")
     expect(layoutDef.pinOnly).toBe(true)
-    expect(layoutDef.chrome).toBe("none")
+    expect(layoutDef.branding).toBe("none")
     expect(layoutDef.paintsOwnBackground).toBe(true)
     expect(layoutDef.slideTypes).toEqual(["content"])
     expect(layoutDef.slots.find((s) => s.name === "body")?.capacity).toBe(0)

@@ -11,7 +11,7 @@ import type { DecorProps } from "./types"
  *     的唯一理由（那个开关本期继续留着，见下）。
  *   - 三层大远山（左下 / 右下 / 横贯三个 seed 变体）：删。1a 的判断是墨要
  *     少到「一角」，大面积晕染属于 1b「浓」，不在本期。
- *   - 旧的竖排落款 + 印章（x1170~1202，y608 起）：删。它正压在 BrandChrome
+ *   - 旧的竖排落款 + 印章（x1170~1202，y608 起）：删。它正压在 Branding
  *     的 logo 盒（1120,630,96×40）和 `tone-adaptive-header` 的右下日期上——
  *     `inventory.md` 记录的 ink / tone-adaptive-header 日期 1.07:1 就是这处
  *     碰撞。新落款列整体右移到 x>=1220，与 logo 盒（右缘 x1216）划清界线。
@@ -19,8 +19,8 @@ import type { DecorProps } from "./types"
  * v3 画的两笔：
  *   - **右缘落款列**（四种页型都画）：一条 x1220 的竖界线，右边一列逐字竖排
  *     的机构名（19px 楷）、隔一段接排的年月（17px，中文数字），列底一枚朱砂
- *     印。这一列同时吞并了 BrandChrome 页脚 meta 的职责——
- *     `BRANDS.ink.suppressFooterMeta` 因此打开（`../brand-chrome.tsx`），
+ *     印。这一列同时吞并了 Branding 页脚 meta 的职责——
+ *     `BRANDS.ink.suppressFooterMeta` 因此打开（`../branding.tsx`），
  *     否则同一份机构名/日期会在一页上出现两次。
  *   - **一角残山**（仅 cover / chapter）：左下角一道 0.06 透明度的墨形，
  *     几何固定、不随内容动。x<=500 y>=640，避开四个内容区。
@@ -36,7 +36,7 @@ import type { DecorProps } from "./types"
 
 // ── 落款列几何（1a 设计稿坐标，逐条抄录，不派生） ──────────────────────
 //
-// 楚河汉界：这一列的每一个声明坐标都 >= RAIL_X，因为 BrandChrome 的 logo 盒
+// 楚河汉界：这一列的每一个声明坐标都 >= RAIL_X，因为 Branding 的 logo 盒
 // 是 (1120, 630, 96×40)，右缘落在 x1216。界线本身 1.2px 描边，实际着墨
 // 1219.4~1220.6，离 logo 盒仍有 3.4px——`motif-ink-motif.test.tsx` 同时锁
 // 「声明坐标 >= 1220」和「实际着墨 > 1216」两条。

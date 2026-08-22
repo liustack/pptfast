@@ -20,7 +20,7 @@ const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一�
 const ir = (theme: string): PptxIR =>
   ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
-// BrandChrome's brand logo bands (brand-chrome.tsx logoBox: image at
+// Branding's brand logo bands (branding.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Ported from
 // templates/creative.test.tsx — the poster grammar's entire premise is
 // centering everything on x=640 so its x-extent stays within [190,1090],
@@ -107,7 +107,7 @@ describe("PosterCenterCover", () => {
     expect(markup).toContain("Internal")
   })
 
-  it("Cover 元素避开四角 BrandChrome logo 条带", () => {
+  it("Cover 元素避开四角 Branding logo 条带", () => {
     const ctx = buildCtx(tokensWithoutCover("insight"), {})
     const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     const accentBar = Array.from(root.querySelectorAll("rect")).find(

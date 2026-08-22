@@ -14,7 +14,7 @@ const contentSlide: Slide = { type: "content", heading: "内容", components: []
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
 const ALL_SLIDES = [coverSlide, chapterSlide, contentSlide, endingSlide]
 
-/** BrandChrome 的四个 logo 盒 + 设计稿的标题/正文禁区右缘。 */
+/** Branding 的四个 logo 盒 + 设计稿的标题/正文禁区右缘。 */
 const LOGO_BR = { x: 1120, y: 630, w: 96, h: 40 }
 const BODY_ZONE_RIGHT = 96 + 1040 // 版心右缘 x1136
 const TITLE_ZONE_TOP = 48

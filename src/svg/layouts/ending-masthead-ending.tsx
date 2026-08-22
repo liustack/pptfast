@@ -45,7 +45,7 @@ const META_FONT_SIZE = 13
  * 就骑在 x640 这行居中文字的正中），luxe 的金框下边 y624。2026-08-20 评审
  * 在 `theme--heritage--zh--p10` 上报的「太靠近分割线了」量出来是 0px。
  *
- * ending 页不画 BrandChrome 的页脚，640 以下整整 80px 无人认领，所以让路的
+ * ending 页不画 Branding 的页脚，640 以下整整 80px 无人认领，所以让路的
  * 是文字：660 让 em 框顶落在 647，离 heritage 的金菱最低点 13.9px、离 luxe
  * 的框下边 22.3px，离页面底缘仍有 57px。这个数落在同族版式的既有区间里
  * （`editorial-masthead` 封面的同款 meta 行在 656，`constellation` 封面在
@@ -138,9 +138,9 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// ENDING_LAYOUT_DEFS["masthead-ending"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// ENDING_LAYOUT_DEFS["masthead-ending"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {

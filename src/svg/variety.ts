@@ -38,7 +38,7 @@ function avalanche(h: number): number {
 }
 
 /**
- * `deckSeed` 记忆化（原住 FullSlideSvg，2026-07-10 迁here——BrandChrome
+ * `deckSeed` 记忆化（原住 FullSlideSvg，2026-07-10 迁here——Branding
  * 也要消费，住渲染组件里会循环 import）：`ir` 对象引用在同一渲染批次内
  * 稳定，跨批次新 IR 对象天然失效，WeakMap 无需手动清理。
  */

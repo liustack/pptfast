@@ -44,7 +44,7 @@ describe("FullSlideSvg", () => {
     expect(container.textContent).toContain("年度战略回顾")
   })
 
-  it("renders content components for a content slide (omitted chrome draws no footer)", () => {
+  it("renders content components for a content slide (omitted branding draws no footer)", () => {
     const doc = ir([contentSlide])
     const { container } = render(
       <FullSlideSvg ir={doc} slide={contentSlide} index={0} />,
@@ -887,7 +887,7 @@ describe("layouts that paint their own full-bleed field (LayoutDefinition.paints
   })
 })
 
-describe("deck chrome posture vs theme motif", () => {
+describe("deck branding posture vs theme motif", () => {
   const pinnedContent: Slide = {
     type: "content",
     layout: "quiet-frame",
@@ -895,7 +895,7 @@ describe("deck chrome posture vs theme motif", () => {
     components: [{ type: "paragraph", text: "我们围绕三个方向推进。" }],
   }
 
-  it("cover-only leaves the theme motif on a content page (motif is not brand chrome)", () => {
+  it("cover-only leaves the theme motif on a content page (motif is not brand frame)", () => {
     const doc: PptxIR = { ...ir([pinnedContent]), branding: "cover-only" }
     const { container } = render(<FullSlideSvg ir={doc} slide={pinnedContent} index={0} />)
     expect(container.querySelector("[data-decor]")).not.toBeNull()

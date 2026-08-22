@@ -392,7 +392,7 @@ export const GOLDEN_TOP_SHARE = 0.38
  * How many designed block-gaps of air `settleToGolden` may place above a
  * gathered block. One heading-to-body beat. Beyond this, leftover sinks
  * below (下可空) so a short block cannot hang as a second island under
- * the heading chrome that already occupies the page's top.
+ * the heading band that already occupies the page's top.
  *
  * Linked to `gapScale` through `goldenTopCap` (scale 1 → 16, 1.1 → 18,
  * 1.3 → 21). The 38% share still applies when leftover is small enough

@@ -129,7 +129,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     grid — and, addressing the T1 handoff's reviewer note that
  *     `two-column`/`rail-numbered` read as visually thin on a
  *     single-component page, its region dividers/frames are unconditional
- *     chrome that stays visible even with exactly 1 component (see the
+ *     frame that stays visible even with exactly 1 component (see the
  *     layout file's own composition-sketch header).
  * - **breathing** (generous whitespace, one unhurried flow):
  *   - `narrow-column` — the narrowest body column in the pool, paired with
@@ -446,7 +446,7 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  * mirrors `full-slide-svg.tsx`'s own dispatch order exactly:
  *
  * 1. **Image-cover takeover** (cover/chapter with an asset background —
- *    `ImageCoverPage`): bespoke full-page chrome with no `LAYOUT_REGISTRY`
+ *    `ImageCoverPage`): bespoke full-page frame with no `LAYOUT_REGISTRY`
  *    entry to cite, so this returns `null`. Content/ending asset backgrounds
  *    stay on the normal layout path (P1 frosted scrim, not a takeover —
  *    unaffected).

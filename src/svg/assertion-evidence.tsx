@@ -166,7 +166,7 @@ export function AssertionEvidence({
   // stack's own guaranteed-minimum-unit rendering always lands inside its
   // box, never past `rect.y + rect.h` (and every layout that reaches
   // this arrangement already leaves real whitespace between its own content
-  // rect's bottom and any footer chrome below it).
+  // rect's bottom and any brand footer below it).
   const evidenceBudget = Math.max(0, rect.h - SUPPORT_GAP - SUPPORT_FLOOR)
   const evidenceOverflows = evidenceH > availableForEvidence
 

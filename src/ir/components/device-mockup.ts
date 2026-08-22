@@ -60,7 +60,7 @@ export const schema = z
 
 export const aliases = {} satisfies ComponentAliasSpec
 
-// selfVisual (not scalable, unlike `image`): the device chrome *is* the
+// selfVisual (not scalable, unlike `image`): the device frame *is* the
 // component's own card/frame — stacking bento's outline shell underneath
 // it, or content-stacked-poster.tsx's scale-to-fill-slot treatment (which
 // would stretch the device frame's carefully-derived aspect ratio out of

@@ -5,7 +5,7 @@ import type { DeckBranding } from "@/ir"
  * omitted default leaves those two off the canvas even if `meta` carries
  * them. Author, role, organization, version, and contact are unaffected.
  *
- * BrandChrome's content-page footer already only draws under `"full"`, so
+ * Branding's content-page footer already only draws under `"full"`, so
  * it does not consult this helper.
  */
 export function showsDocumentMeta(ir: { branding?: DeckBranding }): boolean {

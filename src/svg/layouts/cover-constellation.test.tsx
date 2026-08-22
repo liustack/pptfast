@@ -43,7 +43,7 @@ const minimalSlide: Slide = { type: "cover", heading: "封面", components: [] }
 const COVER_TECH_MARKUP =
   '<text x="96" y="120" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#93A5C0" letter-spacing="4" dominant-baseline="alphabetic">测试实验室</text><rect x="96" y="548" width="84" height="4" fill="#53E0D2"></rect><text x="96" y="596" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="30" fill="#93A5C0" dominant-baseline="alphabetic">面向 2027 的技术路线图</text><text x="96" y="520" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" dominant-baseline="alphabetic">数据驱动的增长引擎</text><text x="96" y="660" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#93A5C0" dominant-baseline="alphabetic">2026-07</text><polyline points="700,300 800,218 902,296 940,150 1030,110 1004,368 1100,170 1148,430 1180,128" fill="none" stroke="#53E0D2" stroke-width="1" stroke-opacity="0.25"></polyline><circle cx="700" cy="300" r="2" fill="#53E0D2"></circle><circle cx="800" cy="218" r="3" fill="#53E0D2"></circle><circle cx="902" cy="296" r="2.5" fill="#53E0D2"></circle><circle cx="940" cy="150" r="2.5" fill="#53E0D2"></circle><circle cx="1030" cy="110" r="4" fill="#53E0D2"></circle><circle cx="1004" cy="368" r="3.5" fill="#53E0D2"></circle><circle cx="1100" cy="170" r="3" fill="#53E0D2"></circle><circle cx="1148" cy="430" r="2.5" fill="#53E0D2"></circle><circle cx="1180" cy="128" r="5" fill="#53E0D2"></circle><circle cx="1180" cy="128" r="9" fill="none" stroke="#53E0D2" stroke-opacity="0.18" stroke-width="1"></circle><circle cx="1180" cy="128" r="13" fill="none" stroke="#53E0D2" stroke-opacity="0.07" stroke-width="1"></circle><circle cx="1180" cy="128" r="23" fill="none" stroke="#53E0D2" stroke-opacity="0.1" stroke-width="1"></circle><circle cx="1180" cy="128" r="35" fill="none" stroke="#53E0D2" stroke-opacity="0.05" stroke-width="1"></circle>'
 
-// BrandChrome's brand logo bands (brand-chrome.tsx logoBox: image at
+// Branding's brand logo bands (branding.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br) — same constants
 // templates/tech.test.tsx used to verify the constellation motif never
 // collides with the corner logos.
@@ -123,7 +123,7 @@ describe("ConstellationCover", () => {
     }
   })
 
-  it("the motif (including its largest node's glow) sits clear of all four BrandChrome logo bands", () => {
+  it("the motif (including its largest node's glow) sits clear of all four Branding logo bands", () => {
     const ctx = buildCtx(tokensWithoutCover("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">

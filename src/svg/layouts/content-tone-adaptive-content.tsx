@@ -8,7 +8,7 @@ import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * tone-adaptive-content layout（spec §3.2，Wave 3 Task 21）：custom 主题
@@ -500,7 +500,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       />
 
       {/* Footnote. One of the two survivors of the "footnote below the
-       * divider" family `chrome-geometry.ts` documents as retired: at y=688
+       * divider" family `branding-geometry.ts` documents as retired: at y=688
        * this 20px line rendered *under* the y=664 rule, ink 672.25 to
        * 691.75, straight across the footer's own 20px text row (ink 684.25
        * to 703.75) — measured on `layout--tone-adaptive-content--zh`, where
@@ -525,9 +525,9 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["tone-adaptive-content"] entry. `CHROME` (registry.ts's
-// private `readonly string[] = []` alias, "not fed by an authored
-// component") is inlined here to the literal `[]` it always held, to avoid a
+// CONTENT_LAYOUT_DEFS["tone-adaptive-content"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a
 // value-import cycle with the registry aggregator (which value-imports this
 // export) — see registry.ts's slot-`accepts` convention doc for what `[]`
 // means. The body slot's capacity comment is reworded from "see file header

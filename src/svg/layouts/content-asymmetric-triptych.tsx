@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * asymmetric-triptych content layout (P1 variety wave, task 4 — content-
@@ -17,7 +17,7 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * into two framed secondary panels.
  *
  * Composition sketch (geometry, written before this file per the task
- * contract): heading chrome spans the usual full 1088px content width
+ * contract): heading band spans the usual full 1088px content width
  * (x=96..1184, matching `bento-panel`/`two-column`'s own convention of a
  * full-width header sitting above a split body). Below it: LEAD region
  * x=96, w=632 (58%); a persistent vertical divider hairline at the gap's
@@ -281,9 +281,9 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["asymmetric-triptych"] entry. `CHROME` (registry.ts's
-// private `readonly string[] = []` alias, "not fed by an authored
-// component") is inlined here to the literal `[]` it always held, to avoid a
+// CONTENT_LAYOUT_DEFS["asymmetric-triptych"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a
 // value-import cycle with the registry aggregator (which value-imports this
 // export) — see registry.ts's slot-`accepts` convention doc for what `[]`
 // means. The body slot's capacity comment is reworded from "see file header
@@ -291,13 +291,13 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
 // lives in registry.ts's CONTENT_LAYOUT_DEFS aggregation block, not in this file.
 export const layoutDef: LayoutDefinition = {
   // content-asymmetric-triptych.tsx: full-width kicker/heading/subheading
-  // chrome above a three-region body — a wide `lead` column (the first
+  // heading band above a three-region body — a wide `lead` column (the first
   // component alone) plus a narrower right column split into `top`/
   // `bottom` framed secondary panels. All three internal SvgContent calls
   // hardcode arrangement to the default single-stack (never
   // `slide.arrangement` — the three-region split is this layout's own
   // grammar, same hardcode convention as bento-panel/two-column).
-  // Persistent dividers/panel frames are unconditional chrome, not
+  // Persistent dividers/panel frames are unconditional frame, not
   // component-count-dependent.
   id: "asymmetric-triptych",
   kind: "archetype",

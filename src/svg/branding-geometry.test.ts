@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { FOOTER_DIVIDER_Y, FOOTNOTE_CLEARANCE, footnoteBaselineFor } from "./chrome-geometry"
+import { FOOTER_DIVIDER_Y, FOOTNOTE_CLEARANCE, footnoteBaselineFor } from "./branding-geometry"
 
 /**
  * Real ink drop below the baseline for the footnote sizes the ten layouts

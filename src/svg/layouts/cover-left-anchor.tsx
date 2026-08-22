@@ -246,7 +246,7 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
       )}
 
       {/* Confidentiality badge (top right, over the white panel). y=104 keeps
-          it clear of BrandChrome's tr logo band (x 1120-1216, y 48-88) —
+          it clear of Branding's tr logo band (x 1120-1216, y 48-88) —
           same safety margin as consulting's y=100 equivalent badge. */}
       {confLabel && (
         <g>
@@ -334,9 +334,9 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// COVER_LAYOUT_DEFS["left-anchor"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// COVER_LAYOUT_DEFS["left-anchor"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {

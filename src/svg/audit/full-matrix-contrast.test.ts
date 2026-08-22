@@ -221,7 +221,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     theme: "*",
     layout: "tone-adaptive-header",
     // fix/decor-contrast-attribution. Scoped by `TEXT_SHAPE_GUARD` below to
-    // this layout's org/date meta chrome — never its heading or subheading,
+    // this layout's org/date meta band — never its heading or subheading,
     // so a real heading failure here still fails the net.
     // Band derivation: measured across the decor-collision sweep's own three
     // fixtures (default deck hash + seeds 0 and 1, the motif rolls those
@@ -239,7 +239,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     ratioMin: 1.0,
     ratioMax: 1.8,
     rationale:
-      "true finding, collision pending theme redesign, see .issues/2026-08-17-spatial-contract. This layout's org/date meta chrome shares its bottom-right (and, on some motif rolls, top-left) corner with whatever the theme's motif draws there, and the motif has no way to know the layout claimed it — that design doc's §4 traces it to the layout's slot, not to any one motif, and its §6.2 puts the fix in the layout/motif contract rather than in the audit. The audit's own job here is finished the moment it stops reporting these as clean: before fix/decor-contrast-attribution it measured the ink cover's date at 5.44:1 against a page background the seal completely covers, where the real pairing is 1.07:1. Registered rather than silenced, and deliberately not fixed by nudging coordinates — that would hide the collision instead of the theme redesign resolving it.",
+      "true finding, collision pending theme redesign, see .issues/2026-08-17-spatial-contract. This layout's org/date meta band shares its bottom-right (and, on some motif rolls, top-left) corner with whatever the theme's motif draws there, and the motif has no way to know the layout claimed it — that design doc's §4 traces it to the layout's slot, not to any one motif, and its §6.2 puts the fix in the layout/motif contract rather than in the audit. The audit's own job here is finished the moment it stops reporting these as clean: before fix/decor-contrast-attribution it measured the ink cover's date at 5.44:1 against a page background the seal completely covers, where the real pairing is 1.07:1. Registered rather than silenced, and deliberately not fixed by nudging coordinates — that would hide the collision instead of the theme redesign resolving it.",
   },
   {
     theme: "arena",
@@ -266,7 +266,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
 
 /** Per-layout text-shape guards, keyed by layout id — a finding under that
  * layout only counts as allowlisted when its text also looks like the
- * specific decorative/chrome element the entry names, not any other text
+ * specific decorative/frame element the entry names, not any other text
  * that layout might someday draw badly. */
 const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
   // fashion-chapter's giant watermark digit ("01", "12", ...) — never its
@@ -279,7 +279,7 @@ const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
   // "rail-numbered badge attribution" describe block below to locate the
   // badge finding/text without hardcoding its position.
   "rail-numbered": /^\d+\.\d+$/,
-  // tone-adaptive-header's org/date meta chrome — the two strings
+  // tone-adaptive-header's org/date meta band — the two strings
   // `DECOR_META` below actually renders — never its heading/subheading.
   // Built from those constants rather than repeating them, so a fixture
   // edit can't silently widen what the ALLOWLIST entry waves through.
@@ -2850,7 +2850,7 @@ describe("chart-depth subtypes contrast + wedge attribution (16-theme sweep, 裁
 // Decor-collision sweep (fix/decor-contrast-attribution). The sweep at the
 // top of this file renders no `meta.organization`/`meta.date` — a deliberate
 // scope choice, argued in this file's own header — and a theme motif's corner
-// shapes land almost exclusively under exactly that meta chrome. So the
+// shapes land almost exclusively under exactly that meta band. So the
 // defect this fix closes was invisible to every net in this file: a motif's
 // solid corner square sitting under the cover date, with the audit reporting
 // the *page background* the square covers instead of the square.
