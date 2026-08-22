@@ -100,12 +100,16 @@ describe("TerraMotif（等高线）", () => {
   it("颜色一律读 token：等高线与种子点都走 primary，等高线 0.25 退底档", () => {
     const t = resolveStyle("terra")
     const { root } = draw("terra", coverSlide)
-    const group = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("fill") === "none")!
-    expect(group.getAttribute("stroke")).toBe(t.colors.primary)
-    expect(group.getAttribute("stroke-width")).toBe("1.2")
-    expect(group.getAttribute("opacity")).toBe("0.25")
-    const seedGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("fill") === t.colors.primary)!
-    expect(seedGroup).toBeTruthy()
+    const contours = Array.from(root.querySelectorAll("path"))
+    expect(contours).toHaveLength(3)
+    for (const p of contours) {
+      expect(p.getAttribute("stroke")).toBe(t.colors.primary)
+      expect(p.getAttribute("stroke-width")).toBe("1.2")
+      expect(p.getAttribute("opacity")).toBe("0.25")
+    }
+    const seeds = Array.from(root.querySelectorAll("circle"))
+    expect(seeds).toHaveLength(3)
+    for (const c of seeds) expect(c.getAttribute("fill")).toBe(t.colors.primary)
   })
 
   it("等高线几何：三条都自 x48 起，横向不越过 x420", () => {

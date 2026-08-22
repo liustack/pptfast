@@ -76,14 +76,8 @@ export type ContentLayoutId =
   // asymmetric side panel, a lead+stacked-pair triptych, and a whitespace-
   // led centered frame — see each file's own composition-sketch header.
   | "side-highlight" | "asymmetric-triptych" | "quiet-frame"
-  // Content-layout expansion wave, task T1 (content-pool expansion,
-  // 10 -> 11): an unconditional 60/40 visual/text split — see the file's own
-  // composition-sketch header.
-  | "image-lead-split"
-  // Content-layout expansion wave, task T2 (content-pool expansion,
-  // 11 -> 12): the pool's first horizontal split — a full-bleed header band
-  // over an ordinary body band — see the file's own composition-sketch
-  // header.
+  // Content-layout expansion wave, task T2: the pool's first horizontal
+  // split — a full-bleed header band over an ordinary body band.
   | "split-band"
   // quote-stage wave, task T2 (content-pool expansion, 12 -> 13): the
   // pool's first `pinOnly` member (registry.ts's `LayoutDefinition.pinOnly`)

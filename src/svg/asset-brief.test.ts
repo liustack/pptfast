@@ -37,7 +37,7 @@ function imageComponent(assetId: string, extra: Partial<Component> = {}): Compon
 
 /**
  * The controller's own probe deck (task brief §"验收" 1 / plan §"验收"):
- * image-lead-split + consulting, a real 613-wide visual slot. `image.tsx`'s
+ * two-column + consulting, a real visual slot. `image.tsx`'s
  * own `measure` (613 * 0.5 rounds to 307, under the 340 cap) is what this
  * pins against — but this test never imports that constant, it only asserts
  * on `buildAssetBrief`'s output, which is exactly the point (裁定 1: the
@@ -48,7 +48,7 @@ function probeDeck(assetId = "pic"): PptxIR {
     {
       type: "content",
       id: "p1",
-      layout: "image-lead-split",
+      layout: "two-column",
       heading: "Regional growth engine",
       components: [
         imageComponent(assetId),
@@ -59,25 +59,18 @@ function probeDeck(assetId = "pic"): PptxIR {
 }
 
 describe("buildAssetBrief — probe fixture (real render, not a copied constant)", () => {
-  it("reports the actual rendered frame 613x307 / 2:1, not the layoutDef slot 613x568", () => {
+  it("reports the actual rendered frame 528x264 / 2:1, not a copied slot constant", () => {
     const brief = buildAssetBrief(probeDeck())
     expect(brief.items).toHaveLength(1)
     const item = brief.items[0]!
     expect(item.asset_id).toBe("pic")
     expect(item.rendered).toBe(true)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
-    // x/y measured off the real render, not copied from the layout's own
-    // geometry-sketch doc comment ("y=72..640" describes the 568px-tall
-    // *slot*, not the 307px-tall image's position within it). The renderer
-    // stands a capped-height visual at the golden position inside that slot
-    // (2026-08-21 ruling), so of the 261px the image does not use, 99 sit
-    // above it and 162 below: y=171. It landed at 203 when the slot was
-    // split evenly and at 72 during the top-aligned wave. Asserting the
-    // actual output here, not the slot bounds, is exactly the 裁定 1
-    // discipline this test exists to pin: the height is still the image's
-    // own, not the slot's.
-    expect(item.frame).toEqual({ x: 571, y: 171, w: 613, h: 307, aspect: "2:1" })
-    expect(item.suggested_pixels).toEqual({ w: 1226, h: 614 })
+    // x/y measured off the real two-column render, not copied from a
+    // layout geometry comment. The height is the image's own 2:1 cap
+    // inside the left column, not the column's full height.
+    expect(item.frame).toEqual({ x: 96, y: 244, w: 528, h: 264, aspect: "2:1" })
+    expect(item.suggested_pixels).toEqual({ w: 1056, h: 528 })
   })
 
   it("reports missing: false once the asset is actually resolved, frame stays identical", () => {
@@ -87,7 +80,7 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     const item = brief.items[0]!
     expect(item.missing).toBe(false)
     expect(item.rendered).toBe(true)
-    expect(item.frame).toEqual({ x: 571, y: 171, w: 613, h: 307, aspect: "2:1" })
+    expect(item.frame).toEqual({ x: 96, y: 244, w: 528, h: 264, aspect: "2:1" })
   })
 
   it("never mutates the input ir (dummy injection is a render-only in-memory copy)", () => {
@@ -160,11 +153,9 @@ describe("buildAssetBrief — component never rendered under the selected layout
 })
 
 describe("buildAssetBrief — shared asset_id across multiple components on one page", () => {
-  // Reviewer repro: `image-lead-split` renders `components[0]` (an
-  // image/chart) as the 613x568-slot visual lead (measured/capped down to
-  // 613x307 — same real-render truth the probe fixture above pins) and
-  // stacks every other component, including a later `image`, into the
-  // narrow 435px body column (435x218 there). Two *different* `image`
+  // Reviewer repro: `two-column` renders `components[0]` (an
+  // image/chart) in the left column and stacks every other component,
+  // including a later `image`, into the right column. Two *different* `image`
   // components legally share one `asset_id` (bare string, no uniqueness
   // constraint — `src/ir/index.ts`) — since both resolve to the exact same
   // dummy href, the rendered SVG offers no way to tell which `<image>`
@@ -181,7 +172,7 @@ describe("buildAssetBrief — shared asset_id across multiple components on one 
       {
         type: "content",
         id: "p1",
-        layout: "image-lead-split",
+        layout: "two-column",
         heading: "Regional growth engine",
         components: [
           imageComponent("shared"),
@@ -197,12 +188,11 @@ describe("buildAssetBrief — shared asset_id across multiple components on one 
     expect(sharedItems.every((i) => i.occurrenceCount === 2)).toBe(true)
     expect(sharedItems.every((i) => i.rendered === true)).toBe(true)
     const frames = sharedItems.map((i) => i.frame)
-    // The visual-lead frame (measured/capped 613x307 — same geometry the
-    // probe fixture above pins) and the narrow-body-column frame (435x218)
-    // must both survive, as a set — order is DOM/extraction order, not a
-    // claim about which component produced which frame.
-    expect(frames).toContainEqual(expect.objectContaining({ w: 613, h: 307 }))
-    expect(frames).toContainEqual(expect.objectContaining({ w: 435, h: 218 }))
+    // Left column and right column frames must both survive, as a set.
+    // Order is DOM/extraction order, not a claim about which component
+    // produced which frame.
+    expect(frames).toContainEqual(expect.objectContaining({ x: 96, w: 528, h: 264 }))
+    expect(frames).toContainEqual(expect.objectContaining({ x: 656, w: 528, h: 264 }))
   })
 
   it("single-occurrence pages are unaffected: no `shared`/`occurrenceCount` fields, same output shape as before", () => {

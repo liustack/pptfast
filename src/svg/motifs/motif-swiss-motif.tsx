@@ -1,5 +1,7 @@
 import { CANVAS_W_PX } from "../../constants"
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * swiss-motif —— 「冷白制度」页缘（2026-08-21 wave7，设计源
@@ -46,20 +48,37 @@ const TICK_LEN = 16
 const TICK_YS = [64, 96, 128] as const
 const TICK_STROKE = 1.5
 
-export function SwissMotif({ ctx }: DecorProps) {
+export function SwissMotif({ slide, ctx }: DecorProps) {
   const red = ctx.colors.accent
   const tick = ctx.colors.muted
+  const bg = ctx.defaultBg ?? ctx.colors.bg
 
   return (
     <>
-      {/* 顶边 12px 红条。页缘边条，不是横幅。 */}
-      <rect x={0} y={BAR_Y} width={CANVAS_W_PX} height={BAR_H} fill={red} />
-      {/* 右缘三格灰刻度。水平短划，不画纵穿正文的格线。 */}
-      <g stroke={tick} strokeWidth={TICK_STROKE}>
+      <DecorPiece id="red-bar">
+        <rect
+          x={0}
+          y={BAR_Y}
+          width={CANVAS_W_PX}
+          height={BAR_H}
+          fill={red}
+          opacity={leafRecessOpacity(slide.type, red, bg)}
+        />
+      </DecorPiece>
+      <DecorPiece id="ticks">
         {TICK_YS.map((y) => (
-          <line key={y} x1={TICK_X} y1={y} x2={TICK_X + TICK_LEN} y2={y} />
+          <line
+            key={y}
+            x1={TICK_X}
+            y1={y}
+            x2={TICK_X + TICK_LEN}
+            y2={y}
+            stroke={tick}
+            strokeWidth={TICK_STROKE}
+            opacity={leafRecessOpacity(slide.type, tick, bg)}
+          />
         ))}
-      </g>
+      </DecorPiece>
     </>
   )
 }

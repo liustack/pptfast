@@ -1,4 +1,7 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { LECTURE_FRAME_BOTTOM_BOARD, frameBottomY } from "./branded-frame"
 
 /**
  * lecture-motif —— 「粉笔槽细框」（2026-08-21 黑板夜校主题。设计源
@@ -27,21 +30,19 @@ import type { DecorProps } from "./types"
  *     套印章体系。本框四边闭合、零文字、零印。有无印章是两家的分家线，不
  *     是谁的框更细。
  *
- * ## 偏离设计板：下边上移到 y624
+ * ## 下边：branding full 时 y624，否则板上 inset y694
  *
- * 板上 `inset: 26px` 四边等距，下边落在 y694。那条横线会从页脚 meta 文字
- * （`branding.tsx` 基线 y700、字号 20，墨迹大约 y686-704）正中穿过去，
- * 也穿过第五保护带（y620-664）。luxe 把请柬框下边从设计稿的 650 收到 624
- * 是同一条先例：让开右下 logo 盒 (1120,630,96×40)。本框下边收到同一条
- * y624，距 logo 盒上沿 6px，距正文区下沿 y620 4px。1px 发丝落在第五带里，
- * 走 `docs/designing-themes.md` 第 5 条的发丝豁免（≤1.5px）。左右上三边
- * 仍是板上的 26px。
+ * 板上 `inset: 26px` 四边等距，下边落在 y694。`branding: "full"` 会画页脚
+ * meta 和右下 logo 盒 (1120,630,96×40)，那条横线会穿过去，所以收到 624。
+ * 画廊默认省略 branding（等于 cover-only），内容页不画 footer/logo，框
+ * 停在 624 会空出约 96px。未声明 full、或 layout `branding: "none"` 时走
+ * 板上 694。左右上三边仍是板上的 26px。
  *
  * 安全区：标题区 (96,48,1040×122)、正文区 (96,200,1040×420)、页脚 meta
  * 带 (48,664,1184×44)、右下 logo 盒 (1120,630,96×40)。
  *   - 左右两轨 x26 / x1254，在版心 (x96-1136) 之外。
  *   - 上边 y26，在标题区上沿 y48 之上。
- *   - 下边 y624，在 logo 盒上沿 y630 之上、页脚带 y664 之上。
+ *   - 下边在 branding full 时 y624（logo 盒上沿之上）。否则 y694。
  *
  * 纪律：零 theme id、零 hex，颜色只来自 ctx（border = 粉笔槽）。
  */
@@ -49,25 +50,25 @@ import type { DecorProps } from "./types"
 const FRAME_X = 26
 const FRAME_Y = 26
 const FRAME_RIGHT = 1254
-/**
- * 下边。设计板原稿是 694（1280×720 画布 inset 26），会穿页脚文字基线
- * y700。收到 624：luxe 金框同一条线，让开 logo 盒上沿 y630。
- */
-const FRAME_BOTTOM = 624
 const FRAME_STROKE = 1
 
-export function LectureMotif({ ctx }: DecorProps) {
+export function LectureMotif({ ir, slide, ctx }: DecorProps) {
   const tray = ctx.colors.border ?? ctx.colors.muted
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const bottom = frameBottomY(ir, slide, LECTURE_FRAME_BOTTOM_BOARD)
 
   return (
-    <rect
-      x={FRAME_X}
-      y={FRAME_Y}
-      width={FRAME_RIGHT - FRAME_X}
-      height={FRAME_BOTTOM - FRAME_Y}
-      fill="none"
-      stroke={tray}
-      strokeWidth={FRAME_STROKE}
-    />
+    <DecorPiece id="frame">
+      <rect
+        x={FRAME_X}
+        y={FRAME_Y}
+        width={FRAME_RIGHT - FRAME_X}
+        height={bottom - FRAME_Y}
+        fill="none"
+        stroke={tray}
+        strokeWidth={FRAME_STROKE}
+        opacity={leafRecessOpacity(slide.type, tray, bg)}
+      />
+    </DecorPiece>
   )
 }

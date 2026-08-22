@@ -7,7 +7,7 @@ type InsightPanelComponent = Extract<Component, { type: "insight_panel" }>
 
 /**
  * 带标题的策略/观点面板（2026-07-14 用户 showcase deck 借鉴，取代手绘补
- * 页）：圆角面板 + 标题压 accent 条 + 若干 `label / 描述` 行 + 可选贴底脚
+ * 页）：圆角面板 + accent 字重标题 + 若干 `label / 描述` 行 + 可选贴底脚
  * 注。常作 aside 侧栏块与数据并置。**全文实测**决定面板高度，脚注恒在卡
  * 内（修手绘脚本假设固定行数导致的溢出）。
  */
@@ -15,7 +15,6 @@ const PAD_X = 22
 const PAD_TOP = 20
 const PAD_BOTTOM = 18
 const CARD_RADIUS = 10
-const BAR_H = 6
 
 const TITLE_SIZE = 17
 const TITLE_LH = Math.round(TITLE_SIZE * 1.4)
@@ -29,16 +28,6 @@ const LABEL_COL_MIN = 56
 
 const FOOT_SIZE = 12
 const GAP_ROWS_FOOT = 16
-
-/** Rounded-top, square-bottom bar path (top corners follow the panel radius). */
-function roundedTopBarPath(x: number, y: number, w: number, h: number, r: number): string {
-  const rr = Math.min(r, w / 2, h)
-  return (
-    `M ${x} ${y + rr} A ${rr} ${rr} 0 0 1 ${x + rr} ${y} ` +
-    `L ${x + w - rr} ${y} A ${rr} ${rr} 0 0 1 ${x + w} ${y + rr} ` +
-    `L ${x + w} ${y + h} L ${x} ${y + h} Z`
-  )
-}
 
 interface RowLayout {
   label: { text: string; fontSize: number; truncated: boolean }
@@ -138,16 +127,6 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
           fill={ctx.colors.surface}
           {...(ctx.colors.cardStroke ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 } : {})}
         />
-        <path d={roundedTopBarPath(box.x, box.y, box.w, BAR_H, r)} fill={ctx.colors.accent} />
-        {/* Arc-bbox root fix (fix/arc-bbox): `deck-audit.ts`'s
-            `pathBoundingBox` used to mismeasure this title's real background
-            (the panel's own `colors.surface` rect above) as the accent bar's
-            own fill — an SVG-arc-grammar bug in the audit tool, not this
-            component — which made an unguarded `colors.accent` title read as
-            a trivial 1:1-on-itself "pass" on every theme. Fixed audit now
-            measures the real (accent-on-surface) pair, which genuinely fails
-            4.5:1 on 8/13 themes — same `accessibleInk` guard `roadmap.tsx`'s
-            badge digit already uses for an analogous unguarded-fill defect. */}
         <text
           data-truncated={layout.title.truncated ? "1" : undefined}
           x={box.x + PAD_X}

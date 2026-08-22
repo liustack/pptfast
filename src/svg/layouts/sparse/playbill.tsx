@@ -2,6 +2,7 @@ import type { SvgTemplateProps } from "../types"
 import { sectionNameFor } from "../../../lib/derive"
 import { renderEmphasisTspans } from "../../emphasis"
 import { findImageComponent } from "../find-image"
+import { GenericMonoBleedContent } from "../generic-mono-bleed"
 import { heroCaption, heroValue } from "../minimal-shared"
 import { fitHeroLine, fitSparseHeading, isNumericHero, rotateRectPolygon, splitTrailingPercent } from "./shared"
 
@@ -107,26 +108,26 @@ export function statHero({ slide, ctx }: SvgTemplateProps) {
   )
 }
 
-export function monoBleed({ slide, ctx }: SvgTemplateProps) {
+export function monoBleed(props: SvgTemplateProps) {
+  const { slide, ctx } = props
   const { colors, fonts } = ctx
   const image = findImageComponent(slide)
   const src = image ? ctx.images?.[image.asset_id]?.src : undefined
   const alt = image ? ctx.images?.[image.asset_id]?.alt : undefined
+  if (!src) return GenericMonoBleedContent(props)
   const caption = slide.heading?.trim()
   return (
     <>
       <rect x={0} y={0} width={1280} height={720} fill={colors.primary} />
-      {src && (
-        <image
-          href={src}
-          x={0}
-          y={0}
-          width={1280}
-          height={600}
-          preserveAspectRatio="xMidYMid slice"
-          aria-label={alt || undefined}
-        />
-      )}
+      <image
+        href={src}
+        x={0}
+        y={0}
+        width={1280}
+        height={600}
+        preserveAspectRatio="xMidYMid slice"
+        aria-label={alt || undefined}
+      />
       {caption && (
         <text
           x={96}

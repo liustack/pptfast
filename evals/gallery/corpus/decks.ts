@@ -105,10 +105,12 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
   }
   const content: Slide[] = slots.map((spec, i) => {
     const component = buildThemeSlot(spec, lex)
+    const extra = thickenThemeContent(themeId, i, lex)
     return {
       type: "content" as const,
       heading: lex.headings[i]!,
-      components: [component],
+      components: [component, ...extra.extra],
+      ...(extra.layout ? { layout: extra.layout } : {}),
       ...(component.type === "data_table" ? { footnote: lex.sources[0]!.label } : {}),
     }
   })
@@ -119,6 +121,31 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
     { type: "ending", heading: lex.chapters[5]!, subheading: lex.verdicts.positive, components: [] },
   ]
   return deckShell(lex, assets, themeId, `theme-${themeId}-${lex.id}`, slides)
+}
+
+/**
+ * Gallery theme pages ship one lead component. A few slots are too thin
+ * for the layouts they land in (empty second column, vacant triptych
+ * frames, a 56px card in a poster hero). Inject a short companion, and
+ * pin two-column where the page must actually split.
+ */
+function thickenThemeContent(
+  themeId: string,
+  slotIndex: number,
+  lex: Lexicon,
+): { extra: Component[]; layout?: string } {
+  const shortParagraph: Component = { type: "paragraph", text: lex.shortParagraph }
+  if (themeId === "stage" && slotIndex === 0) {
+    return { extra: [shortParagraph], layout: "two-column" }
+  }
+  if (themeId === "swiss" && slotIndex === 0) {
+    return { extra: [COMPONENT_BUILDERS.bullets!(lex)], layout: "two-column" }
+  }
+  if (themeId === "arena" && slotIndex === 2) return { extra: [shortParagraph] }
+  if (themeId === "pulse" && slotIndex === 3) return { extra: [shortParagraph] }
+  if (themeId === "runway" && slotIndex === 5) return { extra: [shortParagraph] }
+  if (themeId === "heritage" && slotIndex === 3) return { extra: [shortParagraph] }
+  return { extra: [] }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -193,7 +220,7 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     return [b.image!(lex), shortCitation(lex)]
   }
   if (def.id === "quote-stage") return [shortCitation(lex)]
-  if (def.id === "statement") return [{ type: "paragraph", text: lex.shortParagraph }]
+  if (def.id === "statement") return [shortCitation(lex)]
 
   if (capacity <= 1) return [shortCitation(lex)]
 
@@ -219,7 +246,6 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     "side-highlight": [b.bullets!(lex), b.verdict_banner!(lex)],
     "split-band": [b.icon_cards!(lex), shortCitation(lex)],
     "asymmetric-triptych": [b.image!(lex), b.quote!(lex)],
-    "image-lead-split": [b.image!(lex), shortParagraph, b.callout!(lex)],
     "image-split": [b.image!(lex), b.bullets!(lex), shortParagraph],
     "image-top": [b.image!(lex), b.callout!(lex), shortParagraph],
     "image-bottom": [b.image!(lex), b.quote!(lex), shortParagraph],

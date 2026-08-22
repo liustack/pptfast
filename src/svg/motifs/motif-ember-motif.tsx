@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * ember-motif v2 —— 「上升火星」（2026-08-19 暖纸组皮肤重设计，设计源
@@ -146,30 +148,47 @@ export function EmberMotif({ slide, ctx }: DecorProps) {
   const from = cover ? COVER_GUIDE_FROM : CONTENT_GUIDE_FROM
   const to = cover ? COVER_GUIDE_TO : CONTENT_GUIDE_TO
   const paper = ctx.colors.bg
+  const ground = ctx.defaultBg ?? ctx.colors.bg
   const lightSparks = cover ? COVER_PAPER_SPARKS : PRIMARY_SPARKS
   const darkSparks = cover ? COVER_ACCENT_SPARKS : ACCENT_SPARKS
+  const lightFill = cover ? paper : fire
+  const fade = (ink: string) => leafRecessOpacity(slide.type, ink, ground)
 
   return (
     <>
-      {/* 斜引线。真正的 <line>，不用 <path> — svg2pptx 会把 <path> 转成
-          custGeom，走 prstGeom="line" 才是 package-audit 硬门认的形状
-          （spec §4.4）。 */}
-      <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke={sand} strokeWidth={GUIDE_STROKE} />
+      <DecorPiece id="ascent">
+        <line
+          x1={from[0]}
+          y1={from[1]}
+          x2={to[0]}
+          y2={to[1]}
+          stroke={sand}
+          strokeWidth={GUIDE_STROKE}
+          opacity={fade(sand)}
+        />
+        <g fill={lightFill}>
+          {lightSparks.map(([cy, r]) => (
+            <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} opacity={fade(lightFill)} />
+          ))}
+        </g>
+        <g fill={amber}>
+          {darkSparks.map(([cy, r]) => (
+            <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} opacity={fade(amber)} />
+          ))}
+        </g>
+      </DecorPiece>
 
-      {/* 上升点列。封面骑楔面斜边并内偏，浅色四枚走纸色。内容/收尾仍走右缘轨道。 */}
-      <g fill={cover ? paper : fire}>
-        {lightSparks.map(([cy, r]) => (
-          <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
-        ))}
-      </g>
-      <g fill={amber}>
-        {darkSparks.map(([cy, r]) => (
-          <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
-        ))}
-      </g>
-
-      {/* 顶缘斜引线 */}
-      <line x1={TICK_X1} y1={TICK_Y} x2={TICK_X2} y2={TICK_Y} stroke={fire} strokeWidth={TICK_STROKE} />
+      <DecorPiece id="tick">
+        <line
+          x1={TICK_X1}
+          y1={TICK_Y}
+          x2={TICK_X2}
+          y2={TICK_Y}
+          stroke={fire}
+          strokeWidth={TICK_STROKE}
+          opacity={fade(fire)}
+        />
+      </DecorPiece>
     </>
   )
 }

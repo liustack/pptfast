@@ -1,5 +1,7 @@
 import { PACING_BUDGETS } from "@/narrative"
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * crayon-motif —— 「蜡笔描边」（2026-08-21 低龄教育主题。顶饰同日定稿换成
@@ -192,6 +194,8 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
   const blue = ctx.colors.primary
   const orange = ctx.colors.accent
   const paper = ctx.colors.bg
+  const ground = ctx.defaultBg ?? ctx.colors.bg
+  const fade = (ink: string, preferred?: number) => leafRecessOpacity(slide.type, ink, ground, preferred)
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
   // cover 撤底带：tone-adaptive-header 封面的作者/日期行画在 y624-656，
@@ -203,21 +207,23 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
 
   return (
     <>
-      <polygon points={EDGE_POINTS} fill={blue} opacity={EDGE_OPACITY} />
-      {SCRATCH_XS.map((x) => (
-        <line
-          key={x}
-          x1={x}
-          y1={SCRATCH_Y1}
-          x2={x + SCRATCH_DX}
-          y2={SCRATCH_Y2}
-          stroke={paper}
-          strokeWidth={SCRATCH_STROKE}
-          opacity={SCRATCH_OPACITY}
-        />
-      ))}
+      <DecorPiece id="edge">
+        <polygon points={EDGE_POINTS} fill={blue} opacity={fade(blue, EDGE_OPACITY)} />
+        {SCRATCH_XS.map((x) => (
+          <line
+            key={x}
+            x1={x}
+            y1={SCRATCH_Y1}
+            x2={x + SCRATCH_DX}
+            y2={SCRATCH_Y2}
+            stroke={paper}
+            strokeWidth={SCRATCH_STROKE}
+            opacity={fade(paper, SCRATCH_OPACITY)}
+          />
+        ))}
+      </DecorPiece>
       {sun && (
-        <>
+        <DecorPiece id="sun">
           <circle
             cx={SUN_GHOST_CX}
             cy={SUN_GHOST_CY}
@@ -225,10 +231,18 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
             fill="none"
             stroke={orange}
             strokeWidth={SUN_GHOST_STROKE}
-            opacity={SUN_GHOST_OPACITY}
+            opacity={fade(orange, SUN_GHOST_OPACITY)}
           />
-          <circle cx={SUN_CX} cy={SUN_CY} r={SUN_R} fill="none" stroke={orange} strokeWidth={SUN_STROKE} />
-          <circle cx={SUN_CX} cy={SUN_CY} r={SUN_CORE_R} fill={palette[3]} />
+          <circle
+            cx={SUN_CX}
+            cy={SUN_CY}
+            r={SUN_R}
+            fill="none"
+            stroke={orange}
+            strokeWidth={SUN_STROKE}
+            opacity={fade(orange)}
+          />
+          <circle cx={SUN_CX} cy={SUN_CY} r={SUN_CORE_R} fill={palette[3]} opacity={fade(palette[3]!)} />
           {SUN_RAYS.map((r) => (
             <line
               key={`${r.x1},${r.y1}`}
@@ -239,24 +253,28 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
               stroke={orange}
               strokeWidth={SUN_RAY_STROKE}
               strokeLinecap="round"
+              opacity={fade(orange)}
             />
           ))}
-        </>
+        </DecorPiece>
       )}
-      {bottomBand &&
-        DASHES.map((i) => (
-          <line
-            key={i}
-            x1={DASH_X0 + i * DASH_STEP}
-            y1={DASH_Y}
-            x2={DASH_X0 + i * DASH_STEP + DASH_LEN}
-            y2={DASH_Y}
-            stroke={palette[i % 4]}
-            strokeWidth={DASH_STROKE}
-            strokeLinecap="round"
-            opacity={DASH_OPACITY}
-          />
-        ))}
+      {bottomBand && (
+        <DecorPiece id="dashes">
+          {DASHES.map((i) => (
+            <line
+              key={i}
+              x1={DASH_X0 + i * DASH_STEP}
+              y1={DASH_Y}
+              x2={DASH_X0 + i * DASH_STEP + DASH_LEN}
+              y2={DASH_Y}
+              stroke={palette[i % 4]}
+              strokeWidth={DASH_STROKE}
+              strokeLinecap="round"
+              opacity={fade(palette[i % 4]!, DASH_OPACITY)}
+            />
+          ))}
+        </DecorPiece>
+      )}
     </>
   )
 }

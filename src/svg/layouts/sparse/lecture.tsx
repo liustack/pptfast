@@ -29,6 +29,9 @@ export function statement({ slide, ctx }: SvgTemplateProps) {
     bold: false,
   })
   const attr = statementAttribution(slide)
+  const attrLine = attr
+    ? fitSvgLine(attr, { maxWidth: 1040, fontSize: 20, minFontSize: 12, fontFamily: fonts.body })
+    : null
   return (
     <>
       {heading.lines.map((line, i) => (
@@ -59,9 +62,17 @@ export function statement({ slide, ctx }: SvgTemplateProps) {
           strokeLinecap="round"
         />
       )}
-      {attr && (
-        <text x={120} y={560} fontFamily={fonts.body} fontSize={20} fill={colors.muted} dominantBaseline="alphabetic">
-          {attr}
+      {attrLine && (
+        <text
+          data-truncated={attrLine.truncated ? "1" : undefined}
+          x={120}
+          y={560}
+          fontFamily={fonts.body}
+          fontSize={attrLine.fontSize}
+          fill={colors.muted}
+          dominantBaseline="alphabetic"
+        >
+          {attrLine.text}
         </text>
       )}
     </>

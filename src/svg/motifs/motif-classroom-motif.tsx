@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * classroom-motif v2 —— 「拍纸簿」（2026-08-20 柔和组皮肤重设计，设计源
@@ -118,35 +120,40 @@ export function ClassroomMotif({ slide, ctx }: DecorProps) {
   if (slide.type === "chapter") return null
 
   const pencil = ctx.colors.muted
+  const bg = ctx.defaultBg ?? ctx.colors.bg
   // 有页脚的页（content）不画底缘虚线：它会贴着页脚 meta 行排成第二条
   // 横线（第四轮评审 bloom p03，推导见文件头）。
   const drawPencil = slide.type !== "content"
 
   return (
     <>
-      {/* 顶缘装订孔排 */}
-      {Array.from({ length: HOLE_COUNT }, (_, i) => (
-        <circle
-          key={i}
-          cx={HOLE_X0 + i * HOLE_STEP}
-          cy={HOLE_Y}
-          r={HOLE_R}
-          fill="none"
-          stroke={pencil}
-          strokeWidth={HOLE_STROKE}
-        />
-      ))}
-      {/* 底缘铅笔虚线——只在没有页脚的页上 */}
+      <DecorPiece id="holes">
+        {Array.from({ length: HOLE_COUNT }, (_, i) => (
+          <circle
+            key={i}
+            cx={HOLE_X0 + i * HOLE_STEP}
+            cy={HOLE_Y}
+            r={HOLE_R}
+            fill="none"
+            stroke={pencil}
+            strokeWidth={HOLE_STROKE}
+            opacity={leafRecessOpacity(slide.type, pencil, bg)}
+          />
+        ))}
+      </DecorPiece>
       {drawPencil && (
-        <line
-          x1={PENCIL_X1}
-          y1={PENCIL_Y}
-          x2={PENCIL_X2}
-          y2={PENCIL_Y}
-          stroke={pencil}
-          strokeWidth={PENCIL_STROKE}
-          strokeDasharray={PENCIL_DASH}
-        />
+        <DecorPiece id="pencil">
+          <line
+            x1={PENCIL_X1}
+            y1={PENCIL_Y}
+            x2={PENCIL_X2}
+            y2={PENCIL_Y}
+            stroke={pencil}
+            strokeWidth={PENCIL_STROKE}
+            strokeDasharray={PENCIL_DASH}
+            opacity={leafRecessOpacity(slide.type, pencil, bg)}
+          />
+        </DecorPiece>
       )}
     </>
   )

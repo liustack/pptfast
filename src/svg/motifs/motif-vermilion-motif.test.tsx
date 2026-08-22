@@ -49,16 +49,15 @@ function draw(theme: string, slide: Slide) {
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
 function parts(root: Element) {
-  const rayGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("opacity") === "0.8")
-  const rays = rayGroup ? Array.from(rayGroup.querySelectorAll("line")) : []
-  const topLevelLines = Array.from(root.querySelectorAll("line")).filter((l) => !rays.includes(l))
+  const lines = Array.from(root.querySelectorAll("line"))
+  const rays = lines.filter((l) => num(l, "x1") !== num(l, "x2") && num(l, "y1") !== num(l, "y2"))
+  const horiz = lines.filter((l) => !rays.includes(l))
   const rects = Array.from(root.querySelectorAll("rect"))
   return {
-    thickRule: topLevelLines.find((l) => l.getAttribute("stroke-width") === "2")!,
-    thinRule: topLevelLines.find((l) => l.getAttribute("stroke-width") === "0.75")!,
-    footRule: topLevelLines.find((l) => l.getAttribute("stroke-width") === "1")!,
+    thickRule: horiz.find((l) => l.getAttribute("stroke-width") === "2")!,
+    thinRule: horiz.find((l) => l.getAttribute("stroke-width") === "0.75")!,
+    footRule: horiz.find((l) => l.getAttribute("stroke-width") === "1")!,
     rays,
-    rayGroup,
     diamond: rects.find((r) => r.getAttribute("transform")?.startsWith("rotate(45"))!,
   }
 }
@@ -71,6 +70,17 @@ const circumRadius = (r: Element) => (num(r, "width") / 2) * Math.SQRT2
  * 的 vermilion 设计表。本文件是本轮新建。
  */
 describe("VermilionMotif（文件金线）", () => {
+  it("content 稀排钉 pin 整片退让，不和 statement 等脸的横线叠预算", () => {
+    for (const layout of ["statement", "pull-quote", "stat-hero", "one-evidence", "mono-bleed"] as const) {
+      const slide = { ...contentSlide, layout } as Slide
+      const { root } = draw("vermilion", slide)
+      expect(root.querySelectorAll("line"), layout).toHaveLength(0)
+      expect(root.querySelectorAll("rect"), layout).toHaveLength(0)
+    }
+    expect(parts(draw("vermilion", contentSlide).root).thickRule).toBeTruthy()
+    expect(parts(draw("vermilion", coverSlide).root).thickRule).toBeTruthy()
+  })
+
   it("cover/content/ending 画同一张：顶缘金双线 + 四条金芒 + 底缘红线带中点金菱", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("vermilion", slide)
@@ -95,7 +105,7 @@ describe("VermilionMotif（文件金线）", () => {
     const p = parts(root)
     expect(p.thickRule.getAttribute("stroke")).toBe(t.colors.accent)
     expect(p.thinRule.getAttribute("stroke")).toBe(t.colors.accent)
-    expect(p.rayGroup!.getAttribute("stroke")).toBe(t.colors.accent)
+    for (const r of p.rays) expect(r.getAttribute("stroke")).toBe(t.colors.accent)
     expect(p.diamond.getAttribute("fill")).toBe(t.colors.accent)
     expect(p.footRule.getAttribute("stroke")).toBe(t.colors.primary)
     expect(p.footRule.getAttribute("opacity")).toBe("0.6")

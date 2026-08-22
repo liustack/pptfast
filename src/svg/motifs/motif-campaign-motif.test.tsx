@@ -234,9 +234,11 @@ describe("CampaignMotif（纸屑场）", () => {
     expect(markups.size).toBe(1)
   })
 
-  it("三档（cover/content/ending）在同一页结构下画同一张——v4 的 content 弱档已取消", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("campaign", slide).markup))
-    expect(markups.size).toBe(1)
+  it("cover/ending 画同一张。内容页退底，几何件数不变", () => {
+    expect(draw("campaign", coverSlide).markup).toBe(draw("campaign", endingSlide).markup)
+    expect(draw("campaign", contentSlide).root.querySelectorAll("circle, path").length).toBe(
+      draw("campaign", coverSlide).root.querySelectorAll("circle, path").length,
+    )
   })
 
   it("motif 不受 chartPaletteOffset 影响（图表调色板轮转改不动装饰一个字节）", () => {
@@ -305,11 +307,13 @@ describe("CampaignMotif（纸屑场）", () => {
         expect(draw("campaign", long).markup).toBe(draw("campaign", short).markup)
       })
 
-      it("同结构不同页型：cover/content/ending 输出逐字节相同", () => {
-        const markups = new Set(
-          (["cover", "content", "ending"] as const).map((type) => draw("campaign", slideOf(type, [para("同一段")])).markup),
+      it("同结构不同页型：cover/ending 逐字节相同，content 只退底", () => {
+        expect(draw("campaign", slideOf("cover", [para("同一段")])).markup).toBe(
+          draw("campaign", slideOf("ending", [para("同一段")])).markup,
         )
-        expect(markups.size).toBe(1)
+        expect(draw("campaign", slideOf("content", [para("同一段")])).root.querySelectorAll("circle, path").length).toBe(
+          draw("campaign", slideOf("cover", [para("同一段")])).root.querySelectorAll("circle, path").length,
+        )
       })
 
       it("组件数相同、组件类型不同：输出逐字节相同（数的是个数，不是内容）", () => {

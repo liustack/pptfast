@@ -9,6 +9,7 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
+import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
 
 /**
  * quiet-frame content layout (P1 variety wave, task 4 — content-pool
@@ -121,7 +122,7 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 
   const ruleY = (subheading ? subheadingY : headingLastY) + RULE_GAP
   const contentY = ruleY + CONTENT_GAP
-  const contentBottom = slide.footnote ? 600 : 620
+  const contentBottom = slide.footnote ? 600 : FRAMED_CONTENT_BOTTOM
   const contentH = Math.max(120, contentBottom - contentY)
   // Single-component symmetry fix (see file header): narrow + re-center the
   // rect only for the lone-non-full-body-component case. n>=2 (or a

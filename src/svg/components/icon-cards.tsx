@@ -47,8 +47,6 @@ const PAD_X = 24
 const PAD_TOP = 20
 const PAD_BOTTOM = 20
 
-const ACCENT_W = 32
-const ACCENT_H = 3
 const CARD_RADIUS = 8
 
 interface IconCardTextLayout {
@@ -130,9 +128,9 @@ export function iconCardContentHeight(
 /**
  * Render one card's icon/title/text inside `box` — `box` is already the
  * *padded content area* (its top-left is where the icon starts, its width is
- * the text-wrap budget). Does not paint the card shell or accent bar —
+ * the text-wrap budget). Does not paint the card shell —
  * callers compose those separately (this file's `iconCards.render` paints a
- * single-accent shell; `templates/tech.tsx`'s exploded tiles paint
+ * surface shell; `templates/tech.tsx`'s exploded tiles paint
  * their own outline shell instead), mirroring `renderKpiCardBody`'s
  * content-only contract in tech.tsx.
  */
@@ -235,14 +233,6 @@ function renderDefault(
               {...(ctx.colors.cardStroke
                 ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
                 : {})}
-            />
-            <rect
-              x={cardX + PAD_X}
-              y={cardY}
-              width={ACCENT_W}
-              height={ACCENT_H}
-              rx={1.5}
-              fill={ctx.colors.accent}
             />
             {renderIconCardBody(
               item,

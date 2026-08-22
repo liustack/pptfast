@@ -74,8 +74,10 @@ describe("PulseMotif（脉搏线）", () => {
     expect(Array.from(coverRoot.querySelectorAll("circle")), "cells stay on cover").toHaveLength(3)
   })
 
-  it("content 与 ending 输出完全相同。封面不再与它们逐字节相同", () => {
-    expect(draw("pulse", contentSlide).markup).toBe(draw("pulse", endingSlide).markup)
+  it("content 与 ending 几何相同（内容页退底）。封面不画心电线", () => {
+    expect(draw("pulse", contentSlide).root.querySelectorAll("polyline")).toHaveLength(1)
+    expect(draw("pulse", endingSlide).root.querySelectorAll("polyline")).toHaveLength(1)
+    expect(draw("pulse", coverSlide).root.querySelectorAll("polyline")).toHaveLength(0)
     expect(draw("pulse", coverSlide).markup).not.toBe(draw("pulse", contentSlide).markup)
   })
 
@@ -95,9 +97,13 @@ describe("PulseMotif（脉搏线）", () => {
     expect(ecg.getAttribute("stroke")).toBe(t.colors.accent)
     expect(ecg.getAttribute("fill")).toBe("none")
     expect(ecg.getAttribute("stroke-width")).toBe("1.5")
-    const cellGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.accent)!
-    expect(cellGroup.getAttribute("fill")).toBe("none")
-    expect(cellGroup.getAttribute("stroke-width")).toBe("1.2")
+    const cells = Array.from(root.querySelectorAll("circle"))
+    expect(cells).toHaveLength(3)
+    for (const c of cells) {
+      expect(c.getAttribute("fill")).toBe("none")
+      expect(c.getAttribute("stroke")).toBe(t.colors.accent)
+      expect(c.getAttribute("stroke-width")).toBe("1.2")
+    }
   })
 
   it("motif 不读 chartPalette——图表调色板轮转改不动它一个字节（v1 读天青/砂灰两格）", () => {

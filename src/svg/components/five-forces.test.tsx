@@ -40,9 +40,10 @@ describe("five_forces component", () => {
     expect(panels).toHaveLength(5)
   })
 
-  it("draws 4 native <line> connectors from the center panel to each surrounding force", () => {
+  it("paints five panels with zero hub-and-spoke connector lines", () => {
     const { container } = svg(fiveForces.render(basic, { x: 0, y: 0, w: 1000 }, ctx))
-    expect(container.querySelectorAll("line")).toHaveLength(4)
+    expect(container.querySelectorAll("rect")).toHaveLength(5)
+    expect(container.querySelectorAll("line")).toHaveLength(0)
   })
 
   it("default labels are the classic Porter's-five-forces English full names", () => {

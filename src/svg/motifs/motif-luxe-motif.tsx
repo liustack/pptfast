@@ -1,4 +1,7 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { LUXE_FRAME_BOTTOM_BOARD, frameBottomY } from "./branded-frame"
 
 /**
  * luxe-motif —— 「请柬金框」（2026-08-19 深底组皮肤重设计，设计源
@@ -29,10 +32,9 @@ import type { DecorProps } from "./types"
  *     9.6px。整框上移 4px 后内框落到 y34，净空 13.6px，金菱跟着上移，
  *     y18-30。`motif-luxe-motif.test.tsx` 把内框顶对标题区的净空也锁死，
  *     不再只锁外框。
- *   - 下边**上移到 y624**（主会话裁定，设计稿原稿画在 y650）：原稿那条
- *     横边会从 logo 盒 (1120,630,96×40) 的竖直区间正中穿过去，y624 让开
- *     6px。内框跟着错位（外框内缩 10px → 内框下边 y614）。
- *     `motif-luxe-motif.test.tsx` 锁死这条——把下边改回 650 测试立刻红。
+ *   - 下边：`branding: "full"` 时 y624，让开 logo 盒上沿 y630。未声明
+ *     full（画廊默认）或 layout `branding: "none"` 时落到与顶边对称的
+ *     y696（24px 内缩）。设计稿原稿 650 是折中，无 footer 时贴底。
  *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线
  * （装饰位置做内容感知会让 seed 的修订稳定性失效）。v1 的三档 seed 变体
@@ -55,15 +57,10 @@ const FRAME_X = 36
  */
 const FRAME_Y = 24
 const FRAME_RIGHT = 1244
-/**
- * 外框下边。设计稿原稿是 650，会穿 logo 盒 (1120,630,96×40) 的竖直区间；
- * 主会话裁定上移到 624，距 logo 盒上沿 y630 让开 6px。
- */
-const FRAME_BOTTOM = 624
 const FRAME_STROKE = 1.5
 const FRAME_OPACITY = 0.9
 
-/** 内框四边一律内缩这么多——下边因此落在 614，跟着外框一起上移。 */
+/** 内框四边一律内缩这么多。branding full 时下边落在 614。 */
 const INNER_INSET = 10
 const INNER_STROKE = 0.75
 const INNER_OPACITY = 0.45
@@ -74,34 +71,33 @@ const DIAMOND_SIZE = 12
 const DIAMOND_CX = (FRAME_X + FRAME_RIGHT) / 2
 const DIAMOND_CY = FRAME_Y
 
-export function LuxeMotif({ ctx }: DecorProps) {
+export function LuxeMotif({ ir, slide, ctx }: DecorProps) {
   const gold = ctx.colors.accent
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const bottom = frameBottomY(ir, slide, LUXE_FRAME_BOTTOM_BOARD)
 
   return (
-    <>
-      {/* 外框 */}
+    <DecorPiece id="invitation">
       <rect
         x={FRAME_X}
         y={FRAME_Y}
         width={FRAME_RIGHT - FRAME_X}
-        height={FRAME_BOTTOM - FRAME_Y}
+        height={bottom - FRAME_Y}
         fill="none"
         stroke={gold}
         strokeWidth={FRAME_STROKE}
-        opacity={FRAME_OPACITY}
+        opacity={leafRecessOpacity(slide.type, gold, bg, FRAME_OPACITY)}
       />
-      {/* 内框（四边内缩 10px） */}
       <rect
         x={FRAME_X + INNER_INSET}
         y={FRAME_Y + INNER_INSET}
         width={FRAME_RIGHT - FRAME_X - INNER_INSET * 2}
-        height={FRAME_BOTTOM - FRAME_Y - INNER_INSET * 2}
+        height={bottom - FRAME_Y - INNER_INSET * 2}
         fill="none"
         stroke={gold}
         strokeWidth={INNER_STROKE}
-        opacity={INNER_OPACITY}
+        opacity={leafRecessOpacity(slide.type, gold, bg, INNER_OPACITY)}
       />
-      {/* 框顶金菱（引首） */}
       <rect
         x={DIAMOND_CX - DIAMOND_SIZE / 2}
         y={DIAMOND_CY - DIAMOND_SIZE / 2}
@@ -109,7 +105,8 @@ export function LuxeMotif({ ctx }: DecorProps) {
         height={DIAMOND_SIZE}
         fill={gold}
         transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
+        opacity={leafRecessOpacity(slide.type, gold, bg)}
       />
-    </>
+    </DecorPiece>
   )
 }

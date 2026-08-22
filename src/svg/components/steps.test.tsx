@@ -473,6 +473,38 @@ describe("arrow_steps form", () => {
     }
   })
 
+  it("four gallery steps stay on one row in a 640-wide slot and stay inside the box", () => {
+    const themeCtx = buildCtx(resolveStyle("runway"), {})
+    const four = {
+      type: "steps" as const,
+      items: [
+        step("需求确认", "对齐范围与验收口径，避免现场返工。"),
+        step("现场勘测", "核对安装点位与供电条件。"),
+        step("设备接入", "完成接线并写入资产台账。"),
+        step("模型调优", "压低误报占比后再放量。"),
+      ],
+    }
+    const box = { x: 0, y: 0, w: 640, h: 360 }
+    const measured = steps.measure(four, box.w, themeCtx)
+    expect(measured).toBeLessThanOrEqual(box.h)
+    const { container } = svg(steps.render(four, box, themeCtx))
+    const arrows = Array.from(container.querySelectorAll("path")).filter(
+      (p) => p.getAttribute("fill") === themeCtx.colors.accent,
+    )
+    expect(arrows).toHaveLength(4)
+    const ys = arrows.map((p) => Number((p.getAttribute("d") ?? "").match(/M [\d.]+ ([\d.]+)/)?.[1] ?? 0))
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(8)
+    for (const el of Array.from(container.querySelectorAll("circle"))) {
+      const cx = Number(el.getAttribute("cx"))
+      const cy = Number(el.getAttribute("cy"))
+      const r = Number(el.getAttribute("r"))
+      expect(cx - r).toBeGreaterThanOrEqual(-2)
+      expect(cx + r).toBeLessThanOrEqual(box.w + 2)
+      expect(cy + r).toBeLessThanOrEqual(box.h + 2)
+    }
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+  })
+
   it("narrow width stacks the same arrows instead of falling back to the card face", () => {
     const themeCtx = buildCtx(resolveStyle("runway"), {})
     const narrow = { x: 0, y: 0, w: 600, h: 900 }

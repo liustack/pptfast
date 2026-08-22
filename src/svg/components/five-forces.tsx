@@ -10,12 +10,12 @@ type ForceKey = "rivalry" | "new_entrants" | "supplier_power" | "buyer_power" | 
 type Intensity = "low" | "medium" | "high"
 
 /**
- * Porter's Five Forces hub-and-spoke panel (structure-components wave 2,
+ * Porter's Five Forces cross panel (structure-components wave 2,
  * task 1) — `rivalry` is the center panel (competitive rivalry, the model's
  * own namesake force), the other four surround it in the conventional
  * textbook arrangement (new entrants above, suppliers left, buyers right,
- * substitutes below) and each connects to the center with a native `<line>`
- * — the diagram's own hub-and-spoke identity, not a decorative flourish. A
+ * substitutes below). Connectors were removed (gallery review r2 D19 / E0:
+ * a spoke line is an emphasis bar). Face color separates the five panels. A
  * full-body component (`FULL_BODY_TYPES`, `component-traits.ts`) — the only
  * component `svg-content.tsx` ever hands this to fills the whole content
  * rect, no sibling components on the same slide (`checkFullBodyExclusivity`,
@@ -555,53 +555,9 @@ export const fiveForces: SvgComponent<FiveForcesComponent> = {
     const bottomY = midY + scaledMidH + GAP
 
     const r = ctx.shape?.radius ?? CARD_RADIUS
-    const lineColor = ctx.colors.muted
-
-    const centerCx = centerX + centerW / 2
-    const midCy = midY + scaledMidH / 2
 
     return (
       <g>
-        {/* Native `<line>` hub-and-spoke connectors, painted first so every
-            panel rect drawn on top visually "swallows" the touching
-            endpoint — the spoke reads as running from panel edge to panel
-            edge rather than floating over them. */}
-        <line
-          x1={centerCx}
-          y1={midY}
-          x2={centerCx}
-          y2={topY + scaledTopH}
-          stroke={lineColor}
-          strokeOpacity={0.45}
-          strokeWidth={1.5}
-        />
-        <line
-          x1={centerCx}
-          y1={midY + scaledMidH}
-          x2={centerCx}
-          y2={bottomY}
-          stroke={lineColor}
-          strokeOpacity={0.45}
-          strokeWidth={1.5}
-        />
-        <line
-          x1={centerX}
-          y1={midCy}
-          x2={leftX + leftW}
-          y2={midCy}
-          stroke={lineColor}
-          strokeOpacity={0.45}
-          strokeWidth={1.5}
-        />
-        <line
-          x1={centerX + centerW}
-          y1={midCy}
-          x2={rightX}
-          y2={midCy}
-          stroke={lineColor}
-          strokeOpacity={0.45}
-          strokeWidth={1.5}
-        />
         {renderPanel("new_entrants", layouts.new_entrants, centerX, topY, centerW, scaledTopH, ctx, r)}
         {renderPanel("supplier_power", layouts.supplier_power, leftX, midY, leftW, scaledMidH, ctx, r)}
         {renderPanel("rivalry", layouts.rivalry, centerX, midY, centerW, scaledMidH, ctx, r)}

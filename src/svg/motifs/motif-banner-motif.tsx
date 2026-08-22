@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * banner-motif v2 —— 「批注线」（2026-08-20 编辑组皮肤重设计，设计源
@@ -103,10 +105,10 @@ export function BannerMotif({ slide, ctx }: DecorProps) {
 
   const rule = ctx.colors.primary
   const highlighter = ctx.colors.accent
+  const bg = ctx.defaultBg ?? ctx.colors.bg
 
   return (
-    <>
-      {/* 顶缘规矩线：起手一段 accent，其后通栏到页缘右侧 */}
+    <DecorPiece id="rule">
       <line
         x1={LEAD_RULE_X2}
         y1={TOP_RULE_Y}
@@ -114,6 +116,7 @@ export function BannerMotif({ slide, ctx }: DecorProps) {
         y2={TOP_RULE_Y}
         stroke={rule}
         strokeWidth={TOP_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, rule, bg)}
       />
       <line
         x1={TOP_RULE_X1}
@@ -122,7 +125,8 @@ export function BannerMotif({ slide, ctx }: DecorProps) {
         y2={TOP_RULE_Y}
         stroke={highlighter}
         strokeWidth={TOP_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, highlighter, bg)}
       />
-    </>
+    </DecorPiece>
   )
 }

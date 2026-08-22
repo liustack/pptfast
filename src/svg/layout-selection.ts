@@ -108,11 +108,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     1184 content margins the way even `banner-heading`'s own assertion
  *     banner is) — the same "banner rect is the heading" identity that
  *     already earns `banner-heading` its anchor membership, just escalated
- *     to genuinely full-bleed. Distinct from `image-lead-split` below
- *     (`content-image-lead-split.tsx`'s own file header explicitly frames
- *     that layout as "两个真正共存的主角", not one loud statement) —
- *     the two new layouts deliberately land in different beats, not the
- *     same one by default.
+ *     to genuinely full-bleed.
  * - **dense** (many discrete items, high information density):
  *   - `bento-panel` — the only content layout whose `body` capacity is 6
  *     (every other is 4): a multi-cell grid sized to hold the most, not the
@@ -142,49 +138,9 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     to the max-composition agreement case — any strategy that also favors
  *     that one id gets a "free" corroboration with nothing else to spread
  *     across).
- *   - `image-lead-split` (content-layout expansion wave, task T3;
- *     rationale strengthened in the wave's final review round — see below
- *     for why the original column-width analogy alone was underargued) —
- *     `breathing`'s actual common trait across its three members isn't
- *     literal empty pixels, it's the *absence of competing discrete
- *     content*: `dense`'s four members all split the body into multiple
- *     independently-filled regions racing for attention (bento-panel's
- *     6-cell grid, two-column's parallel halves, rail-numbered's
- *     enumeration, asymmetric-triptych's three panels); `anchor`'s four
- *     members all make one loud, bold-colored assertion (a filled banner, a
- *     poster hero, an opaque highlight panel, a full-bleed band).
- *     `breathing` is what's left once a page does neither — one unhurried
- *     text flow, plus at most one quiet, generously-framed companion
- *     element, never several fighting for the eye and never one shouting
- *     for it. `narrow-column`/`quiet-frame` fill that companion role with
- *     literal whitespace (a muted watermark, a symmetric margin);
- *     `image-lead-split` fills it with a real visual instead — but the
- *     structural shape is the same "single flow + single quiet companion",
- *     not a coincidence of column width. That holds under *both* of this
- *     layout's geometries (see its own file header and
- *     `STARVED_TEXT_W`'s derivation):
- *     - **With a scalable lead** (435px text + 613px visual): the text
- *       column is a single ordinary rect, never split (unlike every `dense`
- *       member); the visual column holds exactly one subject, shrink-to-fit
- *       only (`VISUAL_SCALE_CAP = 1`, always centered on both axes, never
- *       enlarged or bled past its own box) — a generously-bounded single
- *       element, not a loud full-bleed assertion the way `anchor`'s
- *       `split-band`/`side-highlight` are unconditionally full-height/
- *       full-bleed regardless of content. Two single things sharing the
- *       page calmly, not one loud statement or several competing ones.
- *     - **Without one** (788px text + a 260px decorative accent panel):
- *       an even purer instance of the same shape — the text column widens
- *       into exactly `narrow-column`'s own "spacious single-stack column"
- *       case, and the second column now carries zero information content
- *       at all (a drawn accent shape, not a real asset), so there is
- *       nothing left in the second column to compete with the text flow
- *       even in principle.
- *     Explicitly *not* `anchor` under either geometry: neither the visual
- *     column's single, shrink-to-fit subject nor the starved case's
- *     decorative accent asserts itself the way `stacked-poster`'s hero or
- *     `split-band`'s full-bleed band do — the file header's own "two
- *     co-equal protagonists sharing the page" framing is a calmer register
- *     than a single loud statement.
+ *     Gallery r2 D10 retired `image-lead-split` (an unconditional 60/40
+ *     split that left one column vacant on 1-component pages). `breathing`
+ *     is two members again.
  *
  * `tone-adaptive-content` — the pool's "万金油" (already strategy-neutral by
  * `layoutTendencies`' own convention) — is deliberately absent from every
@@ -194,7 +150,7 @@ type PageBeat = NonNullable<Slide["beat"]>
 const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
   anchor: ["banner-heading", "stacked-poster", "side-highlight", "split-band"],
   dense: ["bento-panel", "two-column", "rail-numbered", "asymmetric-triptych"],
-  breathing: ["narrow-column", "quiet-frame", "image-lead-split"],
+  breathing: ["narrow-column", "quiet-frame"],
 }
 
 /**

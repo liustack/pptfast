@@ -1017,6 +1017,7 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
   const ASSET_BG_IMAGES: PptxIR["assets"]["images"] = { bg: { src: "data:image/png;base64,AAAA" } }
   const NUMBERED_CARDS_ASSET_BG_SLIDE: Slide = {
     type: "content",
+    layout: "narrow-column",
     heading: HEADING,
     background: { kind: "asset", asset_id: "bg" },
     components: [
@@ -1031,6 +1032,7 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
   } as Slide
   const QUOTE_ASSET_BG_SLIDE: Slide = {
     type: "content",
+    layout: "narrow-column",
     arrangement: "quote",
     heading: HEADING,
     background: { kind: "asset", asset_id: "bg" },

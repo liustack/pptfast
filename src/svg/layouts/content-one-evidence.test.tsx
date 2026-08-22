@@ -5,6 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { OneEvidenceContent, layoutDef } from "./content-one-evidence"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import type { PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =
@@ -175,5 +176,114 @@ describe("OneEvidenceContent", () => {
     )
     expect(out).not.toContain("#0B0908")
     expect(out).not.toContain("#C6A15B")
+  })
+})
+
+const ONE_EVIDENCE_FACES = [
+  "insight",
+  "academic",
+  "lecture",
+  "swiss",
+  "museum",
+  "consulting",
+  "tech",
+  "vermilion",
+  "campaign",
+  "arena",
+  "terra",
+] as const
+
+const PARTITION_CLAIM = "竞品在中小客户市场的价格压力已经传导到续约谈判"
+
+function parseBox(attr: string | null): { x: number; y: number; w: number; h: number } {
+  const [x, y, w, h] = (attr ?? "0,0,0,0").split(",").map(Number)
+  return { x: x ?? 0, y: y ?? 0, w: w ?? 0, h: h ?? 0 }
+}
+
+function boxesOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function textBox(el: Element): { x: number; y: number; w: number; h: number; text: string } {
+  const x0 = Number(el.getAttribute("x") ?? 0)
+  const y = Number(el.getAttribute("y") ?? 0)
+  const fs = Number(el.getAttribute("font-size") ?? 16)
+  const text = el.textContent ?? ""
+  const bold = Number(el.getAttribute("font-weight") ?? 400) >= 600
+  const w = Math.max(8, measureTextUnits(text, { bold, fontFamily: el.getAttribute("font-family") ?? undefined }) * fs)
+  const anchor = el.getAttribute("text-anchor")
+  let x = x0
+  if (anchor === "middle") x -= w / 2
+  if (anchor === "end") x -= w
+  return { x, y: y - fs, w, h: fs * 1.25, text }
+}
+
+describe("one-evidence evidence vs assertion partition", () => {
+  it.each(ONE_EVIDENCE_FACES)("%s: assertion text does not overlap the evidence rect", (theme) => {
+    const ctx = buildCtx(resolveStyle(theme), {})
+    const slide: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: PARTITION_CLAIM,
+      subheading: "217 张工单全量统计，无一例外",
+      footnote: "来源：2026 Q2 运行数据",
+      components: [BAR_CHART],
+    } as Slide
+    const { root } = render(
+      <OneEvidenceContent ir={ir(theme, [slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const evG = root.querySelector("g[data-audit-rect]")
+    expect(evG, "fitted evidence rect").not.toBeNull()
+    const ev = parseBox(evG!.getAttribute("data-audit-rect"))
+    const texts = Array.from(root.querySelectorAll("text")).filter((t) => !t.closest("[data-audit-rect]"))
+    for (const t of texts) {
+      const box = textBox(t)
+      expect(boxesOverlap(box, ev), `"${box.text}" vs evidence ${ev.x},${ev.y},${ev.w},${ev.h}`).toBe(false)
+    }
+  })
+
+  it("generic face keeps heading at x=80 / y=72 and parks evidence below the claim", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
+    const slide: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: CJK_CLAIM,
+      components: [BAR_CHART],
+    } as Slide
+    const { root } = render(
+      <OneEvidenceContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const heading = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("迁徙路线"),
+    )!
+    expect(heading.getAttribute("x")).toBe("80")
+    expect(heading.getAttribute("y")).toBe("72")
+    const ev = parseBox(root.querySelector("g[data-audit-rect]")!.getAttribute("data-audit-rect"))
+    expect(ev.y).toBeGreaterThanOrEqual(Number(heading.getAttribute("y")))
+  })
+
+  it("museum with evidence gives the chart a band at least 140px below the claim", () => {
+    const ctx = buildCtx(resolveStyle("museum"), {})
+    const slide: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: PARTITION_CLAIM,
+      subheading: "试点产线 90 天 · 217 张工单",
+      components: [BAR_CHART],
+    } as Slide
+    const { root } = render(
+      <OneEvidenceContent ir={ir("museum", [slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const ev = parseBox(root.querySelector("g[data-audit-rect]")!.getAttribute("data-audit-rect"))
+    expect(ev.h).toBeGreaterThanOrEqual(140)
+    const claim = Array.from(root.querySelectorAll("text"))
+      .filter((t) => !t.closest("[data-audit-rect]"))
+      .map(textBox)
+      .find((t) => t.text.includes("竞品") || t.text.includes("价格"))
+    expect(claim).toBeTruthy()
+    expect(claim!.y + claim!.h).toBeLessThanOrEqual(ev.y + 1)
   })
 })

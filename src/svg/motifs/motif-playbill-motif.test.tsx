@@ -14,7 +14,7 @@ const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } a
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
-const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
+const DRAWN_SLIDES = [coverSlide, endingSlide]
 
 const PATCH_CX = 1136
 const PATCH_CY = 25
@@ -79,12 +79,15 @@ function polygonPoints(el: Element): { x: number; y: number }[] {
 }
 
 describe("PlaybillMotif（右上日期贴片）", () => {
-  it("有 meta.date 时 cover/content/ending 画同一张贴片+日期字", () => {
+  it("有 meta.date 时 cover/ending 画同一张贴片+日期字。content 不画，把斜贴片名额让给版式", () => {
     const markups = new Set(DRAWN_SLIDES.map((slide) => draw("playbill", slide, DATE).markup))
     expect(markups.size).toBe(1)
     const { root } = draw("playbill", coverSlide, DATE)
     expect(root.querySelector("polygon")).toBeTruthy()
     expect(root.querySelector("text")?.textContent).toBe(DATE)
+    const content = draw("playbill", contentSlide, DATE).root
+    expect(content.querySelector("polygon")).toBeNull()
+    expect(content.querySelector("text")).toBeNull()
   })
 
   it("没有日期整片不画（空黑块不再出现）", () => {

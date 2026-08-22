@@ -62,9 +62,10 @@ describe("EnterpriseMotif（方块秩序）", () => {
     }
   })
 
-  it("三档输出完全相同——v1 的强档（仅 cover）/ 弱档（右上一枚小方点）分档已取消", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("enterprise", slide).markup))
-    expect(markups.size).toBe(1)
+  it("cover/ending 输出完全相同。内容页退底，件数不变", () => {
+    expect(draw("enterprise", coverSlide).markup).toBe(draw("enterprise", endingSlide).markup)
+    expect(draw("enterprise", contentSlide).root.querySelectorAll("line")).toHaveLength(7)
+    expect(draw("enterprise", contentSlide).root.querySelectorAll("rect")).toHaveLength(4)
   })
 
   it("chapter 完全退让——顶带正是 chapter 版式摆 org 行与分隔线的地方", () => {
@@ -79,10 +80,10 @@ describe("EnterpriseMotif（方块秩序）", () => {
     const { root } = draw("enterprise", coverSlide)
     const rule = Array.from(root.querySelectorAll("line")).find((l) => num(l, "x1") !== num(l, "x2"))!
     expect(rule.getAttribute("stroke")).toBe(t.colors.border)
-    const tickGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.muted)
-    expect(tickGroup, "ticks must read colors.muted").toBeTruthy()
-    const stepGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("fill") === t.colors.primary)
-    expect(stepGroup, "square steps must read colors.primary").toBeTruthy()
+    const ticks = Array.from(root.querySelectorAll("line")).filter((l) => l.getAttribute("stroke") === t.colors.muted)
+    expect(ticks, "ticks must read colors.muted").toHaveLength(6)
+    const steps = Array.from(root.querySelectorAll("rect")).filter((r) => r.getAttribute("fill") === t.colors.primary)
+    expect(steps, "square steps must read colors.primary").toHaveLength(3)
     const spark = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("fill") === t.colors.accent)
     expect(spark, "the single spark square must read colors.accent").toBeTruthy()
   })

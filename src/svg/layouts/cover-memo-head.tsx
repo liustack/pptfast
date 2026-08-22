@@ -4,6 +4,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, measureTextUnits } from "../../lib/svg-text-layout"
 import { trackingPx } from "./minimal-shared"
 import { accessibleInk, metaInk } from "../ink"
+import { underlineYFromBaseline } from "./underline"
 
 /**
  * memo-head cover layout（2026-08-22 第七波封面保真，新表达）：
@@ -51,7 +52,6 @@ const TITLE_MAX_LINES = 2
 const TITLE_MAX_W = 1050
 const TITLE_LINE_HEIGHT_RATIO = 1.32
 const UNDERLINE_STROKE = 6
-const UNDERLINE_GAP = 8
 
 const FROM_X = 100
 const FROM_Y = 560
@@ -95,7 +95,7 @@ export function MemoHeadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const weight = { bold: false, fontFamily: fonts.heading }
   const underlineX = TITLE_X + measureTextUnits(prefix, weight) * title.fontSize
   const underlineW = measureTextUnits(run, weight) * title.fontSize
-  const underlineY = titleLastY + UNDERLINE_GAP
+  const underlineY = underlineYFromBaseline(titleLastY, title.fontSize, run)
 
   const footerTracking = trackingPx(FOOTER_SIZE, FOOTER_TRACKING_EM)
   const fromText = org ? `FROM: ${org}` : null

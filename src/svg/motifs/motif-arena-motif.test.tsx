@@ -215,11 +215,15 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
         expect(draw(long).markup).toBe(draw(short).markup)
       })
 
-      it("同结构不同页型：content/ending 输出逐字节相同（cover 是声明的撤能量条档，不是文字几何的函数）", () => {
-        const markups = new Set(
-          (["content", "ending"] as const).map((type) => draw(slideOf(type, [para("同一段")])).markup),
+      it("同结构不同页型：content/ending 几何相同（内容页退底，cover 是声明的撤能量条档）", () => {
+        const content = draw(slideOf("content", [para("同一段")]))
+        const ending = draw(slideOf("ending", [para("同一段")]))
+        expect(Array.from(content.root.querySelectorAll("path")).map((p) => p.getAttribute("d"))).toEqual(
+          Array.from(ending.root.querySelectorAll("path")).map((p) => p.getAttribute("d")),
         )
-        expect(markups.size).toBe(1)
+        expect(Array.from(content.root.querySelectorAll("line")).map((l) => l.getAttribute("x1"))).toEqual(
+          Array.from(ending.root.querySelectorAll("line")).map((l) => l.getAttribute("x1")),
+        )
       })
 
       it("组件数相同、组件类型不同：输出逐字节相同（数的是个数，不是内容）", () => {
@@ -295,8 +299,8 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
       expect(Array.from(cover.root.querySelectorAll("path")).map((p) => p.getAttribute("d"))).toEqual(
         Array.from(content.root.querySelectorAll("path")).map((p) => p.getAttribute("d")),
       )
-      expect(Array.from(cover.root.querySelectorAll("line")).map((l) => l.outerHTML)).toEqual(
-        Array.from(content.root.querySelectorAll("line")).map((l) => l.outerHTML),
+      expect(Array.from(cover.root.querySelectorAll("line")).map((l) => [l.getAttribute("x1"), l.getAttribute("y1")])).toEqual(
+        Array.from(content.root.querySelectorAll("line")).map((l) => [l.getAttribute("x1"), l.getAttribute("y1")]),
       )
       expect(cover.root.querySelectorAll("rect")).toHaveLength(0)
       expect(content.root.querySelectorAll("rect")).toHaveLength(8)

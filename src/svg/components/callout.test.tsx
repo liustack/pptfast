@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { callout } from "./callout"
+import { resolveComponentForm } from "./form-assignments"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
@@ -34,38 +35,23 @@ describe("callout component", () => {
     expect(h).toBeGreaterThan(0)
   })
 
-  it("renders a surface card over the full width", () => {
+  it("renders a full-width tint panel, one step off the page bg, never a hairline", () => {
     const { container } = svg(
       callout.render(component, { x: 80, y: 100, w: 1120 }, ctx),
     )
-    const surface = [...container.querySelectorAll("rect")].find(
-      (r) => r.getAttribute("fill") === "#F4F4F4",
+    const panel = [...container.querySelectorAll("rect")].find(
+      (r) => Number(r.getAttribute("width")) === 1120,
     )
-    expect(surface).toBeTruthy()
-    expect(surface!.getAttribute("width")).toBe("1120")
-    expect(surface!.getAttribute("rx")).toBe("6")
-    expect(surface!.getAttribute("y")).toBe("0")
-  })
-
-  it("marks the variant with a dedicated full-width hairline on the top edge, never a stacked accent card", () => {
-    // Visual review 2026-08-22: stacked rounded rects leaked accent around
-    // the left/right corners and read as the leftover left bar. The accent
-    // is a dedicated 2–3px hairline sitting on the card's top edge.
-    const warnComponent = { type: "callout" as const, variant: "warn" as const, text: "警告" }
-    const { container } = svg(
-      callout.render(warnComponent, { x: 0, y: 0, w: 800 }, ctx),
+    expect(panel).toBeTruthy()
+    expect(panel!.getAttribute("rx")).toBe("2")
+    expect(panel!.getAttribute("y")).toBe("0")
+    expect(panel!.getAttribute("fill")).not.toBe(ctx.colors.bg)
+    expect(panel!.getAttribute("fill")).not.toBe(ctx.colors.surface)
+    expect(panel!.getAttribute("stroke")).toBeNull()
+    const hairlines = [...container.querySelectorAll("rect")].filter(
+      (r) => Number(r.getAttribute("height")) <= 3,
     )
-    const rects = [...container.querySelectorAll("rect")]
-    const surface = rects.find((r) => r.getAttribute("fill") === ctx.colors.surface)!
-    const hairline = rects.find((r) => r.getAttribute("fill") === "#DC2626")!
-    expect(surface.getAttribute("y")).toBe("0")
-    expect(surface.getAttribute("width")).toBe("800")
-    expect(Number(surface.getAttribute("height"))).toBeGreaterThan(20)
-    expect(hairline.getAttribute("y")).toBe("0")
-    expect(hairline.getAttribute("width")).toBe("800")
-    expect(Number(hairline.getAttribute("height"))).toBeGreaterThanOrEqual(2)
-    expect(Number(hairline.getAttribute("height"))).toBeLessThanOrEqual(3)
-    expect(Number(hairline.getAttribute("height"))).toBeLessThan(Number(surface.getAttribute("height")) / 4)
+    expect(hairlines).toHaveLength(0)
   })
 
   it("renders text with ctx.colors.text fill", () => {
@@ -105,38 +91,26 @@ describe("callout component", () => {
   })
 })
 
-function surfaceRect(container: HTMLElement, fill = ctx.colors.surface) {
-  return [...container.querySelectorAll("rect")].find((r) => r.getAttribute("fill") === fill)
-}
-
-describe("callout card stroke (Task 5d)", () => {
+describe("callout TintPanel has no card stroke", () => {
   const component = { type: "callout" as const, variant: "info" as const, text: "提示信息文本内容" }
 
-  it("does not draw a stroke when ctx.colors.cardStroke is unset (every theme before this task)", () => {
-    const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, ctx))
-    expect(surfaceRect(container)!.getAttribute("stroke")).toBeNull()
-  })
-
-  it("draws a 1px stroke in cardStroke's color when the token is set", () => {
+  it("does not draw a stroke even when ctx.colors.cardStroke is set", () => {
     const strokedCtx: ComponentCtx = {
       ...ctx,
       colors: { ...ctx.colors, cardStroke: "#ABCDEF" },
     }
     const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, strokedCtx))
-    const bgRect = surfaceRect(container)!
-    expect(bgRect.getAttribute("stroke")).toBe("#ABCDEF")
-    expect(bgRect.getAttribute("stroke-width")).toBe("1")
+    for (const rect of container.querySelectorAll("rect")) {
+      expect(rect.getAttribute("stroke")).toBeNull()
+    }
   })
 
-  it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
+  it("no canonical TintPanel theme strokes the panel, including enterprise/runway", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, themeCtx))
-      const bgRect = surfaceRect(container, themeCtx.colors.surface)!
-      if (id === "enterprise" || id === "runway") {
-        expect(bgRect.getAttribute("stroke")).toBe(themeCtx.colors.cardStroke)
-      } else {
-        expect(bgRect.getAttribute("stroke")).toBeNull()
+      for (const rect of container.querySelectorAll("rect")) {
+        expect(rect.getAttribute("stroke"), id).toBeNull()
       }
     }
   })
@@ -145,26 +119,18 @@ describe("callout card stroke (Task 5d)", () => {
 describe("callout semantic color tokens", () => {
   const warn = { type: "callout" as const, variant: "warn" as const, text: "警告" }
 
-  /** The dedicated top hairline and the icon are the two places the variant color lands. */
-  function warnColors(themeCtx: ComponentCtx) {
+  function warnIcon(themeCtx: ComponentCtx) {
     const { container } = svg(callout.render(warn, { x: 0, y: 0, w: 800 }, themeCtx))
-    const surfaceFill = themeCtx.colors.surface
-    const hairline = [...container.querySelectorAll("rect")].find(
-      (r) => r.getAttribute("fill") !== surfaceFill && Number(r.getAttribute("height")) <= 3,
-    )
-    return {
-      rule: hairline?.getAttribute("fill"),
-      icon: container.querySelector("path")?.getAttribute("stroke"),
-    }
+    return container.querySelector("path")?.getAttribute("stroke")
   }
 
-  it("paints the pre-token red when the theme declares no semantic color", () => {
-    expect(warnColors(ctx)).toEqual({ rule: "#DC2626", icon: "#DC2626" })
+  it("paints the pre-token red on the icon when the theme declares no semantic color", () => {
+    expect(warnIcon(ctx)).toBe("#DC2626")
   })
 
   it("follows colors.danger — the whole alert family in one token", () => {
     const themed: ComponentCtx = { ...ctx, colors: { ...ctx.colors, danger: "#7A0B12" } }
-    expect(warnColors(themed)).toEqual({ rule: "#7A0B12", icon: "#7A0B12" })
+    expect(warnIcon(themed)).toBe("#7A0B12")
   })
 
   it("lets colors.warning split the caution tier off from the error tier", () => {
@@ -172,7 +138,7 @@ describe("callout semantic color tokens", () => {
       ...ctx,
       colors: { ...ctx.colors, danger: "#7A0B12", warning: "#8A5A00" },
     }
-    expect(warnColors(themed)).toEqual({ rule: "#8A5A00", icon: "#8A5A00" })
+    expect(warnIcon(themed)).toBe("#8A5A00")
   })
 
   it("leaves info and tip on primary/accent — a semantic token moves nothing else", () => {
@@ -187,10 +153,7 @@ describe("callout semantic color tokens", () => {
       const { container } = svg(
         callout.render({ type: "callout", variant, text: "测试" }, { x: 0, y: 0, w: 800 }, themed),
       )
-      const hairline = [...container.querySelectorAll("rect")].find(
-        (r) => Number(r.getAttribute("height")) <= 3,
-      )
-      expect(hairline?.getAttribute("fill")).toBe(expected)
+      expect(container.querySelector("path")?.getAttribute("stroke")).toBe(expected)
     }
   })
 
@@ -202,38 +165,46 @@ describe("callout semantic color tokens", () => {
   // it. Both halves are asserted: the rule follows the theme, and no two
   // themes share a value (a copy-paste that recolored 17 files to the same
   // hex would pass the first half alone).
-  it("regression lock: every canonical theme paints its own caution color, never the built-in default", () => {
+  it("regression lock: every canonical theme names its own caution color, never the built-in default", () => {
     const seen = new Map<string, string>()
     for (const id of CANONICAL_THEME_IDS) {
       const style = resolveStyle(id)
       const expected = style.colors.warning ?? style.colors.danger
       expect(expected, `${id} declares no semantic caution color`).toBeTruthy()
       expect(expected, `${id} still carries the built-in fallback red`).not.toBe("#DC2626")
-      expect(warnColors(buildCtx(style, {})), id).toEqual({ rule: expected, icon: expected })
       const owner = seen.get(expected!)
       expect(owner, `${id} reuses ${owner}'s caution color ${expected}`).toBeUndefined()
       seen.set(expected!, id)
+      const themeCtx = buildCtx(style, {})
+      const assignment = resolveComponentForm("callout", id)
+      const { container } = svg(callout.render(warn, { x: 0, y: 0, w: 800 }, themeCtx))
+      if (assignment?.form === "lead_word") {
+        const lead = [...container.querySelectorAll("text")].find((t) => t.textContent === "风险")
+        const painted = lead?.getAttribute("fill")
+        if (assignment.knobs?.iconInk === "accent") {
+          expect(painted, id).toBe(style.colors.accent)
+        } else {
+          expect(painted, id).toBe(expected)
+        }
+      } else if (assignment?.knobs?.stamp === true) {
+        const stamp = [...container.querySelectorAll("text")].find((t) => t.textContent === "WARN:")
+        expect(stamp?.getAttribute("fill"), id).toBe(expected)
+      } else {
+        expect(container.querySelector("path")?.getAttribute("stroke"), id).toBe(expected)
+      }
     }
   })
 
-  it("every canonical theme paints a top hairline, never a left bar or a full-size accent card under the surface", () => {
+  it("every canonical theme paints no left bar and no top/bottom hairline", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(callout.render(warn, { x: 0, y: 0, w: 800 }, themeCtx))
-      const rects = [...container.querySelectorAll("rect")]
-      const surface = rects.find((r) => r.getAttribute("fill") === themeCtx.colors.surface)
-      expect(surface, id).toBeTruthy()
-      const cardH = Number(surface!.getAttribute("height"))
-      const cardW = Number(surface!.getAttribute("width"))
-      expect(surface!.getAttribute("y")).toBe("0")
-      expect(cardW).toBe(800)
-      for (const rect of rects) {
+      const cardH = callout.measure(warn, 800, themeCtx)
+      for (const rect of container.querySelectorAll("rect")) {
         const w = Number(rect.getAttribute("width"))
         const h = Number(rect.getAttribute("height"))
         expect(w <= 12 && h >= cardH * 0.7, `${id} left-edge bar ${w}x${h}`).toBe(false)
-        if (rect.getAttribute("fill") !== themeCtx.colors.surface) {
-          expect(h, `${id} stacked full-size accent ${w}x${h}`).toBeLessThanOrEqual(3)
-        }
+        expect(h <= 6 && w >= 800 * 0.7, `${id} top/bottom bar ${w}x${h}`).toBe(false)
       }
     }
   })

@@ -236,8 +236,8 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
 
   matrix: (lex) => ({
     type: "matrix",
-    x_title: lex.kickers[0],
-    y_title: lex.kickers[1],
+    x_title: lex.periodAxis,
+    y_title: lex.segmentAxis,
     cols: 3,
     items: slice(lex.phrases, 6).map((title, i) => ({
       title,
@@ -345,7 +345,7 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
 
   logo_wall: (lex) => ({
     type: "logo_wall",
-    title: lex.kickers[1],
+    title: lex.kickers[4],
     items: LOGO_ASSETS.slice(0, 8).map((asset_id, i) => ({ asset_id, label: lex.orgs[i]! })),
   }),
 

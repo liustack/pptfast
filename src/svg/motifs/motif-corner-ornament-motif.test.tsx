@@ -152,9 +152,10 @@ describe("CornerOrnamentMotif（报头双线）", () => {
     }
   })
 
-  it("三档输出完全相同——v1 的强档四角 / 弱档单角之分已取消", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("journal", slide, "2026 年 7 月").markup))
-    expect(markups.size).toBe(1)
+  it("cover/ending 输出完全相同。内容页退底，件数不变", () => {
+    const date = "2026 年 7 月"
+    expect(draw("journal", coverSlide, date).markup).toBe(draw("journal", endingSlide, date).markup)
+    expect(draw("journal", contentSlide, date).root.querySelectorAll("line")).toHaveLength(3)
   })
 
   it("chapter 完全退让——借用方 luxe/academic 的 chapter 底上，线走的 primary 实测 1.08:1 / 1.00:1", () => {

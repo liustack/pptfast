@@ -135,9 +135,9 @@ describe("BannerMotif（批注线）", () => {
     }
   })
 
-  it("三档输出完全相同——v1 的 cover/chapter 强档与 content/ending 空档之分已取消", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("consulting", slide).markup))
-    expect(markups.size).toBe(1)
+  it("cover/ending 输出完全相同。内容页退底，件数不变", () => {
+    expect(draw("consulting", coverSlide).markup).toBe(draw("consulting", endingSlide).markup)
+    expect(draw("consulting", contentSlide).root.querySelectorAll("line")).toHaveLength(2)
   })
 
   it("chapter 完全退让——两条线走 primary，consulting/academic 的 chapter 底就是各自的 primary，实测 1.00:1", () => {

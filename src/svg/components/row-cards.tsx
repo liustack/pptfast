@@ -14,6 +14,7 @@ type RowCardsComponent = Extract<Component, { type: "row_cards" }>
  * 内容居中）。
  */
 const CARD_GAP = 14
+const CARD_GAP_MIN = 8
 /** Share of the density-stretch increment spent widening the gaps *between*
  * cards rather than the card shells. The shells split their share into top
  * and bottom padding, so growth that all goes there makes every card emptier
@@ -25,7 +26,8 @@ const CARD_GAP_GROW_SHARE = 0.3
 /** …and no gap grows past this multiple of its own natural size, so the list
  * never falls apart into unrelated cards. */
 const CARD_GAP_GROW_CAP_RATIO = 0.6
-const PAD_Y = 16
+const PAD_Y = 12
+const PAD_Y_MIN = 8
 const NUM_CX = 46
 const NUM_R = 19
 const TEXT_X = 88
@@ -62,8 +64,17 @@ function cardLayout(item: RowCardsComponent["items"][number], w: number) {
     GAP_TITLE_NEXT +
     (text ? text.lines.length * text.lineHeight + 2 : 0) +
     (sub ? Math.round(SUB_SIZE * 1.5) : 0)
-  const cardH = PAD_Y * 2 + Math.max(NUM_R * 2, contentH)
+  const cardH = cardHAt(contentH, PAD_Y)
   return { title, text, sub, contentH, cardH }
+}
+
+function cardHAt(contentH: number, padY: number): number {
+  return padY * 2 + Math.max(NUM_R * 2, contentH)
+}
+
+function stackH(contentHs: number[], padY: number, gap: number): number {
+  const n = contentHs.length
+  return contentHs.reduce((sum, h) => sum + cardHAt(h, padY), 0) + Math.max(0, n - 1) * gap
 }
 
 export const rowCards: SvgComponent<RowCardsComponent> = {
@@ -75,19 +86,40 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
   },
   render(component, box, ctx) {
     const layouts = component.items.map((item) => cardLayout(item, box.w))
-    const measuredH =
-      layouts.reduce((s, l) => s + l.cardH, 0) + (layouts.length - 1) * CARD_GAP
+    const contentHs = layouts.map((l) => l.contentH)
+    const n = layouts.length
+    let padY = PAD_Y
+    let baseGap = CARD_GAP
+    const naturalH = stackH(contentHs, padY, baseGap)
+    // EN gallery on a 2-line bento heading leaves ~378px for lead-in + cards
+    // (r2 A6). Shrinking pad then gap keeps every card instead of dropping
+    // the whole block or the tail. A 6-item stress stack still overflows
+    // the floor and takes the truncation path below.
+    if (box.h != null && box.h < naturalH) {
+      const overflow = naturalH - box.h
+      const padCutMax = (PAD_Y - PAD_Y_MIN) * 2 * n
+      const padCut = Math.min(overflow, padCutMax)
+      padY = PAD_Y - padCut / (2 * n)
+      const rest = overflow - padCut
+      if (rest > 0 && n > 1) {
+        const gapCutMax = (CARD_GAP - CARD_GAP_MIN) * (n - 1)
+        const gapCut = Math.min(rest, gapCutMax)
+        baseGap = CARD_GAP - gapCut / (n - 1)
+      }
+    }
+    const fitted = layouts.map((l) => ({ ...l, cardH: cardHAt(l.contentH, padY) }))
+    const measuredH = stackH(contentHs, padY, baseGap)
     // 密度拉伸：box.h 增量按比例分成两份——一份长卡间距，其余均分给各卡壳
     //（内容组卡内垂直居中）。截断路径上 box.h < measuredH，grow = 0，
-    // gapGrow = 0，卡间距原样是 CARD_GAP，下面那条验收循环的账不变。
+    // gapGrow = 0，卡间距原样是 baseGap，下面那条验收循环的账不变。
     const grow = Math.max(0, (box.h ?? measuredH) - measuredH)
-    const gaps = Math.max(1, layouts.length - 1)
+    const gaps = Math.max(1, n - 1)
     const gapGrow =
-      layouts.length > 1
+      n > 1
         ? Math.min((grow * CARD_GAP_GROW_SHARE) / gaps, CARD_GAP * CARD_GAP_GROW_CAP_RATIO)
         : 0
-    const cardGap = CARD_GAP + gapGrow
-    const perCardGrow = (grow - gapGrow * (layouts.length - 1)) / layouts.length
+    const cardGap = baseGap + gapGrow
+    const perCardGrow = (grow - gapGrow * (n - 1)) / n
     // 截断预算（box.h < 测量高，layoutContentFit 单块超高兜底）：只画放
     // 得下的卡，尾部自画「+N …」——存量超预算 deck 不再画出页外。
     const truncBudget =
@@ -96,7 +128,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     if (truncBudget !== Number.POSITIVE_INFINITY) {
       let acc = 0
       visible = 0
-      for (const l of layouts) {
+      for (const l of fitted) {
         const next = acc + (visible > 0 ? cardGap : 0) + l.cardH
         if (next > truncBudget) break
         acc = next
@@ -119,7 +151,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {component.items.slice(0, visible).map((item, i, visibleItems) => {
-          const { title, text, sub, contentH, cardH } = layouts[i]
+          const { title, text, sub, contentH, cardH } = fitted[i]
           const shellH = cardH + perCardGrow
           const cardY = cursor
           // The gap goes only *between* cards (N-1 gaps for N cards) — matches

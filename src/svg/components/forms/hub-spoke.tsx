@@ -6,6 +6,7 @@ import type { ComponentBox, ComponentCtx } from "../types"
 import {
   FORM_BODY_FLOOR,
   FORM_TITLE_FLOOR,
+  capFormBody,
   layoutFormBody,
   layoutFormTitle,
 } from "./legibility"
@@ -58,6 +59,31 @@ function placeCapsules(n: number, capW: number, capH: number, hubR: number, spok
       { i: 1, x: dx, y: -dy - capH / 2, w: capW, h: capH, badge: "right" },
       { i: 2, x: -dx - capW, y: dy - capH / 2, w: capW, h: capH, badge: "left" },
       { i: 3, x: dx, y: dy - capH / 2, w: capW, h: capH, badge: "right" },
+    ]
+  }
+  if (n === 5) {
+    const dx = hubR + spoke
+    const dy = hubR * 0.62
+    return [
+      { i: 0, x: -capW / 2, y: -(hubR + spoke + capH), w: capW, h: capH, badge: "left" },
+      { i: 1, x: dx, y: -dy - capH / 2, w: capW, h: capH, badge: "right" },
+      { i: 2, x: dx, y: dy - capH / 2, w: capW, h: capH, badge: "right" },
+      { i: 3, x: -dx - capW, y: dy - capH / 2, w: capW, h: capH, badge: "left" },
+      { i: 4, x: -dx - capW, y: -dy - capH / 2, w: capW, h: capH, badge: "left" },
+    ]
+  }
+  if (n === 7) {
+    const dx = hubR + spoke
+    const pitch = capH + 10
+    const topY = -pitch - capH / 2 - 12 - capH
+    return [
+      { i: 0, x: -capW / 2, y: topY, w: capW, h: capH, badge: "left" },
+      { i: 1, x: dx, y: -pitch - capH / 2, w: capW, h: capH, badge: "right" },
+      { i: 2, x: dx, y: -capH / 2, w: capW, h: capH, badge: "right" },
+      { i: 3, x: dx, y: pitch - capH / 2, w: capW, h: capH, badge: "right" },
+      { i: 4, x: -dx - capW, y: pitch - capH / 2, w: capW, h: capH, badge: "left" },
+      { i: 5, x: -dx - capW, y: -capH / 2, w: capW, h: capH, badge: "left" },
+      { i: 6, x: -dx - capW, y: -pitch - capH / 2, w: capW, h: capH, badge: "left" },
     ]
   }
   return Array.from({ length: n }, (_, i) => {
@@ -262,7 +288,8 @@ export function renderHubSpoke(
           desc && descBudget >= FORM_BODY_FLOOR
             ? layoutFormBody(desc, {
                 maxWidth: textW,
-                fontSize: Math.max(FORM_BODY_FLOOR, Math.round(13 * scale)),
+                fontSize: capFormBody(labelFit.fontSize, Math.round(13 * scale)),
+                titleSize: labelFit.fontSize,
                 maxLines: 1,
                 lineHeightRatio: 1.25,
                 fontFamily: ctx.fonts.body,

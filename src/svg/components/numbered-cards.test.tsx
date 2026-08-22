@@ -88,18 +88,13 @@ function assertInsideBox(container: HTMLElement, w: number, h: number, slop = 2)
 }
 
 describe("numbered_cards default face (no themeId)", () => {
-  it("paints a top hairline per cell and padded 01 numbers, never a left-edge bar", () => {
+  it("paints padded 01 numbers with no top hairline and no left-edge bar", () => {
     const { container } = svg(numberedCards.render(four, { x: 80, y: 100, w: 1088 }, ctx))
     expect(container.querySelectorAll("line")).toHaveLength(0)
     const hairlines = [...container.querySelectorAll("rect")].filter(
       (r) => Number(r.getAttribute("height")) <= 3,
     )
-    expect(hairlines).toHaveLength(4)
-    hairlines.forEach((bar) => {
-      expect(bar.getAttribute("fill")).toBe(ctx.colors.accent)
-      expect(Number(bar.getAttribute("width"))).toBeGreaterThan(12)
-      expect(Number(bar.getAttribute("height"))).toBeGreaterThanOrEqual(2)
-    })
+    expect(hairlines).toHaveLength(0)
     const nums = Array.from(container.querySelectorAll("text")).filter((t) =>
       /^\d{2}$/.test(t.textContent ?? ""),
     )
@@ -141,12 +136,37 @@ describe("numbered_pills", () => {
     expect(xs[0]).not.toBe(xs[xs.length - 1])
     expect(container.textContent).toContain("04")
     expect(container.textContent).not.toContain("四件要事")
+    const discR = Number(large.getAttribute("r"))
+    expect(discR).toBeLessThanOrEqual(56)
+    const discCx = Number(large.getAttribute("cx"))
+    const pillLeft = Math.min(...pills.map((p) => Number(p.getAttribute("x"))))
+    expect(pillLeft - (discCx + discR)).toBeGreaterThanOrEqual(16)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         {numberedCards.render(four, { x: 0, y: 0, w: 1088 }, pulse)}
       </svg>,
     )
     expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+
+  it("pulse left count disc fits a 640-wide slot, stays vertically centered, and leaves air to the pills", () => {
+    const pulse = themeCtx("pulse")
+    const box = { x: 0, y: 0, w: 640, h: 392 }
+    const { container } = svg(numberedCards.render(four, box, pulse))
+    const large = Array.from(container.querySelectorAll("circle")).reduce((a, b) =>
+      Number(a.getAttribute("r")) > Number(b.getAttribute("r")) ? a : b,
+    )
+    const r = Number(large.getAttribute("r"))
+    const cx = Number(large.getAttribute("cx"))
+    const cy = Number(large.getAttribute("cy"))
+    expect(r).toBeGreaterThan(32)
+    expect(r).toBeLessThanOrEqual(56)
+    expect(cx - r).toBeGreaterThanOrEqual(-2)
+    expect(cx + r).toBeLessThanOrEqual(box.w + 2)
+    expect(Math.abs(cy - box.h / 2)).toBeLessThanOrEqual(8)
+    const pills = pillRects(container)
+    const pillLeft = Math.min(...pills.map((p) => Number(p.getAttribute("x"))))
+    expect(pillLeft - (cx + r)).toBeGreaterThanOrEqual(16)
   })
 
   it("enterprise: aligned squares, pill x equal", () => {

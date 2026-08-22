@@ -70,7 +70,7 @@ export const THEME_TABLE_REQUIRED_SURFACES = [
   "chart:dumbbell",
   "chart:scatter",
   "chart:gauge",
-  // 14 forms
+  // 17 forms
   "form:icon_columns",
   "form:badge_cards",
   "form:outline_grid",
@@ -85,6 +85,9 @@ export const THEME_TABLE_REQUIRED_SURFACES = [
   "form:arrow_steps",
   "form:vert_timeline",
   "form:numbered_photos",
+  "form:tint_panel",
+  "form:hanging_bare",
+  "form:lead_word",
 ] as const
 
 export type ThemeChartType =
@@ -151,7 +154,7 @@ export const THEME_CONTENT_SLOTS: Record<string, readonly ThemeContentSlot[]> = 
   museum: [slot("cycle"), slot("kpi_cards"), slot("bullets"), slot("heatmap"), slot("people_cards"), slot("callout"), slot("architecture")],
   playbill: [slot("image_grid"), slot("data_table"), slot("quote"), slot("steps"), slot("five_forces"), slot("code"), slot("row_cards")],
   pulse: [slot("numbered_cards"), slot("comparison"), slot("sankey"), slot("verdict_banner"), slot("image_compare"), slot("insight_panel"), slot("bullets")],
-  runway: [slot("steps"), slot("data_table"), slot("quote"), slot("logo_wall"), slot("matrix"), slot("callout"), slot("gantt")],
+  runway: [slot("steps"), slot("data_table"), slot("quote"), slot("logo_wall"), slot("bullets"), slot("callout"), slot("gantt")],
   stage: [slot("timeline"), slot("kpi_cards"), slot("bullets"), slot("bmc"), slot("image"), slot("code"), slot("architecture")],
   swiss: [chart("pie"), slot("numbered_cards"), slot("comparison"), slot("people_cards"), slot("heatmap"), slot("quote"), slot("flowchart")],
   tech: [slot("icon_cards"), slot("data_table"), slot("waterfall"), slot("citation"), slot("device_mockup"), slot("swot"), slot("roadmap")],

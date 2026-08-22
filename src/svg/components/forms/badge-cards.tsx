@@ -45,6 +45,7 @@ function layoutItemText(
       ? layoutFormBody(item.text, {
           maxWidth: contentW,
           fontSize: bodySize,
+          titleSize,
           maxLines: bodyMaxLines,
           lineHeightRatio: TEXT_LINE_HEIGHT_RATIO,
           fontFamily: ctx.fonts.body,

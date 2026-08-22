@@ -69,6 +69,17 @@ describe("MemoMotif（打字机眉行）", () => {
     expect(root.querySelectorAll("text")).toHaveLength(0)
   })
 
+  it("content 稀排钉 pin 整片退让，不和 statement 等脸的横线叠预算", () => {
+    for (const layout of ["statement", "pull-quote", "stat-hero", "one-evidence", "mono-bleed"] as const) {
+      const slide = { ...contentSlide, layout } as Slide
+      const { root } = draw("memo", slide)
+      expect(root.querySelectorAll("line"), layout).toHaveLength(0)
+      expect(root.querySelectorAll("text"), layout).toHaveLength(0)
+    }
+    expect(parts(draw("memo", contentSlide).root).thickRule).toBeTruthy()
+    expect(parts(draw("memo", chapterSlide).root).thickRule).toBeTruthy()
+  })
+
   it("章节/内容/收尾仍画顶缘红双线 + MEMORANDUM 眉字", () => {
     for (const slide of [chapterSlide, contentSlide, endingSlide]) {
       const { root } = draw("memo", slide)

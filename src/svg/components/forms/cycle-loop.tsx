@@ -6,6 +6,7 @@ import type { ComponentBox, ComponentCtx } from "../types"
 import {
   FORM_BODY_FLOOR,
   FORM_TITLE_FLOOR,
+  capFormBody,
   fitFormTitleLine,
   layoutFormBody,
   layoutFormTitle,
@@ -18,25 +19,22 @@ function nodeAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n
 }
 
-const CURRENT_R = 56
-const OTHER_RADII = [44, 50, 42, 46, 42, 48, 42]
-const NODE_GAP = 28
-const MIN_RING_R = 160
+const CURRENT_R = 40
+const OTHER_RADII = [31, 36, 30, 33, 30, 34, 30]
+const NODE_GAP = 22
+const MIN_RING_R = 110
 const GAP_NODE_DESC = 14
 const DESC_W = 176
 const DESC_MAX_LINES = 3
 const DESC_FONT = 15
-const DESC_MIN_FONT = FORM_BODY_FLOOR
 const DESC_LINE_RATIO = 1.3
 const TITLE_FONT = 20
 const TITLE_MIN = FORM_TITLE_FLOOR
 const TITLE_BAND = 36
 const TITLE_PAD = 6
-const NODE_TEXT_RATIO = 0.72
-/** After scale, 2 × nr × ratio must hold two 20px CJK chars on a wrap line. */
-const MIN_PAINT_R = FORM_TITLE_FLOOR / NODE_TEXT_RATIO + 0.75
+const NODE_TEXT_RATIO = 0.42
 const MAX_H = 480
-const MAX_UPSCALE = 1.15
+const MAX_UPSCALE = 1
 
 function nodeRadius(i: number, highlightFirst: boolean): number {
   if (highlightFirst && i === 0) return CURRENT_R
@@ -64,7 +62,7 @@ interface LoopGeom {
   halfW: number
 }
 
-function resolveLoop(component: CycleComponent, w: number, knobs: FormKnobs): LoopGeom {
+function resolveLoop(component: CycleComponent, w: number, knobs: FormKnobs, boxH?: number): LoopGeom {
   const n = component.items.length
   const highlightFirst = knobs.highlightFirst !== false
   const radii = component.items.map((_, i) => nodeRadius(i, highlightFirst))
@@ -78,13 +76,10 @@ function resolveLoop(component: CycleComponent, w: number, knobs: FormKnobs): Lo
   const titleBand = hasTitle ? TITLE_BAND : 0
   const localW = 2 * halfW
   const localH = 2 * halfH + titleBand
-  const widthScale = w / localW
-  const heightScale = MAX_H / localH
-  let scale = Math.min(widthScale, heightScale, MAX_UPSCALE)
-  const minR = Math.min(...radii)
-  if (minR > 0 && minR * scale < MIN_PAINT_R) {
-    scale = Math.min(widthScale, MAX_UPSCALE, Math.max(scale, MIN_PAINT_R / minR))
-  }
+  const widthScale = w / Math.max(localW, 1)
+  const heightBudget = boxH != null && boxH > 0 ? boxH : MAX_H
+  const heightScale = heightBudget / Math.max(localH, 1)
+  const scale = Math.min(widthScale, heightScale, MAX_UPSCALE)
   return {
     n,
     scale,
@@ -119,7 +114,7 @@ export function renderCycleLoop(
   ctx: ComponentCtx,
   knobs: FormKnobs,
 ): ReactElement {
-  const g = resolveLoop(component, box.w, knobs)
+  const g = resolveLoop(component, box.w, knobs, box.h)
   const { n, scale, ox, oy, ringR, radii, hasTitle } = g
   const r = ringR * scale
   const dash = ringDash(knobs.ring)
@@ -147,9 +142,14 @@ export function renderCycleLoop(
         const current = highlightFirst && i === 0
         const fill = ctx.colors.surface
         const stroke = current ? ctx.colors.accent : border
+        const nodeFont = Math.max(
+          FORM_BODY_FLOOR,
+          Math.min(FORM_TITLE_FLOOR, Math.round(nr * NODE_TEXT_RATIO)),
+        )
         const fit = layoutFormTitle(item.label, {
-          maxWidth: 2 * nr * NODE_TEXT_RATIO,
-          fontSize: Math.max(FORM_TITLE_FLOOR, Math.round((current ? 22 : 20) * scale)),
+          maxWidth: 2 * nr * 0.72,
+          fontSize: nodeFont,
+          floor: FORM_BODY_FLOOR,
           maxLines: 2,
           fontFamily: ctx.fonts.body,
         })
@@ -194,9 +194,14 @@ export function renderCycleLoop(
         const ax = ox + outward.x * anchorR
         const ay = oy + outward.y * anchorR
         const maxWidth = DESC_W * scale
+        const nodeFont = Math.max(
+          FORM_BODY_FLOOR,
+          Math.min(FORM_TITLE_FLOOR, Math.round(nr * scale * NODE_TEXT_RATIO)),
+        )
         const wrapped = layoutFormBody(item.description, {
           maxWidth,
-          fontSize: Math.max(DESC_MIN_FONT, Math.round(DESC_FONT * scale)),
+          fontSize: capFormBody(nodeFont, Math.round(DESC_FONT * scale)),
+          titleSize: nodeFont,
           maxLines: DESC_MAX_LINES,
           lineHeightRatio: DESC_LINE_RATIO,
           fontFamily: ctx.fonts.body,

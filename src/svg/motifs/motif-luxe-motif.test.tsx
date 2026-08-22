@@ -24,13 +24,14 @@ const LOGO_BANDS = [
 const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 
-const ir = (theme: string): PptxIR =>
+const ir = (theme: string, branding?: PptxIR["branding"]): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
     theme: { id: theme },
     meta: {},
     assets: { images: {} },
+    branding,
     slides: [coverSlide],
   }) as unknown as PptxIR
 
@@ -43,9 +44,9 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
   return { markup, root: parseSvgRoot(markup) }
 }
 
-function draw(theme: string, slide: Slide) {
+function draw(theme: string, slide: Slide, branding?: PptxIR["branding"]) {
   const ctx = buildCtx(resolveStyle(theme), {})
-  return { ...render(<LuxeMotif ir={ir(theme)} slide={slide} ctx={ctx} />), ctx }
+  return { ...render(<LuxeMotif ir={ir(theme, branding)} slide={slide} ctx={ctx} />), ctx }
 }
 
 /** 两道框（fill="none" 的 rect），按描边宽度分外/内。 */
@@ -101,19 +102,17 @@ describe("LuxeMotif（请柬金框）", () => {
   })
 
   /**
-   * 安全区守卫（主会话裁定的两处微调之二）。设计稿原稿把外框下边画在 y650，
-   * 那条横边会从右下 logo 盒 (1120,630,96×40) 的竖直区间正中穿过去；裁定
-   * 上移到 624。把 `FRAME_BOTTOM` 改回 650 这条立刻红。
+   * branding full 才让开 logo 盒。未声明 branding 时外框落到与顶边对称的
+   * y696。把 full 档改回 650 这条立刻红。
    */
-  it("安全区微调：外框下边上移到 y624，让开右下 logo 盒的上沿 y630", () => {
-    const { root } = draw("luxe", coverSlide)
+  it("安全区微调：branding full 时外框下边 y624，让开右下 logo 盒的上沿 y630", () => {
+    const { root } = draw("luxe", coverSlide, "full")
     const { outer, inner, num } = frames(root)
     const outerBottom = num(outer, "y") + num(outer, "height")
     expect(outerBottom).toBe(624)
     expect(outerBottom).toBeLessThan(LOGO_BANDS[3].y)
     expect(outerBottom).toBeLessThan(LOGO_BANDS[2].y)
 
-    // 内框跟着错位：四边一律内缩 10，上边落在 34，下边落在 614
     expect(num(inner, "x")).toBe(46)
     expect(num(inner, "y")).toBe(34)
     expect(num(inner, "x") + num(inner, "width")).toBe(1234)
@@ -199,5 +198,27 @@ describe("LuxeMotif（请柬金框）", () => {
     for (const slide of ALL_SLIDES) {
       expect(() => assertSubset(draw("luxe", slide).root)).not.toThrow()
     }
+  })
+
+  it("omitted branding drops the outer frame to the board inset y696", () => {
+    const { root } = draw("luxe", contentSlide)
+    const { outer, inner, num } = frames(root)
+    expect(num(outer, "y") + num(outer, "height")).toBe(696)
+    expect(num(inner, "y") + num(inner, "height")).toBe(686)
+  })
+
+  it("branding full keeps the frame at y624 to clear the logo box", () => {
+    const { root } = draw("luxe", contentSlide, "full")
+    const { outer, inner, num } = frames(root)
+    expect(num(outer, "y") + num(outer, "height")).toBe(624)
+    expect(num(inner, "y") + num(inner, "height")).toBe(614)
+    expect(num(outer, "y") + num(outer, "height")).toBeLessThan(LOGO_BANDS[3].y)
+  })
+
+  it("layout branding none drops the frame even on a full deck", () => {
+    const slide = { ...contentSlide, layout: "stat-hero" } as Slide
+    const { root } = draw("luxe", slide, "full")
+    const { outer, num } = frames(root)
+    expect(num(outer, "y") + num(outer, "height")).toBe(696)
   })
 })

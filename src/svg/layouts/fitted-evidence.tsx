@@ -5,6 +5,12 @@ import { GOLDEN_TOP_SHARE } from "../layout"
 import { measureComponent, renderComponent } from "../components"
 
 const SCALE_CAP = 1
+const TEXT_EVIDENCE_GAP = 20
+
+/** Width of the assertion column to the left of an evidence rect. */
+export function textColumnMaxWidth(textX: number, evidenceX: number, gap = TEXT_EVIDENCE_GAP): number {
+  return Math.max(80, evidenceX - textX - gap)
+}
 
 /**
  * Shrink-to-fit a single evidence component into `rect` without enlarging.

@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * pulse-motif v2 —— 「脉搏线」（2026-08-20 冷调组皮肤重设计，设计源
@@ -71,18 +73,36 @@ export function PulseMotif({ slide, ctx }: DecorProps) {
   if (slide.type === "chapter") return null
 
   const mint = ctx.colors.accent
+  const bg = ctx.defaultBg ?? ctx.colors.bg
   const cover = slide.type === "cover"
 
   return (
     <>
-      {/* 顶缘心电线。封面让给 horizon-wedge 楔面那条折线，避免两条心搏。 */}
-      {!cover && <polyline points={ECG_POINTS} fill="none" stroke={mint} strokeWidth={ECG_STROKE} />}
-      {/* 右缘细胞轮廓点簇 */}
-      <g fill="none" stroke={mint} strokeWidth={CELL_STROKE}>
+      {!cover && (
+        <DecorPiece id="ecg">
+          <polyline
+            points={ECG_POINTS}
+            fill="none"
+            stroke={mint}
+            strokeWidth={ECG_STROKE}
+            opacity={leafRecessOpacity(slide.type, mint, bg)}
+          />
+        </DecorPiece>
+      )}
+      <DecorPiece id="cells">
         {CELLS.map((c) => (
-          <circle key={c.cy} cx={CELL_X} cy={c.cy} r={c.r} />
+          <circle
+            key={c.cy}
+            cx={CELL_X}
+            cy={c.cy}
+            r={c.r}
+            fill="none"
+            stroke={mint}
+            strokeWidth={CELL_STROKE}
+            opacity={leafRecessOpacity(slide.type, mint, bg)}
+          />
         ))}
-      </g>
+      </DecorPiece>
     </>
   )
 }

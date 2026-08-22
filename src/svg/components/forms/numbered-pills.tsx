@@ -15,6 +15,7 @@ const STACK_CAP = 440
 const BASELINE_FUDGE = 0.35
 const TITLE_PILL_MIN = 52
 const BODY_PILL_MIN = 72
+const LEFT_CAP = 96
 
 function pillRx(knobs: FormKnobs, pillH: number, ctx: ComponentCtx): number {
   if (knobs.radius === "square") return 0
@@ -35,7 +36,7 @@ function layoutPills(n: number, w: number, knobs: FormKnobs, hHint?: number) {
   const stackH = n <= 0 ? 0 : n * pillH + (n - 1) * PILL_GAP
   const leftSize = Math.max(
     88,
-    Math.min(stackH * 0.72, (w - staggerSpan - COL_GAP - PAD * 2) * 0.28, 240),
+    Math.min(stackH * 0.42, (w - staggerSpan - COL_GAP - PAD * 2) * 0.16, LEFT_CAP),
   )
   const pillW = Math.max(72, w - leftSize - COL_GAP - staggerSpan - PAD * 2)
   const h = Math.max(stackH, leftSize) + PAD * 2

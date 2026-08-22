@@ -36,6 +36,9 @@ const fixture = JSON.parse(
   readFileSync(new URL("./__fixtures__/pre-migration-layout-registry.json", import.meta.url), "utf-8"),
 ) as { order: string[]; registry: Record<string, Record<string, unknown>> }
 
+/** Layouts retired after the capture. Compare the rest, skip these ids. */
+const RETIRED_LAYOUT_IDS = new Set(["image-lead-split"])
+
 /** `live`, cut down to the keys `captured` has — nothing else is this guard's business. */
 function capturedFieldsOf(live: Record<string, unknown>, captured: Record<string, unknown>) {
   return Object.fromEntries(Object.keys(captured).map((k) => [k, live[k]]))
@@ -43,12 +46,13 @@ function capturedFieldsOf(live: Record<string, unknown>, captured: Record<string
 
 describe("LAYOUT_REGISTRY migration guard (registry.ts aggregator conversion, T1d)", () => {
   it("key insertion order is byte-identical to the pre-migration registry", () => {
-    expect(Object.keys(LAYOUT_REGISTRY)).toEqual(fixture.order)
+    expect(Object.keys(LAYOUT_REGISTRY)).toEqual(fixture.order.filter((id) => !RETIRED_LAYOUT_IDS.has(id)))
   })
 
   it("every captured field is deep-equal to its pre-migration counterpart", () => {
     const live = LAYOUT_REGISTRY as unknown as Record<string, Record<string, unknown>>
     for (const [id, captured] of Object.entries(fixture.registry)) {
+      if (RETIRED_LAYOUT_IDS.has(id)) continue
       expect(live[id], id).toBeDefined()
       expect(capturedFieldsOf(live[id]!, captured), id).toEqual(captured)
     }

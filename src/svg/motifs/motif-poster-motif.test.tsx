@@ -71,6 +71,18 @@ function polylinePoints(root: Element): [number, number][] {
  * 的 insight 设计表。
  */
 describe("PosterMotif（行情语汇）", () => {
+  it("content 稀排钉 pin 整片退让，不和 statement / pull-quote 脸的横线叠预算", () => {
+    for (const layout of ["statement", "pull-quote", "stat-hero", "one-evidence", "mono-bleed"] as const) {
+      const slide = { ...contentSlide, layout } as Slide
+      const { root } = draw("insight", slide)
+      expect(root.querySelectorAll("line"), layout).toHaveLength(0)
+      expect(root.querySelectorAll("polyline"), layout).toHaveLength(0)
+      expect(root.querySelectorAll("path"), layout).toHaveLength(0)
+    }
+    expect(draw("insight", contentSlide).root.querySelectorAll("line").length).toBeGreaterThan(0)
+    expect(draw("insight", coverSlide).root.querySelectorAll("line").length).toBeGreaterThan(0)
+  })
+
   it("四种页型都画顶缘行情带：y28/y42 双细线走 border，五枚刻度齿走 accent", () => {
     const tokens = resolveStyle("insight")
     for (const slide of ALL_SLIDES) {
@@ -156,8 +168,8 @@ describe("PosterMotif（行情语汇）", () => {
    * `poster-chapter`/`roman-chapter` 的 kicker 字身上三分之一，全语料 153 页
    * 命中 6 页。上沿 2px 那条与五枚琥珀刻度齿零相交，一处不改。
    */
-  it("顶缘双线只有下沿一条带退底不透明度，上沿与刻度齿保持满不透明", () => {
-    for (const slide of ALL_SLIDES) {
+  it("封面/章节/收尾：顶缘双线只有下沿一条带退底不透明度，上沿与刻度齿保持满不透明", () => {
+    for (const slide of [coverSlide, chapterSlide, endingSlide]) {
       const { root } = draw("insight", slide)
       const lines = Array.from(root.querySelectorAll("line"))
       const top = lines.find((l) => l.getAttribute("y1") === "28")!

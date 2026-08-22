@@ -3,7 +3,7 @@
  * theme + one component maps to at most one form, looked up here and
  * ignored by renderers until a later commit wires dispatch. campaign ×
  * cycle is hub_spoke (first-listed wins), never petal_wheel. bloom is a
- * classroom recolor preset and is not listed. 41 rows.
+ * classroom recolor preset and is not listed. 65 rows (41 prior + 24 callout).
  */
 
 export const COMPONENT_FORMS = [
@@ -21,6 +21,9 @@ export const COMPONENT_FORMS = [
   "arrow_steps",
   "vert_timeline",
   "numbered_photos",
+  "tint_panel",
+  "hanging_bare",
+  "lead_word",
 ] as const
 
 export type ComponentFormId = (typeof COMPONENT_FORMS)[number]
@@ -58,6 +61,7 @@ export interface FormKnobs {
   stamp?: boolean
   caption?: "above" | "below"
   numberBadge?: "specimen" | "invert" | "accent"
+  weight?: "regular" | "bold" | "black"
 }
 
 export interface FormAssignment {
@@ -251,6 +255,32 @@ const ASSIGNMENTS: Record<string, Record<string, FormAssignment>> = {
       form: "numbered_photos",
       knobs: { caption: "below", numberBadge: "accent" },
     },
+  },
+  callout: {
+    heritage: { form: "tint_panel", knobs: { radius: "soft" } },
+    swiss: { form: "tint_panel", knobs: { radius: "square", weight: "bold" } },
+    tech: { form: "tint_panel", knobs: { radius: "round" } },
+    academic: { form: "tint_panel", knobs: { radius: "square" } },
+    enterprise: { form: "tint_panel", knobs: { radius: "square" } },
+    consulting: { form: "tint_panel", knobs: { radius: "soft" } },
+    journal: { form: "tint_panel", knobs: { radius: "soft" } },
+    classroom: { form: "tint_panel", knobs: { radius: "round" } },
+    lecture: { form: "tint_panel", knobs: { radius: "soft" } },
+    memo: { form: "hanging_bare", knobs: { stamp: true } },
+    insight: { form: "hanging_bare" },
+    ink: { form: "hanging_bare" },
+    stage: { form: "hanging_bare" },
+    terra: { form: "hanging_bare" },
+    crayon: { form: "hanging_bare" },
+    museum: { form: "hanging_bare" },
+    luxe: { form: "lead_word", knobs: { iconInk: "accent" } },
+    vermilion: { form: "lead_word" },
+    playbill: { form: "lead_word", knobs: { weight: "black" } },
+    campaign: { form: "lead_word" },
+    arena: { form: "lead_word" },
+    pulse: { form: "lead_word" },
+    runway: { form: "lead_word" },
+    ember: { form: "lead_word" },
   },
 }
 

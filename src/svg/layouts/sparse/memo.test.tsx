@@ -34,6 +34,23 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
   return { markup, root: parseSvgRoot(markup) }
 }
 
+/** Nearby horizontal lines (a 文武 pair) count as one group. Isolated lines and paths each count as one. */
+function countHorizontalRuleGroups(root: Element): number {
+  const lineYs = Array.from(root.querySelectorAll("line"))
+    .filter((l) => Math.abs(Number(l.getAttribute("y1")) - Number(l.getAttribute("y2"))) < 1)
+    .map((l) => Number(l.getAttribute("y1")))
+    .filter((y) => Number.isFinite(y))
+    .sort((a, b) => a - b)
+  let groups = 0
+  let last = -Infinity
+  for (const y of lineYs) {
+    if (y - last > 10) groups++
+    last = y
+  }
+  groups += root.querySelectorAll("path, polyline").length
+  return groups
+}
+
 describe("memo sparse faces", () => {
   const ctx = buildCtx(resolveStyle("memo"), {})
 
@@ -93,7 +110,21 @@ describe("memo sparse faces", () => {
     expect(markup).toContain("FROM:")
     expect(markup).toContain("陈砚清")
     const rules = Array.from(root.querySelectorAll("line")).filter((l) => l.getAttribute("stroke") === ctx.colors.text)
-    expect(rules.length).toBeGreaterThanOrEqual(4)
+    expect(rules.length).toBe(2)
+  })
+
+  it("pull-quote keeps at most two horizontal rule groups (文武 pair counts as one)", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "pull-quote",
+      heading: QUOTE,
+      subheading: "陈砚清 · 首席技术官",
+      components: [],
+    } as Slide
+    const { root } = render(
+      <PullQuoteContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    expect(countHorizontalRuleGroups(root)).toBeLessThanOrEqual(2)
   })
 
   it("pull-quote without ** draws no accent underline", () => {

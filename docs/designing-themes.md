@@ -67,6 +67,34 @@ the codebase owns fidelity.
    and content at two densities: sparse (few blocks, generous
    whitespace) and full (four content blocks, the geometric maximum for
    most content layouts).
+7. **A page paints at most three decoration pieces.** A piece is one
+   named visual unit, not every SVG leaf. Repeating marks that read as
+   one field or chain count as one piece (a confetti field, a row of
+   binding holes, a spark trail, a node chain with its tracks). A paired
+   rule (double line, inner and outer frame) is one piece. A mark plus
+   its satellite (a foot rule with a midpoint diamond, a chip and the
+   date on it) is one piece. Distinct families on the same page count
+   separately. Motif text that labels a piece is not a piece. Motifs wrap
+   each piece in `<g data-decor-piece>`. An unwrapped painted leaf also
+   counts, so a new mark that is not wrapped fails the budget. Tech's
+   cover used to paint a node chain with branch tracks, orbit arcs, and a
+   row of sparse stars. The stars and the branches were the lesser
+   families and were cut.
+8. **Decoration is always background.** On a content page the motif must
+   recede so the copy wins at a glance. Composited motif ink (fill or
+   stroke, after opacity) against the page ground stays below 3:1, the
+   large-text and meta floor. Body copy at 4.5:1 then sits clearly in
+   front. Cover, chapter, and ending may keep the designed strength.
+   They are the theme's face. Tune the fade per motif from tokens, never
+   a baked hex (`leafRecessOpacity` in `src/svg/motifs/decor-budget.ts`).
+   Hairlines already under the ceiling stay as they are.
+9. **At most one slanted tile per page.** A slanted tile is a chip-sized
+   filled rect or four-point polygon whose tilt from the axis is between
+   1° and 20° (a playbill date chip, a unit chip). 45° diamonds are not
+   tiles. Confetti scraps under 40px on the long edge are not tiles.
+   Playbill's motif paints the date chip on cover and ending only, so a
+   content face that already carries a unit chip (stat-hero) does not get
+   a second one.
 
 ## What distinguishes a theme
 

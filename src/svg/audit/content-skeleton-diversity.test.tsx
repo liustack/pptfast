@@ -146,8 +146,8 @@ function skeletonKey(skeleton: readonly RegionTuple[]): string {
 const ALL_CONTENT_IDS = Object.keys(CONTENT_LAYOUTS) as ContentLayoutId[]
 
 describe("content layout skeleton diversity (content-layout expansion wave, T3 acceptance metric)", () => {
-  it("covers all 18 registered content layouts (sanity — this metric is meaningless over a stale/partial list; speech-layouts wave: 15 -> 18)", () => {
-    expect(ALL_CONTENT_IDS).toHaveLength(18)
+  it("covers all 17 registered content layouts (sanity — this metric is meaningless over a stale/partial list; gallery r2 D10 retired image-lead-split, 18 -> 17)", () => {
+    expect(ALL_CONTENT_IDS).toHaveLength(17)
   })
 
   it("the full-region skeleton set resolves to >= 6 distinct classes across the pool (was ~4 under the rejected first-box-only reading)", () => {
@@ -164,39 +164,8 @@ describe("content layout skeleton diversity (content-layout expansion wave, T3 a
     expect(classes.size).toBeGreaterThanOrEqual(6)
   })
 
-  it("regression: image-lead-split resolves to 2 regions, not 1 — the specific case the first-box-only metric mis-measured", () => {
-    // Guards the exact defect this task's corrected criterion exists for:
-    // if a future refactor made the visual column stop emitting its own
-    // `data-audit-box` (or this test regressed back to reading only the
-    // first box), this assertion — not just the aggregate >= 6 count above
-    // — is what would catch it immediately.
-    const skeleton = skeletonFor("image-lead-split")
-    expect(skeleton).toHaveLength(2)
-    const [text, visual] = skeleton
-    expect(text[0]).toBe(quantize(96))
-    expect(visual[0]).toBe(quantize(571))
-  })
-
-  it("regression: a first-box-only reading would still call image-lead-split merely 'narrower', hiding its real 2-region novelty", () => {
-    // Reproduces the rejected metric side by side with the corrected one on
-    // the exact same render, so the lesson is pinned as a runnable fact, not
-    // just prose in this file's header comment.
-    const firstBoxOnly = new Map(
-      ALL_CONTENT_IDS.map((id) => [id, skeletonFor(id).slice(0, 1)] as const),
-    )
-    const firstBoxClasses = new Set(Array.from(firstBoxOnly.values()).map(skeletonKey))
-    const fullRegionSkeleton = skeletonFor("image-lead-split")
-
-    // The corrected metric sees 2 regions for image-lead-split...
-    expect(fullRegionSkeleton.length).toBeGreaterThan(1)
-    // ...but a first-box-only reading of the very same render only ever
-    // sees 1 — indistinguishable in *shape* (region count) from every other
-    // lone-single-column layout in the pool, even though its numeric
-    // width happens not to collide with any of them under this fixture.
-    expect(firstBoxOnly.get("image-lead-split")).toHaveLength(1)
-    // Sanity: the first-box reading is not itself vacuous (it still finds
-    // more than one class overall) — the point is specifically that it
-    // under-counts *regions*, not that it collapses to a single class.
-    expect(firstBoxClasses.size).toBeGreaterThan(1)
+  it("regression: two-column resolves to 2 regions, not 1 — the first-box-only metric would hide a split", () => {
+    const skeleton = skeletonFor("two-column")
+    expect(skeleton.length).toBeGreaterThan(1)
   })
 })

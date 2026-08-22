@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * terra-motif v2 —— 「等高线」（2026-08-19 暖纸组皮肤重设计，设计源
@@ -87,6 +89,7 @@ const SEED_YS: readonly number[] = [64, 96, 128]
 
 export function TerraMotif({ slide, ctx }: DecorProps) {
   const olive = ctx.colors.primary
+  const bg = ctx.defaultBg ?? ctx.colors.bg
 
   // chapter 是整版 primary 橄榄底，本 motif 两件东西也都是 primary——
   // 画上去看不见（见文件头）。
@@ -94,18 +97,30 @@ export function TerraMotif({ slide, ctx }: DecorProps) {
 
   return (
     <>
-      {/* 左下等高线簇 */}
-      <g fill="none" stroke={olive} strokeWidth={CONTOUR_STROKE} opacity={CONTOUR_OPACITY}>
+      <DecorPiece id="contours">
         {CONTOURS.map((d) => (
-          <path key={d} d={d} />
+          <path
+            key={d}
+            d={d}
+            fill="none"
+            stroke={olive}
+            strokeWidth={CONTOUR_STROKE}
+            opacity={leafRecessOpacity(slide.type, olive, bg, CONTOUR_OPACITY)}
+          />
         ))}
-      </g>
-      {/* 右缘种子点列 */}
-      <g fill={olive}>
+      </DecorPiece>
+      <DecorPiece id="seeds">
         {SEED_YS.map((cy) => (
-          <circle key={cy} cx={SEED_X} cy={cy} r={SEED_R} />
+          <circle
+            key={cy}
+            cx={SEED_X}
+            cy={cy}
+            r={SEED_R}
+            fill={olive}
+            opacity={leafRecessOpacity(slide.type, olive, bg)}
+          />
         ))}
-      </g>
+      </DecorPiece>
     </>
   )
 }

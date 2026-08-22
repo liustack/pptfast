@@ -35,7 +35,6 @@ export function statement({ ir, slide, ctx }: SvgTemplateProps) {
         </tspan>
       </text>
       <rect x={96} y={420} width={26} height={6} fill={colors.accent} />
-      <line x1={96} y1={620} x2={1184} y2={620} stroke={colors.border} strokeWidth={1} />
       {session && (
         <text x={96} y={662} fontFamily={fonts.mono} fontSize={16} fill={colors.muted} dominantBaseline="alphabetic">
           {`SESSION ${session.year}-${session.quarter} · LIVE`}
@@ -107,7 +106,7 @@ export function pullQuote({ slide, ctx }: SvgTemplateProps) {
   return (
     <>
       <polyline
-        points="96,150 240,142 390,158 540,138 700,150 860,132 1010,144 1184,128"
+        points="96,150 240,142 390,158 540,138 740,138 890,158 1040,142 1184,150"
         fill="none"
         stroke={colors.border}
         strokeWidth={2}

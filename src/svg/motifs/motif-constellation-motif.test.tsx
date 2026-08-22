@@ -80,30 +80,27 @@ describe("ConstellationMotif（星座链 v2）", () => {
     expect(nodes(root).length).toBeGreaterThan(0)
   })
 
-  it("四种页型都画右缘节点链：主链 + 三条支链，连线走 border", () => {
+  it("四种页型都画右缘主链，不画支链", () => {
     const tokens = resolveStyle("tech")
     for (const slide of ALL_SLIDES) {
       const { root } = draw("tech", slide)
       const chains = Array.from(root.querySelectorAll("polyline"))
-      expect(chains).toHaveLength(4)
-      for (const c of chains) {
-        expect(c.getAttribute("stroke")).toBe(tokens.colors.border)
-        expect(c.getAttribute("fill")).toBe("none")
-        expect(c.getAttribute("stroke-width")).toBe("1.5")
-      }
-      // 主链七个折点
-      expect(chains[0].getAttribute("points")!.trim().split(/\s+/)).toHaveLength(7)
+      expect(chains).toHaveLength(1)
+      expect(chains[0]!.getAttribute("stroke")).toBe(tokens.colors.border)
+      expect(chains[0]!.getAttribute("fill")).toBe("none")
+      expect(chains[0]!.getAttribute("stroke-width")).toBe("1.5")
+      expect(chains[0]!.getAttribute("points")!.trim().split(/\s+/)).toHaveLength(7)
     }
   })
 
-  it("节点分三档着色：accent / chartPalette[1] / chartPalette[2]，疏星走 muted", () => {
+  it("节点只留主链：accent / chartPalette[1]，不画疏星与支链紫点", () => {
     const t = resolveStyle("tech")
     const { root } = draw("tech", contentSlide)
     const fills = nodes(root).map((c) => c.getAttribute("fill"))
-    expect(fills.filter((f) => f === t.colors.accent).length).toBe(7) // 5 枚 + 2 圈辉光
-    expect(fills.filter((f) => f === t.colors.chartPalette[1]).length).toBe(5) // 4 枚 + 1 圈辉光
-    expect(fills.filter((f) => f === t.colors.chartPalette[2]).length).toBe(1)
-    expect(fills.filter((f) => f === t.colors.muted).length).toBe(4) // 顶带疏星
+    expect(fills.filter((f) => f === t.colors.accent).length).toBe(6) // 4 枚 + 2 圈辉光
+    expect(fills.filter((f) => f === t.colors.chartPalette[1]).length).toBe(4) // 3 枚 + 1 圈辉光
+    expect(fills.filter((f) => f === t.colors.chartPalette[2]).length).toBe(0)
+    expect(fills.filter((f) => f === t.colors.muted).length).toBe(0)
   })
 
   /**
@@ -113,21 +110,16 @@ describe("ConstellationMotif（星座链 v2）", () => {
    * 4.5:1 的正文地板以下。辉光同乘该系数，节点与自己 halo 的强弱关系不变。
    * 连线（border，1.43:1）与顶带疏星（零相交）不动。
    */
-  it("节点整档退底 0.45（辉光同乘），连线与疏星保持原样", () => {
-    const t = resolveStyle("tech")
-    const { root } = draw("tech", contentSlide)
-    const solid = nodes(root).filter(
-      (c) => c.getAttribute("fill") !== t.colors.muted && Number(c.getAttribute("r")) <= 4,
-    )
-    expect(solid.length).toBe(10)
+  it("封面节点整档退底 0.45（辉光同乘）。内容页再按 3:1 天花板往下退", () => {
+    const cover = draw("tech", coverSlide).root
+    const solid = nodes(cover).filter((c) => Number(c.getAttribute("r")) <= 4)
+    expect(solid.length).toBe(7)
     for (const c of solid) expect(c.getAttribute("opacity")).toBe("0.45")
-    const glows = nodes(root).filter((c) => Number(c.getAttribute("r")) >= 6)
+    const glows = nodes(cover).filter((c) => Number(c.getAttribute("r")) >= 6)
     expect(glows.map((c) => c.getAttribute("opacity")).sort()).toEqual(["0.1125", "0.1125", "0.135"])
-    for (const s of nodes(root).filter((c) => c.getAttribute("fill") === t.colors.muted)) {
-      expect(s.getAttribute("opacity")).toBe(null)
-    }
-    for (const l of Array.from(root.querySelectorAll("polyline"))) {
-      expect(l.getAttribute("opacity")).toBe(null)
+    const content = draw("tech", contentSlide).root
+    for (const c of nodes(content).filter((c) => Number(c.getAttribute("r")) <= 4)) {
+      expect(Number(c.getAttribute("opacity"))).toBeLessThanOrEqual(0.45)
     }
   })
 
@@ -198,13 +190,12 @@ describe("ConstellationMotif（星座链 v2）", () => {
     }
   })
 
-  it("安全区：顶带疏星压在标题区上沿之上", () => {
+  it("不画顶带疏星（r2 预算裁掉的次件）", () => {
+    const muted = resolveStyle("tech").colors.muted
     const { root } = draw("tech", contentSlide)
-    const stars = nodes(root).filter((c) => c.getAttribute("fill") === resolveStyle("tech").colors.muted)
-    expect(stars).toHaveLength(4)
-    for (const s of stars) {
-      expect(Number(s.getAttribute("cy")) + Number(s.getAttribute("r"))).toBeLessThan(TITLE_ZONE_TOP)
-    }
+    const stars = nodes(root).filter((c) => c.getAttribute("fill") === muted)
+    expect(stars).toHaveLength(0)
+    expect(TITLE_ZONE_TOP).toBe(48)
   })
 
   it("换一家 tokens 渲染时颜色整体跟着换，tech 的色一处不残留（零 hex 纪律的实证）", () => {

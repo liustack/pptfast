@@ -9,7 +9,7 @@ import { FORM_BODY_FLOOR, FORM_TITLE_FLOOR, fitFormTitleLine } from "./legibilit
 
 type StepsComponent = Extract<Component, { type: "steps" }>
 
-const MIN_ARROW_W = 180
+const MIN_ARROW_W = 120
 const THRESHOLD_GAP = 40
 const GAP = 20
 const ARROW_H = 100

@@ -3,6 +3,7 @@ import dagre from "dagre"
 import type { Component } from "@/ir"
 import {
   fitSvgLine,
+  layoutSvgText,
   measureTextUnits,
 } from "../../lib/svg-text-layout"
 import type { RenderDef, SvgComponent } from "./types"
@@ -37,6 +38,17 @@ const NODE_SEP = 30
 const RANK_SEP = 48
 const FONT_SIZE = 12
 const MIN_FONT_SIZE = 9
+/** Diamond node type never shrinks below this unless the whole diagram scale is already smaller. */
+const NODE_FONT_FLOOR = 12
+/**
+ * Inscribed chord of a rhombus, as a fraction of bounding-box width.
+ * One centered line sits on the wide diagonal (~78% after glyph half-height).
+ * Two lines sit off-axis, so the chord shrinks to ~60%.
+ */
+const DIAMOND_FRAC_SINGLE = 0.78
+const DIAMOND_FRAC_MULTI = 0.6
+/** Page-space gap between an edge-label chip and the nearest node box. */
+const LABEL_NODE_CLEAR = 6
 const STROKE_W = 1.5
 const ARROW_SIZE = 6
 /**
@@ -124,6 +136,53 @@ function nodeHeight(lines: string[]): number {
   return NODE_H + (lines.length - 1) * NODE_LINE_PITCH
 }
 
+function diamondInscribedFrac(lineCount: number): number {
+  return lineCount > 1 ? DIAMOND_FRAC_MULTI : DIAMOND_FRAC_SINGLE
+}
+
+/** Diamond bounding width so the inscribed chord holds `lines` at FONT_SIZE. */
+function diamondWidthForLines(lines: string[]): number {
+  const maxUnits = Math.max(...lines.map((l) => measureTextUnits(l)), 0)
+  const textW = maxUnits * FONT_SIZE
+  const needed = (textW + NODE_PAD_X * 2) / diamondInscribedFrac(lines.length)
+  return Math.min(NODE_MAX_W, Math.max(NODE_MIN_W, Math.ceil(needed + 8)))
+}
+
+/**
+ * Size a diamond from its inscribed text band, not from the rectangle formula.
+ * CJK of 4+ characters wraps to 2 lines so the rhombus does not have to
+ * swallow a 4-em row in a NODE_MIN_W box. Latin just widens.
+ */
+function wrapDiamondLabel(label: string): string[] {
+  const raw = normalizeLabelLines(label)
+  if (raw.length > 1) return raw.slice(0, NODE_MAX_LINES)
+  const line = raw[0] ?? ""
+  if (!line) return [""]
+  const minUsable = NODE_MIN_W * diamondInscribedFrac(1) - NODE_PAD_X * 2
+  if (measureTextUnits(line) * FONT_SIZE <= minUsable) return raw
+  const oneW = diamondWidthForLines(raw)
+  const hasCjk = /[\u2e80-\u9fff]/.test(line)
+  if (!hasCjk || Array.from(line).length <= 3) {
+    if (oneW <= NODE_MAX_W) return raw
+  }
+  const half = Math.max(FONT_SIZE * 2, (measureTextUnits(line) * FONT_SIZE) / 2)
+  const wrapped = layoutSvgText(line, {
+    maxWidth: half,
+    fontSize: FONT_SIZE,
+    maxLines: 2,
+    balanceLines: true,
+    minPt: FONT_SIZE,
+  })
+  return wrapped.lines.length > 0 ? wrapped.lines : raw
+}
+
+interface Aabb {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 /**
  * Resolve layout direction. An explicit `direction` on the component is respected.
  * When unspecified, lay out both TB and LR and keep the orientation that fits
@@ -181,12 +240,13 @@ function computeLayout(component: FlowchartComponent, direction: FlowDirection):
   g.setDefaultEdgeLabel(() => ({}))
 
   for (const n of component.nodes) {
-    const lines = normalizeLabelLines(n.label)
+    const kind = n.kind ?? "rect"
+    const lines = kind === "diamond" ? wrapDiamondLabel(n.label) : normalizeLabelLines(n.label)
     g.setNode(n.id, {
-      width: nodeWidth(lines),
+      width: kind === "diamond" ? diamondWidthForLines(lines) : nodeWidth(lines),
       height: nodeHeight(lines),
       lines,
-      kind: n.kind ?? "rect",
+      kind,
     })
   }
   for (const e of component.edges) {
@@ -310,7 +370,91 @@ interface EdgeLabelVisual {
  * anything legible, so the label is omitted rather than rendered as a bare
  * "…" or empty string.
  */
-function computeEdgeLabel(edge: LayoutEdge, scale: number): EdgeLabelVisual | null {
+function boxesContainingPoint(p: { x: number; y: number }, nodeBoxes: Aabb[], scale: number): Aabb[] {
+  const x = p.x * scale
+  const y = p.y * scale
+  const slop = Math.max(4, 4 * scale)
+  return nodeBoxes.filter(
+    (n) => x >= n.x - slop && x <= n.x + n.w + slop && y >= n.y - slop && y <= n.y + n.h + slop,
+  )
+}
+
+function connectedNodeBoxes(edge: LayoutEdge, nodeBoxes: Aabb[], scale: number): Aabb[] {
+  const start = edge.points[0]
+  const end = edge.points[edge.points.length - 1]
+  if (!start || !end) return []
+  const out: Aabb[] = []
+  for (const n of [...boxesContainingPoint(start, nodeBoxes, scale), ...boxesContainingPoint(end, nodeBoxes, scale)]) {
+    if (!out.some((o) => o.x === n.x && o.y === n.y && o.w === n.w && o.h === n.h)) out.push(n)
+  }
+  return out
+}
+
+function aabbOverlap(a: Aabb, b: Aabb): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+/**
+ * Park an edge label above/below a horizontal connector (or left/right of a
+ * vertical one) so the chip sits outside the connected node boxes instead of
+ * on the diamond vertices.
+ */
+function parkEdgeLabel(
+  x: number,
+  y: number,
+  chipW: number,
+  chipH: number,
+  edge: LayoutEdge,
+  nodeBoxes: Aabb[],
+  scale: number,
+): { x: number; y: number } {
+  const { points } = edge
+  const midIdx = Math.floor(points.length / 2)
+  const mid = points[midIdx]
+  const before = points[Math.max(0, midIdx - 1)]
+  const after = points[Math.min(points.length - 1, midIdx + 1)]
+  if (!mid || !before || !after) return { x, y }
+  const horizontal = Math.abs(after.x - before.x) >= Math.abs(after.y - before.y)
+  const lean = horizontal ? mid.y - (before.y + after.y) / 2 : mid.x - (before.x + after.x) / 2
+  const preferPositive = lean > 0.5
+  const connected = connectedNodeBoxes(edge, nodeBoxes, scale)
+  const hit = connected.length > 0 ? connected : nodeBoxes
+  if (hit.length === 0) return { x, y }
+  const signs = preferPositive ? [1, -1] : [-1, 1]
+  const chipAt = (cx: number, cy: number): Aabb => ({
+    x: cx - chipW / 2,
+    y: cy - chipH / 2,
+    w: chipW,
+    h: chipH,
+  })
+  const overlaps = (cx: number, cy: number) => nodeBoxes.some((n) => aabbOverlap(chipAt(cx, cy), n))
+
+  const candidates: { x: number; y: number }[] = []
+  if (horizontal) {
+    const top = Math.min(...hit.map((n) => n.y))
+    const bot = Math.max(...hit.map((n) => n.y + n.h))
+    for (const s of signs) {
+      candidates.push(
+        s < 0
+          ? { x, y: top - LABEL_NODE_CLEAR - chipH / 2 }
+          : { x, y: bot + LABEL_NODE_CLEAR + chipH / 2 },
+      )
+    }
+  } else {
+    const left = Math.min(...hit.map((n) => n.x))
+    const right = Math.max(...hit.map((n) => n.x + n.w))
+    for (const s of signs) {
+      candidates.push(
+        s < 0
+          ? { x: left - LABEL_NODE_CLEAR - chipW / 2, y }
+          : { x: right + LABEL_NODE_CLEAR + chipW / 2, y },
+      )
+    }
+  }
+  return candidates.find((c) => !overlaps(c.x, c.y)) ?? candidates[0] ?? { x, y }
+}
+
+function computeEdgeLabel(edge: LayoutEdge, scale: number, nodeBoxes: Aabb[]): EdgeLabelVisual | null {
   if (!edge.label) return null
   const { points } = edge
   const midIdx = Math.floor(points.length / 2)
@@ -336,8 +480,9 @@ function computeEdgeLabel(edge: LayoutEdge, scale: number): EdgeLabelVisual | nu
   const labelW = measureTextUnits(fitted.text) * fitted.fontSize
   const chipW = labelW + LABEL_CHIP_PAD_X * 2
   const chipH = fitted.fontSize + LABEL_CHIP_PAD_Y * 2
-  const x = mid.x * scale
-  const y = mid.y * scale - 4
+  const parked = parkEdgeLabel(mid.x * scale, mid.y * scale, chipW, chipH, edge, nodeBoxes, scale)
+  const x = parked.x
+  const y = parked.y
   // The *un-margined* gap, centered on the same point as the chip/text —
   // deliberately wider than `availableWidth` (which already has the fit
   // margin taken out): this is the real physical space neighboring nodes
@@ -359,6 +504,72 @@ function computeEdgeLabel(edge: LayoutEdge, scale: number): EdgeLabelVisual | nu
     chipH,
     boxX: x - gapWidth / 2,
     boxW: gapWidth,
+  }
+}
+
+interface PreparedFlow {
+  layout: Layout
+  scale: number
+  labels: (EdgeLabelVisual | null)[]
+  width: number
+  height: number
+}
+
+/** Layout + parked labels, origin-shifted so every chip stays in positive local space. */
+function prepareFlow(component: FlowchartComponent, w: number): PreparedFlow {
+  const { layout, scale } = resolveLayout(component, w)
+  const nodeBoxes: Aabb[] = layout.nodes.map((n) => ({
+    x: n.x * scale,
+    y: n.y * scale,
+    w: n.w * scale,
+    h: n.h * scale,
+  }))
+  const labels = layout.edges.map((edge) => computeEdgeLabel(edge, scale, nodeBoxes))
+  let minX = 0
+  let minY = 0
+  let maxX = layout.width * scale
+  let maxY = layout.height * scale
+  for (const n of nodeBoxes) {
+    minX = Math.min(minX, n.x)
+    minY = Math.min(minY, n.y)
+    maxX = Math.max(maxX, n.x + n.w)
+    maxY = Math.max(maxY, n.y + n.h)
+  }
+  for (const label of labels) {
+    if (!label) continue
+    minX = Math.min(minX, label.chipX)
+    minY = Math.min(minY, label.chipY)
+    maxX = Math.max(maxX, label.chipX + label.chipW)
+    maxY = Math.max(maxY, label.chipY + label.chipH)
+  }
+  const ox = -minX
+  const oy = -minY
+  const shifted: Layout = {
+    ...layout,
+    nodes: layout.nodes.map((n) => ({ ...n, x: n.x + ox / scale, y: n.y + oy / scale })),
+    edges: layout.edges.map((e) => ({
+      ...e,
+      points: e.points.map((p) => ({ x: p.x + ox / scale, y: p.y + oy / scale })),
+    })),
+  }
+  const shiftedLabels = labels.map((label) =>
+    label
+      ? {
+          ...label,
+          x: label.x + ox,
+          y: label.y + oy,
+          chipX: label.chipX + ox,
+          chipY: label.chipY + oy,
+          boxX: label.boxX + ox,
+        }
+      : null,
+  )
+  return {
+    layout: shifted,
+    scale,
+    labels: shiftedLabels,
+    width: maxX - minX,
+    height: maxY - minY,
   }
 }
 
@@ -394,17 +605,16 @@ function smoothEdgePath(
 
 export const flowchart: SvgComponent<FlowchartComponent> = {
   measure(component, w) {
-    const { layout, scale } = resolveLayout(component, w)
-    // Fit within both width and the height cap so the chart never overflows.
-    return layout.height * scale
+    return prepareFlow(component, w).height
   },
 
   render(component, box, ctx) {
-    const { layout, scale } = resolveLayout(component, box.w)
+    const flow = prepareFlow(component, box.w)
+    const { layout, scale, labels } = flow
     const scaleX = scale
     const scaleY = scale // uniform scale, bounded by width AND height
     // 宽屏画布下水平居中，避免整图贴左留出大片死白
-    const dx = Math.max(0, (box.w - layout.width * scale) / 2)
+    const dx = Math.max(0, (box.w - flow.width) / 2)
 
     return (
       <g transform={`translate(${box.x + dx},${box.y})`}>
@@ -433,17 +643,21 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
           const nw = n.w * scaleX
           const nh = n.h * scaleY
           // 呼吸感：留白在局部预算（nodeWidth 的 NODE_PAD_X）与渲染预算里
-          // 同值同源，并随 scale 缩放——旧实现只扣固定 6px/边，且渲染字号
-          // 比预算字号大 1.15×，fitSvgLine 会把文字缩到贴满「盒宽-12px」。
-          // diamond 的可用文本宽只有中线附近约 60%。
+          // 同值同源，并随 scale 缩放。diamond 按内接弦宽定盒，渲染用同一
+          // 比例，不再按矩形定宽再砍 40%。
           const padX = NODE_PAD_X * scaleX
-          const usableW = (n.kind === "diamond" ? nw * 0.6 : nw) - padX * 2
+          const frac = n.kind === "diamond" ? diamondInscribedFrac(n.lines.length) : 1
+          const usableW = nw * frac - padX * 2
           // 字号与盒宽预算同源（FONT_SIZE × scale）：图缩小时框和字同步小
-          //（保底 10），放大时最大 18——不再额外 ×1.15 吃掉预算外的留白。
-          const scaledFont = Math.max(10, Math.min(18, Math.round(FONT_SIZE * scale)))
+          //（保底 10，diamond 在 scale≥1 时保底 12），放大时最大 18。
+          const rawScaled = FONT_SIZE * scale
+          const scaledFont = Math.max(
+            n.kind === "diamond" ? Math.min(NODE_FONT_FLOOR, Math.max(MIN_FONT_SIZE, rawScaled)) : 10,
+            Math.min(18, rawScaled),
+          )
           const fits = n.lines.map((line) =>
             fitSvgLine(line, {
-              maxWidth: Math.max(24, usableW),
+              maxWidth: Math.max(1, usableW),
               fontSize: scaledFont,
               minFontSize: MIN_FONT_SIZE,
             }),
@@ -455,10 +669,7 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
             ny + nh / 2 - ((n.lines.length - 1) * pitch) / 2
 
           return (
-            <g
-              key={n.id}
-              data-audit-box={`${box.x + dx + nx},${box.y + ny},${nw}`}
-            >
+            <g key={n.id} data-flow-node="1">
               {n.kind === "diamond" ? (
                 <polygon
                   points={`${nx + nw / 2},${ny} ${nx + nw},${ny + nh / 2} ${nx + nw / 2},${ny + nh} ${nx},${ny + nh / 2}`}
@@ -501,8 +712,7 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
             backed by a small chip so it stays legible whether it lands over
             open space, a crossing line, or (pre-fit, the reported bug) a
             neighboring node card. */}
-        {layout.edges.map((edge, i) => {
-          const label = computeEdgeLabel(edge, scale)
+        {labels.map((label, i) => {
           if (!label) return null
           return (
             <Fragment key={`l${i}`}>

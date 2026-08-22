@@ -594,6 +594,19 @@ const SECOND_FRONT_MOVES = JSON.parse(
   readFileSync(path.join(__fixtureDir, "__fixtures__/second-front-moves.json"), "utf-8"),
 ) as Record<string, Record<string, Record<string, { from: string | null; to: string | null }>>>
 
+/**
+ * Fourth hop in the chain: gallery r2 D10 retired `image-lead-split` (auto
+ * content pool 12 -> 11), D20 narrowed lecture/luxe off the top-title /
+ * top-image layouts, and E22 dropped `side-highlight` from consulting only.
+ * Same sampler-denominator mechanism as colophon / restore-wave cover
+ * drift (`hash % totalWeight` lands on a different candidate). Cover,
+ * chapter, and ending are absent from every row. Historical JSON above is
+ * not recaptured.
+ */
+const GALLERY_R2_CONTENT_MOVES = JSON.parse(
+  readFileSync(path.join(__fixtureDir, "__fixtures__/gallery-r2-content-moves.json"), "utf-8"),
+) as Record<string, Record<string, Record<string, { from: string | null; to: string | null }>>>
+
 const FIXTURE_SEEDS = [1, 2, 3, 4, 5]
 
 /**
@@ -982,11 +995,11 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     ])
   })
 
-  it("every recorded second-front non-cover move still lands, and every unlisted non-cover page stays put", () => {
-    // Cover is the fidelity-wave slot (asserted above). Adjacent
-    // anti-repetition did not cascade into chapter / content / ending on
-    // this fixture: every recorded second-front move still holds, and no
-    // extra non-cover hop appeared.
+  it("every recorded second-front non-cover move still lands, then gallery r2 content hops, and every unlisted non-cover page stays put", () => {
+    // Chain: pre-second-front + SECOND_FRONT_MOVES + GALLERY_R2_CONTENT_MOVES
+    // = now. Cover is the restore-wave slot (asserted above). Chapter and
+    // ending did not move on this hop. Content moves because the auto pool
+    // shrank 12 -> 11 and three themes narrowed their own sets.
     for (const themeId of CANONICAL_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
         const now = resolveSequence(themeId, seed)
@@ -996,13 +1009,30 @@ describe("second-front wave: chapter / content / ending allocation", () => {
           const recorded = SECOND_FRONT_MOVES[themeId]?.[String(seed)]?.[String(i)]
           if (recorded) {
             expect(pre![i], `${themeId} seed=${seed} page ${i} from`).toBe(recorded.from)
-            expect(now[i], `${themeId} seed=${seed} page ${i} to`).toBe(recorded.to)
-          } else {
-            expect(now[i], `${themeId} seed=${seed} page ${i} should be untouched`).toBe(pre![i])
           }
+          const afterSecond = recorded ? recorded.to : pre![i]
+          const r2 = GALLERY_R2_CONTENT_MOVES[themeId]?.[String(seed)]?.[String(i)]
+          if (r2) {
+            expect(afterSecond, `${themeId} seed=${seed} page ${i} r2 from`).toBe(r2.from)
+            expect(now[i], `${themeId} seed=${seed} page ${i} r2 to`).toBe(r2.to)
+          } else {
+            expect(now[i], `${themeId} seed=${seed} page ${i} should be untouched after r2`).toBe(afterSecond)
+          }
+          expect(now[i], `${themeId} seed=${seed} page ${i} retired id`).not.toBe("image-lead-split")
         }
       }
     }
+  })
+
+  it("gallery r2 content hops are content pages only (indices 2/3/5), never cover/chapter/ending", () => {
+    const pages = new Set<string>()
+    for (const seeds of Object.values(GALLERY_R2_CONTENT_MOVES)) {
+      for (const hops of Object.values(seeds)) {
+        for (const page of Object.keys(hops)) pages.add(page)
+      }
+    }
+    expect([...pages].sort()).toEqual(["2", "3", "5"])
+    expect(Object.keys(GALLERY_R2_CONTENT_MOVES).sort()).toEqual([...CANONICAL_THEME_IDS].sort())
   })
 
   it("no two structural identities share a chapter, content, or ending tendency set", () => {
@@ -1066,12 +1096,11 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     expect(collisions).toEqual([["enterprise", "classroom"]])
   })
 
-  it("seeds 1-40: 24/24 distinct sequence-bundles, slot diversity chapter 18 / content 19 / ending 14", () => {
+  it("seeds 1-40: 24/24 distinct sequence-bundles, slot diversity chapter 18 / content 21 / ending 14", () => {
     // Union tree re-measured: the 40-seed bundle still separates all 24
-    // identities. Slot diversity is unchanged from the second-front-only
-    // tree (cover lock does not retouch these three axes).
-    // Board-cover-restore wave 2 (2026-08-22): still 24/24, chapter 18 /
-    // content 19 / ending 14.
+    // identities. Gallery r2 (pool 11 + lecture/luxe/consulting content
+    // narrowing) lifts content-slot diversity 19 -> 21. Chapter 18 and
+    // ending 14 stay put: those pools did not change.
     const over40 = new Set(
       STRUCTURAL_IDENTITY_IDS.map((id) =>
         JSON.stringify(Array.from({ length: 40 }, (_, i) => resolveSequence(id, i + 1))),
@@ -1085,7 +1114,7 @@ describe("second-front wave: chapter / content / ending allocation", () => {
         ),
       ).size
     expect(slotCount(1)).toBe(18)
-    expect(slotCount(2)).toBe(19)
+    expect(slotCount(2)).toBe(21)
     expect(slotCount(4)).toBe(18)
     expect(slotCount(6)).toBe(14)
   })
@@ -1093,13 +1122,45 @@ describe("second-front wave: chapter / content / ending allocation", () => {
   it("playbill locks cover to bill-head. chapter / content / ending stay the full set — tendencies compress probability, they do not replace a lock", () => {
     expect(THEME_DEFINITIONS.playbill.layouts.cover).toEqual(["bill-head"])
     expect(THEME_DEFINITIONS.playbill.layouts.chapter).toEqual(THEME_DEFINITIONS.consulting.layouts.chapter)
-    expect(THEME_DEFINITIONS.playbill.layouts.content).toEqual(THEME_DEFINITIONS.consulting.layouts.content)
+    expect(THEME_DEFINITIONS.playbill.layouts.content).toEqual(__fullLayoutSet("content"))
+    expect(THEME_DEFINITIONS.consulting.layouts.content).toEqual([
+      "narrow-column",
+      "two-column",
+      "rail-numbered",
+      "banner-heading",
+      "stacked-poster",
+      "bento-panel",
+      "tone-adaptive-content",
+      "asymmetric-triptych",
+      "quiet-frame",
+      "split-band",
+    ])
     expect(THEME_DEFINITIONS.playbill.layouts.ending).toEqual(THEME_DEFINITIONS.consulting.layouts.ending)
     expect(THEME_DEFINITIONS.playbill.layoutTendencies?.content).toEqual([
       "split-band",
       "stacked-poster",
       "banner-heading",
     ])
+  })
+
+  it("lecture and luxe drop top-title / top-image content layouts, consulting drops side-highlight, none of those ids leak into live picks", () => {
+    const framedDropped = ["banner-heading", "split-band", "stacked-poster"] as const
+    for (const id of framedDropped) {
+      expect(THEME_DEFINITIONS.lecture.layouts.content, `lecture still offers ${id}`).not.toContain(id)
+      expect(THEME_DEFINITIONS.luxe.layouts.content, `luxe still offers ${id}`).not.toContain(id)
+    }
+    expect(THEME_DEFINITIONS.consulting.layouts.content).not.toContain("side-highlight")
+    expect(THEME_DEFINITIONS.playbill.layouts.content).toContain("side-highlight")
+    for (let seed = 1; seed <= 40; seed++) {
+      const lecture = resolveSequence("lecture", seed)
+      const luxe = resolveSequence("luxe", seed)
+      const consulting = resolveSequence("consulting", seed)
+      for (const page of [2, 3, 5]) {
+        expect(framedDropped, `lecture seed=${seed} page ${page}`).not.toContain(lecture[page])
+        expect(framedDropped, `luxe seed=${seed} page ${page}`).not.toContain(luxe[page])
+        expect(consulting[page], `consulting seed=${seed} page ${page}`).not.toBe("side-highlight")
+      }
+    }
   })
 })
 

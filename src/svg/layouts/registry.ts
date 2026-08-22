@@ -121,7 +121,6 @@ import { layoutDef as contentToneAdaptiveContent } from "./content-tone-adaptive
 import { layoutDef as contentSideHighlight } from "./content-side-highlight"
 import { layoutDef as contentAsymmetricTriptych } from "./content-asymmetric-triptych"
 import { layoutDef as contentQuietFrame } from "./content-quiet-frame"
-import { layoutDef as contentImageLeadSplit } from "./content-image-lead-split"
 import { layoutDef as contentSplitBand } from "./content-split-band"
 import { layoutDef as contentQuoteStage } from "./content-quote-stage"
 import { layoutDef as contentStatement } from "./content-statement"
@@ -597,7 +596,6 @@ const CONTENT_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [contentSideHighlight.id]: contentSideHighlight,
   [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
   [contentQuietFrame.id]: contentQuietFrame,
-  [contentImageLeadSplit.id]: contentImageLeadSplit,
   [contentSplitBand.id]: contentSplitBand,
   [contentQuoteStage.id]: contentQuoteStage,
   [contentStatement.id]: contentStatement,
@@ -628,7 +626,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 53 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 52 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

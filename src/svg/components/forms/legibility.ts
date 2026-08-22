@@ -10,12 +10,27 @@ import {
 export const FORM_TITLE_FLOOR = 20
 export const FORM_BODY_FLOOR = 15
 
+/**
+ * Card body ceiling vs the item title. Measured on academic p03
+ * (outline_grid upscaled 41 / 29.5 ≈ 0.72) and museum p03 (cycle labels
+ * at the title floor). Body may sit above this ratio only to honor
+ * `FORM_BODY_FLOOR` when the title is still near 20px.
+ */
+export const FORM_BODY_TITLE_CAP = 0.6
+
 /** Board rhythm for vertical cards: 300×280, title 23, body 16.5. */
 export const BOARD_CARD_W = 300
 export const BOARD_CARD_H = 280
 export const BOARD_TITLE = 23
 export const BOARD_BODY = 16.5
 export const TITLE_BODY_RATIO = BOARD_TITLE / BOARD_BODY
+
+/** Clamp body size to the title proportion cap without dropping the floor. */
+export function capFormBody(titleSize: number, bodySize: number): number {
+  const title = Math.max(0, titleSize)
+  const requested = Number.isFinite(bodySize) ? bodySize : FORM_BODY_FLOOR
+  return Math.max(FORM_BODY_FLOOR, Math.min(requested, title * FORM_BODY_TITLE_CAP))
+}
 
 const TITLE_LH = 1.4
 const BODY_LH = 1.4
@@ -47,7 +62,7 @@ export function boardTypeScale(cardW: number, cardH?: number): { title: number; 
   const scale =
     cardH != null && cardH > 0 ? Math.min(wScale, cardH / BOARD_CARD_H) : wScale
   const title = Math.max(FORM_TITLE_FLOOR, BOARD_TITLE * scale)
-  const body = Math.max(FORM_BODY_FLOOR, title / TITLE_BODY_RATIO)
+  const body = capFormBody(title, title / TITLE_BODY_RATIO)
   return { title, body }
 }
 
@@ -125,11 +140,12 @@ export function layoutAtSize(
 
 export function layoutFormTitle(
   text: string,
-  opts: { maxWidth: number; fontSize: number; fontFamily?: string; maxLines?: number },
+  opts: { maxWidth: number; fontSize: number; fontFamily?: string; maxLines?: number; floor?: number },
 ) {
+  const floor = opts.floor ?? FORM_TITLE_FLOOR
   return layoutAtSize(text, {
     maxWidth: opts.maxWidth,
-    fontSize: Math.max(FORM_TITLE_FLOOR, opts.fontSize),
+    fontSize: Math.max(floor, opts.fontSize),
     maxLines: opts.maxLines ?? 2,
     lineHeightRatio: TITLE_LH,
     bold: true,
@@ -146,11 +162,15 @@ export function layoutFormBody(
     maxLines?: number
     lineHeightRatio?: number
     bold?: boolean
+    /** When set, body is capped at `titleSize * FORM_BODY_TITLE_CAP`. */
+    titleSize?: number
   },
 ) {
+  const requested = Math.max(FORM_BODY_FLOOR, opts.fontSize)
+  const fontSize = opts.titleSize != null ? capFormBody(opts.titleSize, requested) : requested
   return layoutAtSize(text, {
     maxWidth: opts.maxWidth,
-    fontSize: Math.max(FORM_BODY_FLOOR, opts.fontSize),
+    fontSize,
     maxLines: opts.maxLines ?? 4,
     lineHeightRatio: opts.lineHeightRatio ?? BODY_LH,
     bold: opts.bold,
@@ -261,7 +281,7 @@ export function fillCardType(opts: {
   const bodyLh = opts.bodyLhRatio ?? BODY_LH
   const extra = opts.extraAbove ?? 0
   let titleSize = Math.max(FORM_TITLE_FLOOR, opts.titleSize)
-  let bodySize = Math.max(FORM_BODY_FLOOR, opts.bodySize)
+  let bodySize = capFormBody(titleSize, Math.max(FORM_BODY_FLOOR, opts.bodySize))
   const longest = opts.longestBody ?? ""
   const cap = maxTitleSize(opts.contentW, opts.titles ?? [], opts.fonts?.heading)
 
@@ -282,14 +302,14 @@ export function fillCardType(opts: {
     for (let i = 0; i < 10; i++) {
       const mid = (lo + hi) / 2
       const t = titleSize * mid
-      const b = Math.max(FORM_BODY_FLOOR, t / TITLE_BODY_RATIO)
+      const b = capFormBody(t, t / TITLE_BODY_RATIO)
       const lines = Math.max(bodyMaxLines, linesFor(b, 8))
       const ns = stackH(t, b, lines)
       if (ns > opts.innerH * 0.92 || t > cap) hi = mid
       else lo = mid
     }
     titleSize *= lo
-    bodySize = Math.max(FORM_BODY_FLOOR, titleSize / TITLE_BODY_RATIO)
+    bodySize = capFormBody(titleSize, titleSize / TITLE_BODY_RATIO)
     bodyMaxLines = Math.max(bodyMaxLines, linesFor(bodySize, 8))
   } else if (opts.innerH > 0 && h > opts.innerH && longest.trim()) {
     for (let extraLines = bodyMaxLines; extraLines <= 8; extraLines++) {
@@ -301,7 +321,7 @@ export function fillCardType(opts: {
   }
 
   titleSize = Math.min(Math.max(FORM_TITLE_FLOOR, titleSize), cap)
-  bodySize = Math.max(FORM_BODY_FLOOR, titleSize / TITLE_BODY_RATIO)
+  bodySize = capFormBody(titleSize, titleSize / TITLE_BODY_RATIO)
   if (!longest.trim()) bodyMaxLines = 0
   else bodyMaxLines = Math.max(2, bodyMaxLines)
   return { titleSize, bodySize, bodyMaxLines }

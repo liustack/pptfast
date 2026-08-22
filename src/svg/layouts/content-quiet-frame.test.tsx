@@ -140,6 +140,14 @@ describe("QuietFrameContent", () => {
     expect(markup).toContain("右")
   })
 
+  it("body rect sits inside the framed-theme content floor", () => {
+    const markup = render(ir([chapter1, withSubTwoComponents]), withSubTwoComponents, 1)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
+    const bodyRect = root.querySelector("[data-audit-rect]")!
+    const [, y, , h] = bodyRect.getAttribute("data-audit-rect")!.split(",").map(Number)
+    expect(y + h).toBeLessThanOrEqual(612)
+  })
+
   it("passes assertSubset (no forbidden elements) at both n=1 (narrowed) and n=2 (full width)", () => {
     for (const slide of [withSub, withSubTwoComponents]) {
       const markup = render(ir([chapter1, slide]), slide, 1)
