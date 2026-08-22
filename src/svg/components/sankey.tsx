@@ -22,16 +22,14 @@ type SankeyComponent = Extract<Component, { type: "sankey" }>
  * carries zero `<p:pic>` for this component, natively editable vectors, not
  * a picture of a chart.
  *
- * **Layout: deterministic, hand-rolled — deliberately not dagre.**
- * `flowchart.tsx` is this codebase's existing dagre consumer, and dagre is
- * available, but a sankey's node *height* must be proportional to its total
- * through-flow (value-driven geometry, plan task 3 item 2) — dagre lays out
- * fixed-size boxes, it has no notion of a node's size being a function of
- * the edges touching it, so reusing it here would only buy the x-axis
+ * **Layout: deterministic, hand-rolled in-repo, same posture as flowchart.**
+ * Both sankey and flowchart own geometry here ("engine owns geometry",
+ * `docs/concepts.md`'s settled decision). A sankey's node *height* must be
+ * proportional to its total through-flow (value-driven geometry, plan task
+ * 3 item 2): a generic layered box layout would only buy the x-axis
  * (layer) assignment while still requiring a fully custom y-axis (value
- * stacking) pass on top. Given that, this file owns 100% of the geometry
- * itself end to end ("engine owns geometry", `docs/concepts.md`'s settled
- * decision) rather than splitting one diagram's layout across two different
+ * stacking) pass on top, so this file owns 100% of the geometry itself end
+ * to end rather than splitting one diagram's layout across two different
  * algorithms with two different determinism stories to audit. Every step
  * below is pure arithmetic over `nodes`/`links` in their *authored array
  * order* — no `Math.random`, no `Date`, and every `Map`/`Set` is only ever

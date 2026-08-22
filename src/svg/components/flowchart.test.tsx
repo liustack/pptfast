@@ -139,7 +139,7 @@ describe("flowchart component", () => {
   })
 
   it("bounds height so a tall TB flowchart never overflows the slide", () => {
-    // A 6-node vertical chain: dagre lays this out tall-and-narrow. Width-only
+    // A 6-node vertical chain: layered layout is tall-and-narrow. Width-only
     // scaling would blow it up to thousands of px (overflowing the 720px slide).
     const tall = {
       type: "flowchart" as const,
@@ -776,7 +776,7 @@ describe("flowchart diamond label and edge-label clearance (ember p05 leftover)"
     }
   })
 
-  it("parks 数据采集 / 设备接入 edge-label chips off the diamond bbox", () => {
+  it("parks 数据采集 off the diamond bbox and drops the 设备接入 edge label as a node-name duplicate", () => {
     const { container } = svg(flowchart.render(emberZh, { x: 96, y: 228, w: 1088 }, ctx))
     const diamond = Array.from(container.querySelectorAll("polygon")).find(
       (p) => p.getAttribute("fill") === ctx.colors.surface,
@@ -788,18 +788,417 @@ describe("flowchart diamond label and edge-label clearance (ember p05 leftover)"
       (t) => t.getAttribute("fill") === ctx.colors.muted,
     )
     const contents = edgeLabels.map((t) => t.textContent ?? "")
-    expect(contents).toEqual(expect.arrayContaining(["数据采集", "设备接入"]))
+    expect(contents).toContain("数据采集")
+    expect(contents).not.toContain("设备接入")
 
     for (const t of edgeLabels) {
       const chip = t.previousElementSibling
       expect(chip?.tagName.toLowerCase()).toBe("rect")
       const chipBox = rectBox(chip!)
       expect(intersects(chipBox, dBox)).toBe(false)
-      // Parked above/below the diamond, not in the same band as the vertices
-      // where the truncated 「设…」 used to sit under the edge chips.
-      const fullyAbove = chipBox.y + chipBox.h <= dBox.y
-      const fullyBelow = chipBox.y >= dBox.y + dBox.h
-      expect(fullyAbove || fullyBelow).toBe(true)
     }
   })
 })
+
+// 2026-08-23 用户裁定：推翻 2026-07-14「连线一律曲线」，flowchart 连线改
+// 正交圆角肘（禁斜线，圆角半径小，箭头继续 polygon）。层序走仓库内分层布局，
+// 同边多出边扇口，标签离描边 6-10px，先线后盒。
+describe("flowchart orthogonal rounded routing", () => {
+  const fork = {
+    type: "flowchart" as const,
+    direction: "TB" as const,
+    nodes: [
+      { id: "a", label: "Start", kind: "round" as const },
+      { id: "b", label: "Left" },
+      { id: "c", label: "Right" },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "a", to: "c" },
+    ],
+  }
+
+  const diamondFork = {
+    type: "flowchart" as const,
+    direction: "TB" as const,
+    nodes: [
+      { id: "s", label: "Begin", kind: "round" as const },
+      { id: "d", label: "If", kind: "diamond" as const },
+      { id: "y", label: "Yes" },
+      { id: "n", label: "No" },
+    ],
+    edges: [
+      { from: "s", to: "d" },
+      { from: "d", to: "y", label: "YES" },
+      { from: "d", to: "n", label: "NO" },
+    ],
+  }
+
+  function parsePath(d: string): { cmd: string; nums: number[] }[] {
+    const out: { cmd: string; nums: number[] }[] = []
+    const re = /([MLHVQCSTAZ])([^MLHVQCSTAZ]*)/gi
+    for (const m of d.matchAll(re)) {
+      const nums = m[2]
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(Number)
+      out.push({ cmd: m[1]!.toUpperCase(), nums })
+    }
+    return out
+  }
+
+  function assertOrthogonal(d: string) {
+    const cmds = parsePath(d)
+    expect(cmds.length).toBeGreaterThan(0)
+    for (const c of cmds) {
+      expect(["M", "L", "H", "V", "Q"]).toContain(c.cmd)
+    }
+    let x = 0
+    let y = 0
+    for (const c of cmds) {
+      if (c.cmd === "M" || c.cmd === "L") {
+        const nx = c.nums[0]!
+        const ny = c.nums[1]!
+        if (c.cmd === "L") {
+          expect(Math.abs(nx - x) < 0.05 || Math.abs(ny - y) < 0.05).toBe(true)
+        }
+        x = nx
+        y = ny
+      } else if (c.cmd === "H") {
+        x = c.nums[0]!
+      } else if (c.cmd === "V") {
+        y = c.nums[0]!
+      } else if (c.cmd === "Q") {
+        x = c.nums[2]!
+        y = c.nums[3]!
+      }
+    }
+  }
+
+  function edgePaths(container: HTMLElement): SVGPathElement[] {
+    return Array.from(container.querySelectorAll("path"))
+  }
+
+  it("draws connectors as orthogonal rounded elbows (H/V/Q, never cubic, never diagonal L)", () => {
+    const { container } = svg(flowchart.render(component, { x: 0, y: 0, w: 600 }, ctx))
+    const paths = edgePaths(container)
+    expect(paths.length).toBe(component.edges.length)
+    for (const p of paths) {
+      const d = p.getAttribute("d") ?? ""
+      expect(d).not.toMatch(/\b[CS]\b/)
+      assertOrthogonal(d)
+    }
+  })
+
+  it("fans same-side attachments so two outgoing edges do not share a start point", () => {
+    const { container } = svg(flowchart.render(fork, { x: 0, y: 0, w: 800 }, ctx))
+    const starts = edgePaths(container).map((p) => {
+      const d = p.getAttribute("d") ?? ""
+      const m = /M\s+([\d.-]+)[\s,]+([\d.-]+)/.exec(d)
+      return { x: Number(m?.[1]), y: Number(m?.[2]) }
+    })
+    expect(starts).toHaveLength(2)
+    const dx = Math.abs(starts[0]!.x - starts[1]!.x)
+    const dy = Math.abs(starts[0]!.y - starts[1]!.y)
+    expect(Math.max(dx, dy)).toBeGreaterThanOrEqual(12)
+  })
+
+  it("fans a diamond's two outgoing edges off the same vertex", () => {
+    const { container } = svg(flowchart.render(diamondFork, { x: 0, y: 0, w: 800 }, ctx))
+    const paths = edgePaths(container)
+    expect(paths.length).toBe(3)
+    const labeled = Array.from(container.querySelectorAll("text"))
+      .filter((t) => t.getAttribute("fill") === ctx.colors.muted)
+      .map((t) => t.textContent)
+    expect(labeled).toEqual(expect.arrayContaining(["YES", "NO"]))
+    const ds = paths.map((p) => p.getAttribute("d") ?? "")
+    expect(new Set(ds).size).toBe(ds.length)
+    expect(ds.some((d) => d.includes("Q "))).toBe(true)
+    for (const d of ds) assertOrthogonal(d)
+  })
+
+  it("keeps an edge-label chip 6-10px off the connector stroke when the gap is open", () => {
+    const two = {
+      type: "flowchart" as const,
+      direction: "LR" as const,
+      nodes: [
+        { id: "a", label: "From", kind: "rect" as const },
+        { id: "b", label: "To", kind: "rect" as const },
+      ],
+      edges: [{ from: "a", to: "b", label: "go" }],
+    }
+    const { container } = svg(flowchart.render(two, { x: 0, y: 0, w: 600 }, ctx))
+    const text = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "go")
+    expect(text).toBeTruthy()
+    const chip = text!.previousElementSibling!
+    const chipBox = {
+      x: Number(chip.getAttribute("x")),
+      y: Number(chip.getAttribute("y")),
+      w: Number(chip.getAttribute("width")),
+      h: Number(chip.getAttribute("height")),
+    }
+    const d = edgePaths(container)[0]!.getAttribute("d") ?? ""
+    const cmds = parsePath(d)
+    const pts: { x: number; y: number }[] = []
+    let x = 0
+    let y = 0
+    for (const c of cmds) {
+      if (c.cmd === "M" || c.cmd === "L") {
+        x = c.nums[0]!
+        y = c.nums[1]!
+        pts.push({ x, y })
+      } else if (c.cmd === "H") {
+        x = c.nums[0]!
+        pts.push({ x, y })
+      } else if (c.cmd === "V") {
+        y = c.nums[0]!
+        pts.push({ x, y })
+      } else if (c.cmd === "Q") {
+        x = c.nums[2]!
+        y = c.nums[3]!
+        pts.push({ x, y })
+      }
+    }
+    function distToSeg(
+      p: { x: number; y: number },
+      a: { x: number; y: number },
+      b: { x: number; y: number },
+    ) {
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const len2 = dx * dx + dy * dy
+      if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+      let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+      t = Math.max(0, Math.min(1, t))
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+    }
+    const corners = [
+      { x: chipBox.x, y: chipBox.y },
+      { x: chipBox.x + chipBox.w, y: chipBox.y },
+      { x: chipBox.x, y: chipBox.y + chipBox.h },
+      { x: chipBox.x + chipBox.w, y: chipBox.y + chipBox.h },
+    ]
+    let gap = Infinity
+    for (const corner of corners) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        gap = Math.min(gap, distToSeg(corner, pts[i]!, pts[i + 1]!))
+      }
+    }
+    expect(gap).toBeGreaterThanOrEqual(6)
+    expect(gap).toBeLessThanOrEqual(10.5)
+  })
+
+  it("paints every edge path before any node group (line under box)", () => {
+    const { container } = svg(flowchart.render(fork, { x: 0, y: 0, w: 800 }, ctx))
+    const outer = container.querySelector("g")
+    const children = Array.from(outer?.children ?? [])
+    const lastPath = Math.max(
+      ...children.map((el, i) => (el.tagName.toLowerCase() === "path" ? i : -1)),
+    )
+    const firstNode = Math.min(
+      ...children.map((el, i) =>
+        el.tagName.toLowerCase() === "g" && el.hasAttribute("data-flow-node") ? i : 999,
+      ),
+    )
+    expect(lastPath).toBeGreaterThanOrEqual(0)
+    expect(firstNode).toBeLessThan(999)
+    expect(lastPath).toBeLessThan(firstNode)
+  })
+
+  it("keeps arrows as polygons and never emits a marker", () => {
+    const { container } = svg(flowchart.render(fork, { x: 0, y: 0, w: 800 }, ctx))
+    expect(container.querySelectorAll("marker")).toHaveLength(0)
+    expect(container.querySelectorAll("polygon").length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("is deterministic: the same IR renders byte-identical markup twice", () => {
+    const a = renderToStaticMarkup(flowchart.render(diamondFork, { x: 16, y: 24, w: 720 }, ctx))
+    const b = renderToStaticMarkup(flowchart.render(diamondFork, { x: 16, y: 24, w: 720 }, ctx))
+    expect(a).toBe(b)
+  })
+})
+
+// Gallery component--flowchart--zh: labels[0] reuses the diamond node name
+// 「席位开通」, so the c→d chip parked below the rhombus with no nearby
+// stroke. labels[1] 「用量采集」 sits on the bidirectional pair and covers
+// the arrowheads. Edge labels now omit node-name duplicates, draw only
+// when the edge has a real polyline, and stay 6-10px off their own stroke
+// clear of arrow tips.
+describe("flowchart edge labels: omit duplicates, stay off strokes and arrows", () => {
+  const galleryZh = {
+    type: "flowchart" as const,
+    direction: "LR" as const,
+    nodes: [
+      { id: "a", label: "需求确认", kind: "round" as const },
+      { id: "b", label: "方案设计" },
+      { id: "c", label: "席位开通", kind: "diamond" as const },
+      { id: "d", label: "权限配置" },
+      { id: "e", label: "验收交付", kind: "round" as const },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+      { from: "c", to: "d", label: "席位开通" },
+      { from: "c", to: "b", label: "用量采集" },
+      { from: "d", to: "e" },
+    ],
+  }
+
+  const BOX = { x: 96, y: 176, w: 1088 }
+
+  function mutedLabels(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("fill") === ctx.colors.muted,
+    )
+  }
+
+  function parsePath(d: string): { x: number; y: number }[] {
+    const pts: { x: number; y: number }[] = []
+    let x = 0
+    let y = 0
+    const re = /([MLHVQCSTAZ])([^MLHVQCSTAZ]*)/gi
+    for (const m of d.matchAll(re)) {
+      const cmd = m[1]!.toUpperCase()
+      const nums = m[2]!
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(Number)
+      if (cmd === "M" || cmd === "L") {
+        x = nums[0]!
+        y = nums[1]!
+        pts.push({ x, y })
+      } else if (cmd === "H") {
+        x = nums[0]!
+        pts.push({ x, y })
+      } else if (cmd === "V") {
+        y = nums[0]!
+        pts.push({ x, y })
+      } else if (cmd === "Q") {
+        x = nums[2]!
+        y = nums[3]!
+        pts.push({ x, y })
+      }
+    }
+    return pts
+  }
+
+  function distToSeg(
+    p: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) {
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const len2 = dx * dx + dy * dy
+    if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+    t = Math.max(0, Math.min(1, t))
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+  }
+
+  function chipNearEdgeDist(
+    chip: { x: number; y: number; w: number; h: number },
+    pts: { x: number; y: number }[],
+  ) {
+    const corners = [
+      { x: chip.x, y: chip.y },
+      { x: chip.x + chip.w, y: chip.y },
+      { x: chip.x, y: chip.y + chip.h },
+      { x: chip.x + chip.w, y: chip.y + chip.h },
+    ]
+    let gap = Infinity
+    for (const corner of corners) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        gap = Math.min(gap, distToSeg(corner, pts[i]!, pts[i + 1]!))
+      }
+    }
+    return gap
+  }
+
+  function aabbOverlap(
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  }
+
+  it("omits an edge label that repeats a node name (gallery zh 席位开通)", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).not.toContain("席位开通")
+    const nodeTexts = Array.from(container.querySelectorAll("g[data-flow-node] text")).map(
+      (t) => t.textContent ?? "",
+    )
+    expect(nodeTexts.join("")).toContain("席位开通")
+  })
+
+  it("keeps a distinct branch label on the reverse edge (用量采集)", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).toContain("用量采集")
+  })
+
+  it("sits 6-10px off its own stroke and misses every arrowhead", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const label = mutedLabels(container).find((t) => t.textContent === "用量采集")
+    expect(label).toBeTruthy()
+    const chipEl = label!.previousElementSibling!
+    const chip = {
+      x: Number(chipEl.getAttribute("x")),
+      y: Number(chipEl.getAttribute("y")),
+      w: Number(chipEl.getAttribute("width")),
+      h: Number(chipEl.getAttribute("height")),
+    }
+    const paths = Array.from(container.querySelectorAll("path")).map((p) =>
+      parsePath(p.getAttribute("d") ?? ""),
+    )
+    const own = paths
+      .map((pts) => ({ pts, gap: chipNearEdgeDist(chip, pts) }))
+      .sort((a, b) => a.gap - b.gap)
+    expect(own[0]!.gap).toBeGreaterThanOrEqual(6)
+    expect(own[0]!.gap).toBeLessThanOrEqual(10.5)
+    for (const other of own.slice(1)) {
+      expect(other.gap).toBeGreaterThanOrEqual(6)
+    }
+    const arrows = Array.from(container.querySelectorAll("polygon")).filter(
+      (p) => p.getAttribute("fill") === ctx.colors.muted,
+    )
+    for (const arrow of arrows) {
+      const nums = (arrow.getAttribute("points") ?? "")
+        .trim()
+        .split(/[\s,]+/)
+        .map(Number)
+      const xs = nums.filter((_, i) => i % 2 === 0)
+      const ys = nums.filter((_, i) => i % 2 === 1)
+      const box = {
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        w: Math.max(...xs) - Math.min(...xs),
+        h: Math.max(...ys) - Math.min(...ys),
+      }
+      expect(aabbOverlap(chip, box)).toBe(false)
+    }
+  })
+
+  it("does not paint a label when the edge has no drawable polyline", () => {
+    const dangling = {
+      type: "flowchart" as const,
+      direction: "LR" as const,
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "a", to: "missing", label: "ghost" },
+      ],
+    }
+    const { container } = svg(flowchart.render(dangling, { x: 0, y: 0, w: 600 }, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).not.toContain("ghost")
+    expect(container.querySelectorAll("path").length).toBe(1)
+  })
+})
+

@@ -3,7 +3,7 @@
  * browser-distribution wave, task 1) so the light `./validate` SDK entry
  * (`src/validate.ts`) can import this file directly and, by simple
  * file-level reachability, never touch `./pptx/generate` or
- * `./svg/render-slide` (react-dom/server, jszip, pptxgenjs, dagre) at all —
+ * `./svg/render-slide` (react-dom/server, jszip, pptxgenjs) at all —
  * a physical module boundary, not a bet on a bundler's cross-file
  * tree-shaking of an unused re-export (tried first; esbuild's CJS-interop
  * wrapper for jszip/react-dom's `require()`-based deps kept pulling their
@@ -194,7 +194,7 @@ function describeQualityIssue(issue: QualityIssue): string {
     case "architecture_overflow":
       return `architecture diagram has too many layers (over ${CAPACITY.architecture.warnLayers}) — trim it or split into multiple slides`
     case "architecture_count_overflow":
-      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — most would silently drop behind a "+N …" marker rather than render, trim it substantially or split into multiple slides`
+      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — split it into multiple slides`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     case "chart_axes_ignored": {

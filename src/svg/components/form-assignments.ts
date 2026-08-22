@@ -2,9 +2,9 @@
  * Render-side component form assignment table. Forms are not IR: one
  * theme + one component maps to at most one form, looked up here and
  * ignored by renderers until a later commit wires dispatch. campaign ×
- * cycle is hub_spoke (first-listed wins), never petal_wheel. 66 rows
- * (41 prior + 24 callout + 1 emphasis). classroom is listed on callout
- * like every other canonical theme.
+ * cycle is hub_spoke (first-listed wins), never petal_wheel. 78 rows
+ * (65 prior + 1 emphasis + 7 typed_nodes + 5 architecture). classroom
+ * is listed on callout like every other canonical theme.
  */
 
 export const COMPONENT_FORMS = [
@@ -26,6 +26,8 @@ export const COMPONENT_FORMS = [
   "hanging_bare",
   "lead_word",
   "pad",
+  "typed_nodes",
+  "layer_stack",
 ] as const
 
 export type ComponentFormId = (typeof COMPONENT_FORMS)[number]
@@ -286,6 +288,58 @@ const ASSIGNMENTS: Record<string, Record<string, FormAssignment>> = {
     pulse: { form: "lead_word" },
     runway: { form: "lead_word" },
     ember: { form: "lead_word" },
+  },
+  flowchart: {
+    swiss: {
+      form: "typed_nodes",
+      knobs: { radius: "square", nodeStroke: "primary" },
+    },
+    academic: {
+      form: "typed_nodes",
+      knobs: { radius: "square", nodeFill: "none", nodeStroke: "primary" },
+    },
+    tech: {
+      form: "typed_nodes",
+      knobs: { radius: "soft", highlightFirst: true },
+    },
+    museum: {
+      form: "typed_nodes",
+      knobs: { nodeStroke: "border" },
+    },
+    crayon: {
+      form: "typed_nodes",
+      knobs: { radius: "round" },
+    },
+    journal: {
+      form: "typed_nodes",
+      knobs: { highlightFirst: true },
+    },
+    insight: {
+      form: "typed_nodes",
+      knobs: { highlightFirst: true, radius: "soft" },
+    },
+  },
+  architecture: {
+    consulting: {
+      form: "layer_stack",
+      knobs: { highlightFirst: true },
+    },
+    swiss: {
+      form: "layer_stack",
+      knobs: { radius: "square", nodeFill: "none" },
+    },
+    academic: {
+      form: "layer_stack",
+      knobs: { radius: "square", nodeFill: "none" },
+    },
+    tech: {
+      form: "layer_stack",
+      knobs: { radius: "square" },
+    },
+    museum: {
+      form: "layer_stack",
+      knobs: { nodeStroke: "border" },
+    },
   },
 }
 

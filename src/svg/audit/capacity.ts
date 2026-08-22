@@ -486,38 +486,16 @@ export const CAPACITY = {
    */
   comparison: { warnRows: 5, errorRows: 1000 },
   /**
-   * `architecture.tsx`（carried-items 波新增字段，同 comparison/citation
-   * 的补漏理由）。每层固定 `LAYER_H + GAP = 72 + 12 = 84` px（末层不含尾随
-   * GAP），行高同样是硬常量，不随内容缩放。
+   * `architecture.tsx` layer-stack（2026-08-23）：每层固定 `LAYER_H = 64`
+   * px，层间发丝分隔，不再按盒高切片。装不下走 validate，不画 +N。
    *
-   * `warnLayers`（warn 级，几何渲染容量推导，同一个 277px 最坏内容区高度
-   * 基准）：`architecture.tsx` 自身的截断公式是
-   * `naturalHeight(=count*84-12) > truncBudget` 时才截断，故"一层不丢"的
-   * 最大层数：
-   *   count*84 - 12 <= 277 → count <= 289/84 = 3.4405 → floor → 3
-   * 实测代入：3 层时 naturalHeight=3*84-12=240<=277 不截断，4 层时
-   * 4*84-12=324>277 触发截断。
-   *   warnLayers = 3
+   * `warnLayers`：277px 最坏内容区 277/64 = 4.3，3 层（192px）必装得下，
+   * 4 层开始在最窄栏发挤。编辑建议停在 3。
    *
-   * `errorLayers`（error 级，两头夹逼，同上，但下界/上界都按 architecture
-   * 自己的更粗几何量级重新取值，不沿用 comparison/citation 的 300/1000
-   * ——84px/层比 28-44px/项粗得多，物理上限本身就小得多，沿用同一对数字
-   * 会显得脱离本组件自己的几何现实）：
-   *   下界——carried-items 波新立的"必须优雅落地"夹具取 150 层（比
-   *   comparison/citation 的 300 缩小一半，仍然是"一张图纸荒谬多的系统
-   *   层"，但与 architecture 自己粗得多的 84px/层几何更匹配）。
-   *   上界——把整块 720px 画布（`CANVAS_H_PX`，无标题无页边距）全部让给
-   *   architecture 这一个"慷慨到不现实"的物理显示上限：
-   *     floor(720 / 84) = 8 层
-   *   取 500（`errorLayers`），换算成物理上限的倍数：500/8=62.5×（与
-   *   comparison 的 62.5× 倍数一致，同一套"留足够但不过量余量"的尺度）。
-   *   500 相对 150 下界留 3.3× 余量（与 comparison/citation 的 3.3× 一
-   *   致），相对 20000（新立的"明显病态、必须拒收"夹具，量级同 D 报告
-   *   bullets 20000 例）留 40× 余量，比 comparison/citation 的 20× 更宽
-   *   松（architecture 的下界本身更小，上界维持同一个 20000 病态参照，
-   *   自然留出更大余量，不是额外加码）。
+   * `errorLayers`：整张 720 画布 floor(720/64)=11，内容区约 176+n*64，
+   * 8 层 = 512px 正文，再加标题区就贴底。第 9 层硬拦，逼拆页。
    */
-  architecture: { warnLayers: 3, errorLayers: 500 },
+  architecture: { warnLayers: 3, errorLayers: 8 },
   /**
    * `blocks/icon-cards.tsx`（Task 2，2026-07-07）。items 等宽横排，
    * `cardW = (w - GAP(16) * (n-1)) / n`——n 越大卡越窄，最坏情况是 schema

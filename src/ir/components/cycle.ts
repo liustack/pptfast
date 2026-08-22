@@ -7,8 +7,9 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 // Chinese ESG lifecycle reproduced the same failure on dsPro). Forced to
 // draw a process that loops back to its own start, `flowchart` either
 // paints the closing back-edge as a long stray line/arc crossing the whole
-// diagram (dagre has no notion of "this is a ring", every edge is just
-// another line to route), or the model gives up on structure entirely and
+// diagram (a generic layered graph treats a closing back-edge as a stray
+// line to route, with no notion that this one is special), or the model
+// gives up on structure entirely and
 // falls back to `steps` (no back-edge capability at all) plus a sentence
 // doing the structural work in prose instead of the picture ("this cycle
 // continues, re-design loops back to design"). `cycle` closes that gap by

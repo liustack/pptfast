@@ -80,7 +80,6 @@
   },
   "dependencies": {
     "commander": "^13.1.0",
-    "dagre": "^0.8.5",
     "jszip": "3.10.1",
     "linkedom": "^0.18.12",
     "pptxgenjs": "^4.0.1",
@@ -97,7 +96,6 @@
     "@eslint/js": "^9.39.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/dagre": "^0.7.54",
     "@types/node": "^22.19.7",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

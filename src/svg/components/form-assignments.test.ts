@@ -10,8 +10,9 @@ import {
 // lookup contract, independent of any component renderer: missing /
 // unknown / unassigned pairs stay undefined so today's default face is
 // unchanged. campaign × cycle is hub_spoke (first-listed wins), never
-// petal_wheel. 66 rows (41 prior + 24 callout + 1 emphasis). classroom
-// is listed on callout like every other canonical theme.
+// petal_wheel. 78 rows (65 prior + 1 emphasis + 7 typed_nodes + 5
+// architecture). classroom is listed on callout like every other
+// canonical theme.
 
 type AssignmentRow = {
   componentType: string
@@ -298,6 +299,78 @@ const ASSIGNMENTS: AssignmentRow[] = [
   { componentType: "callout", themeId: "pulse", form: "lead_word" },
   { componentType: "callout", themeId: "runway", form: "lead_word" },
   { componentType: "callout", themeId: "ember", form: "lead_word" },
+  {
+    componentType: "flowchart",
+    themeId: "swiss",
+    form: "typed_nodes",
+    knobs: { radius: "square", nodeStroke: "primary" },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "academic",
+    form: "typed_nodes",
+    knobs: { radius: "square", nodeFill: "none", nodeStroke: "primary" },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "tech",
+    form: "typed_nodes",
+    knobs: { radius: "soft", highlightFirst: true },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "museum",
+    form: "typed_nodes",
+    knobs: { nodeStroke: "border" },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "crayon",
+    form: "typed_nodes",
+    knobs: { radius: "round" },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "journal",
+    form: "typed_nodes",
+    knobs: { highlightFirst: true },
+  },
+  {
+    componentType: "flowchart",
+    themeId: "insight",
+    form: "typed_nodes",
+    knobs: { highlightFirst: true, radius: "soft" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "consulting",
+    form: "layer_stack",
+    knobs: { highlightFirst: true },
+  },
+  {
+    componentType: "architecture",
+    themeId: "swiss",
+    form: "layer_stack",
+    knobs: { radius: "square", nodeFill: "none" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "academic",
+    form: "layer_stack",
+    knobs: { radius: "square", nodeFill: "none" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "tech",
+    form: "layer_stack",
+    knobs: { radius: "square" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "museum",
+    form: "layer_stack",
+    knobs: { nodeStroke: "border" },
+  },
 ]
 
 const FORM_COMPONENT_TYPES = [
@@ -311,6 +384,8 @@ const FORM_COMPONENT_TYPES = [
   "timeline",
   "image_grid",
   "callout",
+  "flowchart",
+  "architecture",
 ] as const
 
 describe("resolveComponentForm", () => {
@@ -330,6 +405,10 @@ describe("resolveComponentForm", () => {
 
     it("resolveComponentForm(cycle, consulting) → undefined", () => {
       expect(resolveComponentForm("cycle", "consulting")).toBeUndefined()
+    })
+
+    it("resolveComponentForm(flowchart, consulting) → undefined", () => {
+      expect(resolveComponentForm("flowchart", "consulting")).toBeUndefined()
     })
 
     it("resolveComponentForm(icon_cards, not-a-theme) → undefined", () => {
@@ -408,13 +487,13 @@ describe("resolveComponentForm", () => {
     })
   })
 
-  it("assignment count is 66 (sum across the 10 assigned primitive and component types)", () => {
+  it("assignment count is 78 (sum across the 12 assigned primitive and component types)", () => {
     const total = FORM_COMPONENT_TYPES.reduce(
       (n, componentType) => n + assignedThemeIds(componentType).length,
       0,
     )
-    expect(total).toBe(66)
-    expect(ASSIGNMENTS).toHaveLength(66)
+    expect(total).toBe(78)
+    expect(ASSIGNMENTS).toHaveLength(78)
   })
 })
 
