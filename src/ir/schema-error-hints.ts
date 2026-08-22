@@ -91,5 +91,8 @@ export function componentTypeError(issue: z.core.$ZodRawIssue<z.core.$ZodIssueIn
     issue.discriminator && typeof issue.input === "object" && issue.input !== null
       ? (issue.input as Record<string, unknown>)[issue.discriminator]
       : undefined
+  if (raw === "logo_wall") {
+    return 'component type "logo_wall" was removed — run `pptfast migrate <input> -o <output>` to rewrite it to "image_grid"'
+  }
   return enumMismatchMessage("component type", raw, options.map(String))
 }

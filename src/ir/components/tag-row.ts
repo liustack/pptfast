@@ -16,15 +16,15 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 //    (`results-probe/deepseek-agentic/p14/workspace/probe6.json`:
 //    `tag`/`tags`/`chip`/`chips`/`pill`/`pills`/`tag_cloud`).
 //
-// Named after the models' own most-guessed name, exactly the logo_wall
-// precedent (裁定: 采模型呼声最高者): across the bench+probe archive the
-// exact-string tally is `tag` ×3 instances / 2 runs and `pill` ×3 / 2 runs
-// (tied highest), then `chips` ×2/2, `badge` ×2/2, `chip_row` ×2/1. `pill`
-// is a shape word (a capsule), `tag` is the semantic concept the shape
-// carries, so the tie breaks to `tag`; the models attested the container
-// suffix `_row` themselves (`chip_row` ×2), so `tag_row` = winning semantic
-// root + model-attested container word, matching the house `<item>_<row/
-// cards/wall>` convention (`row_cards`/`icon_cards`/`logo_wall`).
+// Named after the models' own most-guessed name (裁定: 采模型呼声最高者):
+// across the bench+probe archive the exact-string tally is `tag` ×3
+// instances / 2 runs and `pill` ×3 / 2 runs (tied highest), then `chips`
+// ×2/2, `badge` ×2/2, `chip_row` ×2/1. `pill` is a shape word (a capsule),
+// `tag` is the semantic concept the shape carries, so the tie breaks to
+// `tag`; the models attested the container suffix `_row` themselves
+// (`chip_row` ×2), so `tag_row` = winning semantic root + model-attested
+// container word, matching the house `<item>_<row/cards>` convention
+// (`row_cards`/`icon_cards`).
 //
 // 裁定 1 — minimal semantic surface: `items` is a plain array of short
 // strings (a tag is a label, not a struct — no per-tag icon, color, or
@@ -78,7 +78,7 @@ export const schema = z
       ),
   })
   .strict()
-  // Schema guidance (logo_wall/people_cards precedent — the JSON Schema a
+  // Schema guidance (people_cards precedent — the JSON Schema a
   // model reads before writing IR): name the concrete alternatives and the
   // one-line test that decides between them (裁定 3). Lean into the name the
   // models already guess.
@@ -88,7 +88,7 @@ export const schema = z
 
 export const aliases = {} satisfies ComponentAliasSpec
 
-// All-false traits, same posture as `logo_wall`/`image_grid`: a wrapping row
+// All-false traits, same posture as `image_grid`: a wrapping row
 // of small pills is neither a density-stretch card family (stretchable —
 // growing pills to fill leftover column height would look wrong, they keep
 // their natural compact height), a self-carded diagram (selfVisual/

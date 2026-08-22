@@ -204,8 +204,8 @@ program
 
 program
   .command("migrate")
-  .description("Convert a v3 IR file to v4, rewrite chrome → branding or bloom → classroom on a v4 IR or deck spec, or convert a deck.plan.json project directory to deck.spec.json — deterministic, no model")
-  .argument("<input>", "IR v3 JSON file, a v4 IR or deck spec still carrying chrome or bloom, or a deck project directory containing deck.plan.json")
+  .description("Convert a v3 IR file to v4, rewrite chrome → branding, bloom → classroom, or logo_wall → image_grid on a v4 IR or deck spec, or convert a deck.plan.json project directory to deck.spec.json — deterministic, no model")
+  .argument("<input>", "IR v3 JSON file, a v4 IR or deck spec still carrying chrome, bloom, or logo_wall, or a deck project directory containing deck.plan.json")
   .requiredOption("-o, --output <output>", "output path — an IR JSON file for a file input, a directory for a deck-project-directory input")
   .action(async (input: string, opts: { output: string }) => {
     try {

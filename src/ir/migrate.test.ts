@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { PptfastError } from "../errors"
-import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4 } from "./migrate"
+import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4, migrateLogoWallToImageGrid } from "./migrate"
 import { PptxIRV3Schema, type PptxIRV3 } from "./legacy-v3"
 import { STRATEGY_VALUES, PACING_VALUES, AUDIENCE_VALUES } from "./narrative-values"
 
@@ -326,5 +326,120 @@ describe("migrateBloomToClassroom", () => {
     expect(input).toEqual(snapshot)
     expect(result).not.toBe(input)
     expect((result as { theme: unknown }).theme).not.toBe(input.theme)
+  })
+})
+
+describe("migrateLogoWallToImageGrid", () => {
+  const fourItems = [
+    { asset_id: "logo-1", label: "Acme" },
+    { asset_id: "logo-2" },
+    { asset_id: "logo-3", label: "Beta", extra: "drop-me" },
+    { asset_id: "logo-4", label: "Gamma" },
+  ]
+  const mappedFourItems = [
+    { asset_id: "logo-1", caption: "Acme" },
+    { asset_id: "logo-2" },
+    { asset_id: "logo-3", caption: "Beta" },
+    { asset_id: "logo-4", caption: "Gamma" },
+  ]
+  const wall = {
+    type: "logo_wall",
+    title: "Partners",
+    emphasis: "first",
+    someUnknown: "x",
+    items: fourItems,
+  }
+  const irWith = (component: unknown) => ({
+    version: "4",
+    filename: "x",
+    slides: [{ type: "content", heading: "h", components: [component] }],
+  })
+
+  it("rewrites a 4-item logo_wall in slides[].components[] to image_grid, mapping label→caption and dropping leftover keys", () => {
+    const input = irWith(wall)
+    const result = migrateLogoWallToImageGrid(input) as {
+      slides: Array<{ type: string; heading: string; components: Array<Record<string, unknown>> }>
+    }
+    expect(result.slides[0]!.heading).toBe("h")
+    expect(result.slides[0]!.components).toHaveLength(1)
+    expect(result.slides[0]!.components[0]).toEqual({ type: "image_grid", items: mappedFourItems })
+    expect(result.slides[0]!.components[0]!.items).toHaveLength(4)
+    expect((result.slides[0]!.components[0]!.items as Array<{ asset_id: string }>).map((item) => item.asset_id)).toEqual([
+      "logo-1",
+      "logo-2",
+      "logo-3",
+      "logo-4",
+    ])
+    expect(Object.keys(result.slides[0]!.components[0]!)).toEqual(["type", "items"])
+    expect((result.slides[0]!.components[0]!.items as Array<Record<string, unknown>>)[1]).toEqual({ asset_id: "logo-2" })
+    expect((result.slides[0]!.components[0]!.items as Array<Record<string, unknown>>)[2]).toEqual({
+      asset_id: "logo-3",
+      caption: "Beta",
+    })
+  })
+
+  it("keeps only the first 4 items of an 8-item wall (image_grid ceiling is 4)", () => {
+    const items = Array.from({ length: 8 }, (_, i) => ({ asset_id: `logo-${i + 1}` }))
+    const result = migrateLogoWallToImageGrid(irWith({ type: "logo_wall", title: "Partners", items })) as {
+      slides: Array<{ components: Array<{ type: string; items: Array<{ asset_id: string }> }> }>
+    }
+    const rewritten = result.slides[0]!.components[0]!
+    expect(rewritten.type).toBe("image_grid")
+    expect(rewritten.items).toHaveLength(4)
+    expect(rewritten.items.map((item) => item.asset_id)).toEqual(["logo-1", "logo-2", "logo-3", "logo-4"])
+  })
+
+  it("IR with only paragraph / omitted components / already image_grid is identity: same reference", () => {
+    const paragraphIr = irWith({ type: "paragraph", text: "hi" })
+    expect(migrateLogoWallToImageGrid(paragraphIr)).toBe(paragraphIr)
+    const omitted = { version: "4", filename: "x", slides: [{ type: "cover", heading: "h" }] }
+    expect(migrateLogoWallToImageGrid(omitted)).toBe(omitted)
+    const already = irWith({
+      type: "image_grid",
+      items: [{ asset_id: "a" }, { asset_id: "b" }],
+    })
+    expect(migrateLogoWallToImageGrid(already)).toBe(already)
+  })
+
+  it("does not mutate the input", () => {
+    const input = irWith(wall)
+    const snapshot = JSON.parse(JSON.stringify(input))
+    const result = migrateLogoWallToImageGrid(input)
+    expect(input).toEqual(snapshot)
+    expect(result).not.toBe(input)
+  })
+
+  it("non-object input passes through unchanged", () => {
+    expect(migrateLogoWallToImageGrid(null)).toBeNull()
+    expect(migrateLogoWallToImageGrid("not-an-object")).toBe("not-an-object")
+    expect(migrateLogoWallToImageGrid(42)).toBe(42)
+    const arr = [{ type: "logo_wall", items: fourItems }]
+    expect(migrateLogoWallToImageGrid(arr)).toBe(arr)
+  })
+
+  it("rewrites a page-shaped { components: [...] } object, not only a full IR", () => {
+    const page = { components: [wall] }
+    const result = migrateLogoWallToImageGrid(page) as { components: Array<Record<string, unknown>> }
+    expect(result.components).toHaveLength(1)
+    expect(result.components[0]).toEqual({ type: "image_grid", items: mappedFourItems })
+    expect(result).not.toBe(page)
+  })
+
+  it("migrateIrV3ToV4 rewrites a logo_wall slide (cast, do not parse leftover through PptxIRV3Schema)", () => {
+    const v3 = {
+      ...baseV3(),
+      slides: [{ type: "content", heading: "h", components: [wall] }],
+    } as PptxIRV3
+    const v4 = migrateIrV3ToV4(v3)
+    const rewritten = v4.slides[0]!.components[0] as Record<string, unknown>
+    expect(rewritten).toEqual({ type: "image_grid", items: mappedFourItems })
+  })
+
+  it("non-array items still emit { type: image_grid, items: as-is } (mechanical, not validating)", () => {
+    const input = irWith({ type: "logo_wall", title: "Partners", items: "not-an-array" })
+    const result = migrateLogoWallToImageGrid(input) as {
+      slides: Array<{ components: Array<Record<string, unknown>> }>
+    }
+    expect(result.slides[0]!.components[0]).toEqual({ type: "image_grid", items: "not-an-array" })
   })
 })

@@ -44,15 +44,14 @@ const PAD_Y = 6
 /** Gap between pills on the same row, and between wrapped rows. */
 const GAP_X = 8
 const GAP_Y = 8
-/** Total pill-stack height budget (px, excl. title band) — the same order of
- * magnitude as logo_wall's `MAX_WALL_H`: a tag row occupies one content-rect
- * slot, not the whole slide. When 16 long tags in a mid-width column would
- * exceed it, the uniform font shrinks (more tags per row → fewer rows) to
- * protect it. */
+/** Total pill-stack height budget (px, excl. title band): a tag row occupies
+ * one content-rect slot, not the whole slide. When 16 long tags in a
+ * mid-width column would exceed it, the uniform font shrinks (more tags per
+ * row → fewer rows) to protect it. */
 const MAX_ROWS_H = 300
 
 // Optional overall `title` (裁定 1) — the same fixed reserved band as
-// logo-wall.tsx/people-cards.tsx: present in both measure() and render() only
+// people-cards.tsx: present in both measure() and render() only
 // when the field is set, an absent title costs nothing.
 const TITLE_FONT_SIZE = 16
 const TITLE_MIN_FONT_SIZE = 12

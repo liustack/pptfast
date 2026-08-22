@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 import { renderSlideSvg } from "@/api"
 import { findRemoteAssetRef } from "@/platform/registry"
 import { installNodePlatform } from "@/platform/node"
-import { LOGO_ASSETS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
+import { PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
 import { corpusAssets, layoutPage } from "./decks"
 import { LEXICONS } from "./lexicon"
 
@@ -28,10 +28,6 @@ describe("corpusAssets", () => {
     }
     expect(assets.images?.[SCREENSHOT_ASSET]?.alt).toBe(lex.captions[2])
     expect(assets.images?.[SCREENSHOT_ASSET]?.src).toMatch(/^data:image\/jpeg;base64,/)
-    for (const [i, id] of LOGO_ASSETS.entries()) {
-      expect(assets.images?.[id]?.alt).toBe(lex.orgs[i % lex.orgs.length])
-      expect(assets.images?.[id]?.src).toMatch(/^data:image\/jpeg;base64,/)
-    }
   })
 })
 

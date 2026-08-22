@@ -69,7 +69,6 @@ import { schema as dataTableSchema } from "./components/data-table"
 import { schema as deviceMockupSchema } from "./components/device-mockup"
 import { schema as cycleSchema } from "./components/cycle"
 import { schema as peopleCardsSchema } from "./components/people-cards"
-import { schema as logoWallSchema } from "./components/logo-wall"
 import { schema as tagRowSchema } from "./components/tag-row"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
@@ -367,7 +366,6 @@ const ComponentSchema = z.discriminatedUnion("type", [
   deviceMockupSchema,
   cycleSchema,
   peopleCardsSchema,
-  logoWallSchema,
   tagRowSchema,
 ], { error: componentTypeError })
 

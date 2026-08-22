@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import {
   formatIssues,
@@ -16,7 +16,7 @@ import { PptfastError } from "../errors"
 import { VERSION } from "../version"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { PptxIRV3Schema } from "../ir/legacy-v3"
-import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4 } from "../ir/migrate"
+import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4, migrateLogoWallToImageGrid } from "../ir/migrate"
 import { disassembleDeck, type PageContent } from "../spec/assemble"
 import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../spec"
 import { migrateDeckPlanToSpec } from "../spec/migrate"
@@ -36,6 +36,7 @@ import {
   resolveDeckTarget,
   writeDeckAssets,
   ASSETS_DIRNAME,
+  PAGES_DIRNAME,
   PLAN_FILENAME,
   SPEC_FILENAME,
   THEME_FILENAME,
@@ -1458,8 +1459,10 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
  * - a file → {@link runMigrateIrFile}: an IR v3 document (`version: "3"`)
  *   wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`). A v4 IR or
  *   spec-shaped file that still carries the old `chrome` field is rewritten
- *   via {@link migrateChromeToBranding}, and a leftover `bloom` theme id is
- *   relocated onto `classroom` via {@link migrateBloomToClassroom}. IR v2
+ *   via {@link migrateChromeToBranding}, a leftover `bloom` theme id is
+ *   relocated onto `classroom` via {@link migrateBloomToClassroom}, and a
+ *   leftover `logo_wall` component is rewritten to `image_grid` via
+ *   {@link migrateLogoWallToImageGrid}. IR v2
  *   is explicitly not accepted here (spec §15.3: "v2 无真实用户" —
  *   `pptfast migrate` does not convert v2, `validateIr`'s own v2
  *   hard-reject message carries the full v2→v4 combined mapping for a
@@ -1495,11 +1498,51 @@ function needsBloomRewrite(raw: Record<string, unknown>): boolean {
   return isPlainRecord(theme) && theme.id === "bloom"
 }
 
-function migrateRewriteNote(chrome: boolean, bloom: boolean): string {
+function componentListHasLogoWall(components: unknown): boolean {
+  return Array.isArray(components) && components.some((component) => isPlainRecord(component) && component.type === "logo_wall")
+}
+
+function needsLogoWallRewrite(raw: Record<string, unknown>): boolean {
+  if (componentListHasLogoWall(raw.components)) return true
+  if (!Array.isArray(raw.slides)) return false
+  return raw.slides.some((slide) => isPlainRecord(slide) && componentListHasLogoWall(slide.components))
+}
+
+function migrateRewriteNote(chrome: boolean, bloom: boolean, logoWall = false): string {
   const parts: string[] = []
   if (chrome) parts.push("renamed chrome → branding")
   if (bloom) parts.push("relocated bloom → classroom")
+  if (logoWall) parts.push("rewrote logo_wall → image_grid")
   return parts.join(", ")
+}
+
+function applyV4LeftoverRewrites(raw: Record<string, unknown>): unknown {
+  return migrateLogoWallToImageGrid(migrateBloomToClassroom(migrateChromeToBranding(raw)))
+}
+
+async function listPageJsonNames(dir: string): Promise<string[]> {
+  const pagesDir = join(dir, PAGES_DIRNAME)
+  try {
+    const entries = await readdir(pagesDir)
+    return entries.filter((name) => name.endsWith(".json")).sort()
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return []
+    throw e
+  }
+}
+
+async function rewriteLogoWallPages(dir: string, outDir: string): Promise<string[]> {
+  const names = await listPageJsonNames(dir)
+  const written: string[] = []
+  for (const name of names) {
+    const src = join(dir, PAGES_DIRNAME, name)
+    const raw = await loadIrFile(src, "page")
+    if (!isPlainRecord(raw) || !needsLogoWallRewrite(raw)) continue
+    const dest = join(outDir, PAGES_DIRNAME, name)
+    await writeMigratedJson(dest, migrateLogoWallToImageGrid(raw))
+    written.push(dest)
+  }
+  return written
 }
 
 /** Write JSON with the existing `wx` never-overwrite rule shared by migrate legs. */
@@ -1521,10 +1564,11 @@ async function writeMigratedJson(outPath: string, data: unknown): Promise<void> 
  * same helper `runSpecValidate` above uses, "plan" naming its own failure
  * messages), maps it through {@link migrateDeckPlanToSpec}
  * (`../spec/migrate.ts`, spec §9.2's field mapping), and writes the result
- * to `<output>/deck.spec.json`. `pages/*.json` and `assets/*` are untouched
- * — spec §9.2's mapping only touches `deck.plan.json`'s own top-level
- * `scenario` field and each page's `rhythm` field, both entirely absent from
- * the pages/assets directories.
+ * to `<output>/deck.spec.json`. `assets/*` are untouched. Leftover
+ * `logo_wall` components in `pages/*.json` are rewritten to `image_grid`
+ * at `<output>/pages/<filename>` (source pages stay put). Spec §9.2's
+ * field mapping still only touches `deck.plan.json`'s own top-level
+ * `scenario` field and each page's `rhythm` field.
  *
  * Deliberately does not delete or rename the source `deck.plan.json` —
  * spec §9.2: "不覆盖原文件" applies to the migration direction generally,
@@ -1546,12 +1590,15 @@ async function writeMigratedJson(outPath: string, data: unknown): Promise<void> 
  * specific diagnosis to offer than that one already gives.
  *
  * A directory that has only `deck.spec.json` (no plan) still carrying the
- * old `chrome` field is rewritten via {@link migrateChromeToBranding}, and
- * a leftover `bloom` theme id is relocated onto `classroom` via
- * {@link migrateBloomToClassroom}, written to `<output>/deck.spec.json`.
- * Same-dir write keeps the `wx` never-overwrite rule. Dual-source
- * hard-errors. Neither chrome-to-rename nor bloom left means already
- * migrated.
+ * old `chrome` field is rewritten via {@link migrateChromeToBranding}, a
+ * leftover `bloom` theme id is relocated onto `classroom` via
+ * {@link migrateBloomToClassroom}, and leftover `logo_wall` components in
+ * `pages/*.json` are rewritten to `image_grid` via
+ * {@link migrateLogoWallToImageGrid}. Spec rewrites land at
+ * `<output>/deck.spec.json`. Page rewrites land at
+ * `<output>/pages/<filename>`. Same-dir write keeps the `wx`
+ * never-overwrite rule. Dual-source hard-errors. Neither chrome-to-rename
+ * nor bloom nor leftover logo_wall left means already migrated.
  */
 async function runMigrateDeckDir(dir: string, output: string, cwd: string): Promise<string> {
   const planPath = join(dir, PLAN_FILENAME)
@@ -1560,12 +1607,21 @@ async function runMigrateDeckDir(dir: string, output: string, cwd: string): Prom
   const specPath = join(outDir, SPEC_FILENAME)
   if (!(await pathExists(planPath)) && (await pathExists(sourceSpecPath))) {
     const raw = await loadIrFile(sourceSpecPath, "spec")
-    if (isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw))) {
+    const specNeeds =
+      isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw))
+    const pagePaths = await rewriteLogoWallPages(dir, outDir)
+    if (specNeeds && isPlainRecord(raw)) {
       const chrome = needsChromeRewrite(raw)
       const bloom = needsBloomRewrite(raw)
-      const migrated = migrateBloomToClassroom(migrateChromeToBranding(raw))
+      const migrated = applyV4LeftoverRewrites(raw)
       await writeMigratedJson(specPath, migrated)
-      return `wrote ${specPath} (${migrateRewriteNote(chrome, bloom)})`
+      const specNote = `wrote ${specPath} (${migrateRewriteNote(chrome, bloom, false)})`
+      if (pagePaths.length === 0) return specNote
+      return `${specNote}, wrote ${pagePaths.length === 1 ? pagePaths[0] : join(outDir, PAGES_DIRNAME)} (${migrateRewriteNote(false, false, true)})`
+    }
+    if (pagePaths.length > 0) {
+      const target = pagePaths.length === 1 ? pagePaths[0] : join(outDir, PAGES_DIRNAME)
+      return `wrote ${target} (${migrateRewriteNote(false, false, true)})`
     }
     throw new PptfastError(
       `${dir} has ${SPEC_FILENAME} but no ${PLAN_FILENAME} — this deck project is already migrated, nothing to do`,
@@ -1574,7 +1630,10 @@ async function runMigrateDeckDir(dir: string, output: string, cwd: string): Prom
   const raw = await loadIrFile(planPath, "plan")
   const migrated = migrateDeckPlanToSpec(raw)
   await writeMigratedJson(specPath, migrated)
-  return `wrote ${specPath} — run \`pptfast spec validate ${specPath}\` to confirm it, then delete ${planPath} (a directory with both files present is rejected)`
+  const pagePaths = await rewriteLogoWallPages(dir, outDir)
+  const specNote = `wrote ${specPath} — run \`pptfast spec validate ${specPath}\` to confirm it, then delete ${planPath} (a directory with both files present is rejected)`
+  if (pagePaths.length === 0) return specNote
+  return `${specNote}, wrote ${pagePaths.length === 1 ? pagePaths[0] : join(outDir, PAGES_DIRNAME)} (${migrateRewriteNote(false, false, true)})`
 }
 
 /**
@@ -1584,9 +1643,11 @@ async function runMigrateDeckDir(dir: string, output: string, cwd: string): Prom
  * routing it through the v3 vocabulary as a stepping stone (spec §15.3:
  * "v2 无真实用户", "`pptfast migrate` 只支持 v3→v4，不接 v2"). A v4 IR or
  * spec-shaped file that still carries the old `chrome` field is rewritten
- * via {@link migrateChromeToBranding}, and a leftover `bloom` theme id is
- * relocated onto `classroom` via {@link migrateBloomToClassroom}. Anything
- * else is rejected with a message naming what this command does accept.
+ * via {@link migrateChromeToBranding}, a leftover `bloom` theme id is
+ * relocated onto `classroom` via {@link migrateBloomToClassroom}, and a
+ * leftover `logo_wall` component is rewritten to `image_grid` via
+ * {@link migrateLogoWallToImageGrid}. Anything else is rejected with a
+ * message naming what this command does accept.
  */
 async function runMigrateIrFile(filePath: string, output: string, cwd: string): Promise<string> {
   const raw = await loadIrFile(filePath)
@@ -1598,7 +1659,11 @@ async function runMigrateIrFile(filePath: string, output: string, cwd: string): 
   }
   const outPath = resolve(cwd, output)
   if (version === "3") {
-    const parsed = PptxIRV3Schema.safeParse(raw)
+    // PptxIRV3Schema reuses v4 SlideSchema, so a leftover logo_wall would
+    // fail parse after the union drops the type. Rewrite it on the raw
+    // object first, then parse, then the v3→v4 field map.
+    const pre = isPlainRecord(raw) ? migrateLogoWallToImageGrid(raw) : raw
+    const parsed = PptxIRV3Schema.safeParse(pre)
     if (!parsed.success) {
       const detail = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")
       throw new PptfastError(`invalid IR v3 file ${filePath}:\n${detail}`)
@@ -1607,14 +1672,15 @@ async function runMigrateIrFile(filePath: string, output: string, cwd: string): 
     await writeMigratedJson(outPath, migrated)
     return `wrote ${outPath} (migrated IR v3 → v4)`
   }
-  if (isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw))) {
+  if (isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw) || needsLogoWallRewrite(raw))) {
     const chrome = needsChromeRewrite(raw)
     const bloom = needsBloomRewrite(raw)
-    const migrated = migrateBloomToClassroom(migrateChromeToBranding(raw))
+    const logoWall = needsLogoWallRewrite(raw)
+    const migrated = applyV4LeftoverRewrites(raw)
     await writeMigratedJson(outPath, migrated)
-    return `wrote ${outPath} (${migrateRewriteNote(chrome, bloom)})`
+    return `wrote ${outPath} (${migrateRewriteNote(chrome, bloom, logoWall)})`
   }
   throw new PptfastError(
-    `pptfast migrate converts an IR v3 file (version: "3"), a v4 IR or deck spec still carrying the old chrome field (renamed to branding) or the removed bloom theme id (relocated to classroom), or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath} with nothing to migrate`,
+    `pptfast migrate converts an IR v3 file (version: "3"), a v4 IR or deck spec still carrying the old chrome field (renamed to branding), the removed bloom theme id (relocated to classroom), or a leftover logo_wall component (rewritten to image_grid), or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath} with nothing to migrate`,
   )
 }

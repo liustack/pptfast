@@ -1835,6 +1835,119 @@ describe("runMigrate", () => {
       expect(written.theme.id).toBe("classroom")
     })
   })
+
+  describe("logo_wall → image_grid", () => {
+    const specPages = [
+      { id: "p-cover", type: "cover", heading: "Cover" },
+      { id: "p-a", type: "content", heading: "Body" },
+      { id: "p-ending", type: "ending", heading: "Thanks" },
+    ]
+    const logoWallItems = [
+      { asset_id: "logo-1", label: "Acme" },
+      { asset_id: "logo-2" },
+      { asset_id: "logo-3", label: "Beta" },
+      { asset_id: "logo-4" },
+    ]
+    const logoWallComponent = {
+      type: "logo_wall",
+      title: "Partners",
+      items: logoWallItems,
+    }
+
+    it("a v4 IR file with a logo_wall component writes image_grid, mentions the rewrite, and does not touch the source", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      const source = {
+        ...VALID_IR,
+        slides: [
+          VALID_IR.slides[0],
+          { type: "content", heading: "Body", components: [logoWallComponent] },
+        ],
+      }
+      await writeFile(irPath, JSON.stringify(source))
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toMatch(/logo_wall/)
+      expect(msg).toMatch(/image_grid/)
+      expect(msg).not.toMatch(/v3 → v4/)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      const rewritten = written.slides[1].components[0]
+      expect(rewritten.type).toBe("image_grid")
+      expect(rewritten.title).toBeUndefined()
+      expect(rewritten.items).toEqual([
+        { asset_id: "logo-1", caption: "Acme" },
+        { asset_id: "logo-2" },
+        { asset_id: "logo-3", caption: "Beta" },
+        { asset_id: "logo-4" },
+      ])
+
+      const stillThere = JSON.parse(await readFile(irPath, "utf8"))
+      expect(stillThere.slides[1].components[0].type).toBe("logo_wall")
+    })
+
+    it("a v4 IR file with chrome, bloom, and logo_wall rewrites all three in one write", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      await writeFile(
+        irPath,
+        JSON.stringify({
+          ...VALID_IR,
+          chrome: "full",
+          theme: { id: "bloom" },
+          slides: [
+            VALID_IR.slides[0],
+            { type: "content", heading: "Body", components: [logoWallComponent] },
+          ],
+        }),
+      )
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toMatch(/chrome/)
+      expect(msg).toMatch(/branding/)
+      expect(msg).toMatch(/bloom/)
+      expect(msg).toMatch(/classroom/)
+      expect(msg).toMatch(/logo_wall/)
+      expect(msg).toMatch(/image_grid/)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.branding).toBe("full")
+      expect(written.chrome).toBeUndefined()
+      expect(written.theme.id).toBe("classroom")
+      expect(written.slides[1].components[0].type).toBe("image_grid")
+    })
+
+    it("deck-dir only spec with a logo_wall page, different -o: writes the rewritten page and does not touch the source", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(
+        join(deckDir, "deck.spec.json"),
+        JSON.stringify({
+          version: "1",
+          theme: "consulting",
+          pages: specPages,
+        }),
+      )
+      await mkdir(join(deckDir, "pages"))
+      await writeFile(
+        join(deckDir, "pages", "p-a.json"),
+        JSON.stringify({ components: [logoWallComponent] }),
+      )
+      const outDir = await makeDeckDir()
+
+      const msg = await runMigrate(deckDir, outDir)
+      expect(msg).toMatch(/logo_wall/)
+      expect(msg).toMatch(/image_grid/)
+
+      const written = JSON.parse(await readFile(join(outDir, "pages", "p-a.json"), "utf8"))
+      expect(written.components[0].type).toBe("image_grid")
+      expect(written.components[0].title).toBeUndefined()
+
+      const source = JSON.parse(await readFile(join(deckDir, "pages", "p-a.json"), "utf8"))
+      expect(source.components[0].type).toBe("logo_wall")
+    })
+  })
 })
 
 describe("applyDeckConfig four-layer chain (W5 task 5): user config layer", () => {

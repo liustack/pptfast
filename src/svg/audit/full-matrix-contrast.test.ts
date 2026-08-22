@@ -1503,16 +1503,6 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // badge's own filled circle, out of this map's scope entirely, same
   // posture as steps.tsx's numbered badge digit.
   people_cards: "flat-surface",
-  // logo_wall wave (`.issues/2026-08-06-logo-wall/plan.md`): logo-wall.tsx
-  // renders no `colors.muted` text at all. Each cell's backing is a
-  // mid-neutral (`mixHex(colors.surface, readableOn(bg), 0.5)`), not the
-  // plain `colors.surface` token, so both degrade-text branches (the
-  // label fallback and the "Image missing" placeholder) ink against that
-  // board via `readableOn(board)` — legible by construction, never
-  // `colors.muted` on an unknown-contrast mid-gray. The optional title
-  // renders `colors.text`, and a resolvable logo is a raster `<image>`
-  // with no ink of ours at all. Nothing here is a `colors.muted` fill.
-  logo_wall: "no-muted-fill",
   // tag_row wave (`.issues/2026-08-06-tag-row/plan.md`): tag-row.tsx renders
   // no `colors.muted` text at all. A default pill is `colors.surface` fill +
   // `colors.text` ink (the same audited text-on-surface pair as the
