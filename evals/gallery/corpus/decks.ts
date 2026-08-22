@@ -42,6 +42,17 @@ function emphasizePhrase(source: string, phrase: string): string {
   return source.replace(phrase, `**${phrase}**`)
 }
 
+/**
+ * stat-cover's heading is the giant number, one 200px line floored at 72pt.
+ * A full deck title still truncates at that floor and hard-blocks validate
+ * as pinned_heading_overflow (same class as stat-hero's caption). Author a
+ * KPI from the lexicon, not a sentence.
+ */
+function statCoverHeading(lex: Lexicon): string {
+  const m = lex.metrics[1]!
+  return `${m.value}${m.unit ?? ""}`
+}
+
 function consultingLead(component: Component, slotIndex: number, lex: Lexicon): Component {
   if (slotIndex !== 1) return component
   if (component.type !== "bullets") {
@@ -129,7 +140,7 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
   }
   const emphasis = themeId === "consulting" ? CONSULTING_EMPHASIS_PHRASES[lex.id] : undefined
   const content: Slide[] = slots.map((spec, i) => {
-    const built = buildThemeSlot(spec, lex)
+    const built = fitThemeLead(themeId, i, buildThemeSlot(spec, lex))
     const component = emphasis ? consultingLead(built, i, lex) : built
     const extra = thickenThemeContent(themeId, i, lex)
     return {
@@ -143,9 +154,17 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
   const slides: Slide[] = [
     {
       type: "cover",
-      heading: emphasis ? emphasizePhrase(lex.deckTitle, emphasis.cover) : lex.deckTitle,
+      heading:
+        themeId === "insight"
+          ? statCoverHeading(lex)
+          : emphasis
+            ? emphasizePhrase(lex.deckTitle, emphasis.cover)
+            : lex.deckTitle,
       subheading: lex.deckSubtitle,
-      components: [],
+      components:
+        themeId === "consulting"
+          ? [{ type: "bullets", items: [lex.bullets[0]!, lex.bullets[1]!, lex.bullets[2]!] }]
+          : [],
     },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
     ...content,
@@ -176,7 +195,18 @@ function thickenThemeContent(
   if (themeId === "pulse" && slotIndex === 3) return { extra: [shortParagraph] }
   if (themeId === "runway" && slotIndex === 5) return { extra: [shortParagraph] }
   if (themeId === "heritage" && slotIndex === 3) return { extra: [shortParagraph] }
+  // Seed landed this four-card row in quiet-frame's 640px single-component
+  // frame, so icon-card body text fitted to 6-7px. two-column falls back to
+  // one full-width column at n=1, which is this theme's own content claim.
+  if (themeId === "enterprise" && slotIndex === 2) return { extra: [], layout: "two-column" }
   return { extra: [] }
+}
+
+function fitThemeLead(themeId: string, slotIndex: number, component: Component): Component {
+  if (themeId === "enterprise" && slotIndex === 2 && component.type === "icon_cards") {
+    return { ...component, items: component.items.slice(0, 3) }
+  }
+  return component
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -299,7 +329,13 @@ export function layoutPage(layoutId: string, lex: Lexicon, assets: CorpusAssets,
 
   const slide: Slide =
     slideType === "cover"
-      ? { type: "cover", layout: layoutId, heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] }
+      ? {
+          type: "cover",
+          layout: layoutId,
+          heading: def.id === "stat-cover" ? statCoverHeading(lex) : lex.deckTitle,
+          subheading: lex.deckSubtitle,
+          components: [],
+        }
       : slideType === "chapter"
         ? { type: "chapter", layout: layoutId, heading: lex.chapters[1]!, subheading: lex.kickers[1], components: [] }
         : slideType === "ending"
