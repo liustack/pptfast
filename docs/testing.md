@@ -180,7 +180,7 @@ position so they survive a re-run.
 
 Surviving a re-run raises the question of whether a judgement still applies,
 which is what the page fingerprint answers. It comes in two halves
-(`splitPaint`, `scripts/gallery/render.ts`): a shape hash over the markup with
+(`splitPaint`, `evals/gallery/render.ts`): a shape hash over the markup with
 every paint value blanked, and a paint hash over exactly those values. A
 verdict is stamped with both when it is written, and a later run reads them
 back through one rule (`verdictFreshness`, shipped into the page as source so
@@ -201,7 +201,7 @@ and no way to tell the two apart, so they keep the old all-or-nothing rule
 until they are re-stamped — `manifest.json` is at `manifestVersion: 2` and the
 exported payload at `pptfast-gallery-verdicts/3`, both additive.
 
-The corpus (`scripts/gallery/corpus/`) is deliberately **not**
+The corpus (`evals/gallery/corpus/`) is deliberately **not**
 `src/svg/audit/stress-fixtures.ts` — those decks are pathological on
 purpose. This one is ordinary, plausible content at the length a real
 author writes, because the ordinary case is what a human can judge and a
@@ -235,7 +235,7 @@ written to `.gallery/bbox.json` and depend on the fonts installed on the
 machine, the same caveat the PowerPoint output carries.
 
 Each measured overflow lands in one of three buckets
-(`scripts/gallery/bbox.ts`):
+(`evals/gallery/bbox.ts`):
 
 - **measurement slack** — `getBBox()` reports the *ink* box while the declared
   boxes are laid out against advance widths, and the disagreement accumulates
@@ -245,7 +245,7 @@ Each measured overflow lands in one of three buckets
   past a 1088px one, and a flat threshold would call the first clean and the
   second a defect. Nothing accumulates down a baseline, so vertical overflow
   is judged against the flat floor alone.
-- **designed bleed** — `scripts/gallery/bbox-exemptions.ts`, keyed on layout
+- **designed bleed** — `evals/gallery/bbox-exemptions.ts`, keyed on layout
   *plus* the text allowed to bleed, so a real defect landing on the same page
   still gets reported. Kept there rather than as a `data-bleed` attribute
   because marking it in the renderer would move bytes that committed goldens

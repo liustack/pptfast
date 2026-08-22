@@ -253,7 +253,7 @@ export function assertFullCoverage(themeIds: readonly string[], expectedThemeCou
   if (missing.length > 0) {
     problems.push(
       `no corpus builder for component type${missing.length === 1 ? "" : "s"}: ${missing.join(", ")} — ` +
-        `add one to scripts/gallery/corpus/components.ts, or the visual review signs off on a component nobody looked at`,
+        `add one to evals/gallery/corpus/components.ts, or the visual review signs off on a component nobody looked at`,
     )
   }
   if (stale.length > 0) {

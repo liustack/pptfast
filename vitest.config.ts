@@ -6,7 +6,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    include: ["src/**/*.test.{ts,tsx}", "tests/bench/**/*.test.{ts,tsx}", "scripts/**/*.test.mts"],
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "tests/bench/**/*.test.{ts,tsx}",
+      "scripts/**/*.test.mts",
+      "evals/**/*.test.mts",
+    ],
     setupFiles: ["src/test-setup.ts"],
     // 60s, not 15s, because the heaviest sweeps genuinely need it. They are
     // slow, not hung. Measured on a 10-core machine, `vitest run` forking 10

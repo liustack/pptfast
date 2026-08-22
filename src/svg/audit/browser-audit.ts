@@ -7,7 +7,7 @@
  * (Chrome 103-class), not jsdom.
  *
  * `collectBBoxOverflows` is designed to be shipped into that page verbatim:
- * `scripts/gallery/bbox.ts` embeds `collectBBoxOverflows.toString()` in a
+ * `evals/gallery/bbox.ts` embeds `collectBBoxOverflows.toString()` in a
  * generated HTML harness and calls it from an inline `<script>`, driving it
  * over every page `pnpm gallery --bbox` just rendered. That means the function
  * body must be self-contained — no closures over module-level imports/consts,
@@ -155,7 +155,7 @@ export function collectBBoxOverflows(root: SVGSVGElement, tol: number): string[]
 
 /**
  * Extract `collectBBoxOverflows` as a string ready to embed verbatim in a
- * generated HTML page (see `scripts/gallery/bbox.ts`).
+ * generated HTML page (see `evals/gallery/bbox.ts`).
  *
  * `tsx` (and Vite's esbuild-based dev/test transforms) run with esbuild's
  * `keepNames: true`, which rewrites every named function/const declaration

@@ -15,7 +15,7 @@
  *   pnpm gallery --bbox                 # + a real-browser geometry pass
  *
  * `--bbox` is the only flag that needs anything outside this repo (a
- * Playwright install — see `gallery/bbox.ts`). It is opt-in precisely so
+ * Playwright install — see `evals/gallery/bbox.ts`). It is opt-in precisely so
  * `pnpm check`, which runs this same matrix on every commit, never needs a
  * browser.
  */
@@ -25,11 +25,11 @@ import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { listThemes } from "../src/api"
 import { installNodePlatform } from "../src/platform/node"
-import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
-import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
-import { buildGalleryHtml, summarize } from "./gallery/html"
-import { assertFullCoverage, buildMatrix, type TableId } from "./gallery/matrix"
-import { renderMatrix } from "./gallery/render"
+import { corpusAssets, type CorpusAssets } from "../evals/gallery/corpus/decks"
+import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "../evals/gallery/corpus/lexicon"
+import { buildGalleryHtml, summarize } from "../evals/gallery/html"
+import { assertFullCoverage, buildMatrix, type TableId } from "../evals/gallery/matrix"
+import { renderMatrix } from "../evals/gallery/render"
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)))
 
@@ -122,7 +122,7 @@ if (failures.length > 0) {
 // browser driver, and the ordinary `pnpm gallery` run — the one `pnpm check`
 // exercises through `gallery.test.mts` — must not touch it at all.
 if (bboxRaw !== undefined) {
-  const { auditBBoxes, formatBBoxReport, writeBBoxReport } = await import("./gallery/bbox")
+  const { auditBBoxes, formatBBoxReport, writeBBoxReport } = await import("../evals/gallery/bbox")
   let progress = ""
   const report = await auditBBoxes(svgs, {
     floor: bboxFloor,
