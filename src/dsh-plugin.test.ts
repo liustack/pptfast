@@ -2428,10 +2428,11 @@ describe("publishing a preview", () => {
         "}",
       ].join("\n"),
     )
-    const source = fileURLToPath(new URL("../dsh/preview-tool.js", import.meta.url))
-    const original = await readFile(source, "utf8")
+    const dshDir = fileURLToPath(new URL("../dsh/", import.meta.url))
+    const original = await readFile(join(dshDir, "preview-tool.js"), "utf8")
     const patched = original.replace(/ from 'node:fs\/promises'/, " from './fs-hook.mjs'")
     if (patched === original) throw new Error("the fs import moved — this hook patches one exact line")
+    await writeFile(join(dir, "spawnHidden.js"), await readFile(join(dshDir, "spawnHidden.js"), "utf8"))
     const copy = join(dir, "preview-tool.js")
     await writeFile(copy, patched)
     return copy

@@ -22,7 +22,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
-  <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
+  <img src="https://img.shields.io/badge/no%20API%20key-to%20render-4c1?style=flat-square" alt="No API key to render">
 </p>
 
 ## 交流
@@ -39,7 +39,7 @@
 
 **🔁 改稿不用重新描述一遍。** 一条命令打开预览网页，翻页看效果，直接在页面上写批注，AI 读了就改，改完网页自动刷新。
 
-**🔒 不用注册、不用配 key、不联网。** 装好就能用，电脑上有 Node 22.19+ 或 Bun 就行。
+**🔒 不用注册、渲染不用配 key、渲染时不联网。** 装好就能用，电脑上有 Node 22.19+ 或 Bun 就行。可选的图库搜索用用户自己的 Pexels key。
 
 ## 安装
 
@@ -47,7 +47,7 @@
 
 > 按照 https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md 安装 pptfast deck 技能，装完跑一遍健康检查，把结果告诉我。
 
-没有第二步。你的 AI 会把 skill 文件夹放到你这个 harness 读取的位置，skill 自带钉死版本的启动器，不需要你手动装 CLI。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node 22.19+（或 Bun）。
+没有第二步。你的 AI 会把 skill 文件夹放到你这个 harness 读取的位置，skill 自带钉死版本的启动器，不需要你手动装 CLI。pptfast 在本地渲染 PPTX：渲染不要 API key、不用注册、无需配置。可选的图库搜索需要用户自己的 Pexels key。唯一前置是 Node 22.19+（或 Bun）。
 
 **在 DeepSeek Harness 上换成一条命令。** 那里 pptfast 是原生 DSH 插件，不走 skill 文件夹：
 

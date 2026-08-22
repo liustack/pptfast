@@ -1,10 +1,10 @@
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { Icon } from "../../icons"
 import { accessibleInk, resolveSemanticColor } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
 import { parseKpiRatio } from "./kpi-value"
+import { FORM_BODY_FLOOR, fitFormLine } from "./legibility"
 
 type KpiComponent = Extract<Component, { type: "kpi_cards" }>
 
@@ -62,7 +62,7 @@ function grid(n: number, w: number, h?: number) {
   const naturalCellH = Math.min(cellW * 1.15, 280)
   const cellH = h != null ? h / rows : naturalCellH
   const r = Math.max(
-    28,
+    36,
     Math.min(95, (cellW - PAD * 2) * 0.32, (cellH - LABEL_BAND - source - PAD * 2) * 0.42),
   )
   const strokeW = Math.max(8, Math.min(16, r * 0.14))
@@ -124,26 +124,39 @@ export function renderDonutTrio(
         const arc = hot ? danger : defaultArc
         const d = t != null && t > 0 ? donutArcPath(cx, cy, G.r, t) : ""
         const { head, tail } = splitValue(String(item.value), item.unit)
-        const innerW = Math.max(8, (G.r - G.strokeW) * 1.35)
+        const innerW = Math.max(8, (G.r - G.strokeW) * 1.5)
         const rawValue = tail ? `${head}${tail}` : head
-        const valueFit = fitSvgLine(rawValue, {
+        const preferred = Math.max(FORM_BODY_FLOOR, Math.min(40, G.r * 0.55))
+        const lineOpts = {
           maxWidth: innerW,
-          fontSize: Math.min(40, G.r * 0.55),
-          minFontSize: 8,
+          fontSize: preferred,
+          floor: FORM_BODY_FLOOR,
           bold: true,
           fontFamily: ctx.fonts.heading,
-        })
-        const valueSize = valueFit.fontSize
+        }
+        const valueFit = fitFormLine(rawValue, lineOpts)
+        const stackUnit = Boolean(tail && valueFit.truncated)
+        const headFit = stackUnit ? fitFormLine(head, lineOpts) : valueFit
+        const tailFit = stackUnit
+          ? fitFormLine(tail!, {
+              maxWidth: innerW,
+              fontSize: FORM_BODY_FLOOR,
+              floor: FORM_BODY_FLOOR,
+              bold: true,
+              fontFamily: ctx.fonts.heading,
+            })
+          : null
+        const valueSize = headFit.fontSize
         const valueInk = hot ? accessibleInk(danger, pageBg, valueSize) : accessibleInk(arc, pageBg, valueSize)
-        const label = fitSvgLine(item.label, {
+        const label = fitFormLine(item.label, {
           maxWidth: G.cellW - 16,
           fontSize: 16,
-          minFontSize: 11,
+          floor: FORM_BODY_FLOOR,
           bold: true,
           fontFamily: ctx.fonts.body,
         })
         const source = item.source
-          ? fitSvgLine(item.source, { maxWidth: G.cellW - 16, fontSize: 12, minFontSize: 9 })
+          ? fitFormLine(item.source, { maxWidth: G.cellW - 16, fontSize: 12, floor: 12, fontFamily: ctx.fonts.body })
           : null
         const labelY = cy + G.r + G.strokeW / 2 + 22
         const iconSize = 14
@@ -170,18 +183,47 @@ export function renderDonutTrio(
                 color={accessibleInk(ctx.colors.primary, pageBg, iconSize)}
               />
             ) : null}
-            <text
-              x={cx}
-              y={cy + valueSize * BASELINE_FUDGE}
-              textAnchor="middle"
-              fontSize={valueSize}
-              fontWeight="bold"
-              fill={valueInk}
-              fontFamily={ctx.fonts.heading}
-              dominantBaseline="alphabetic"
-            >
-              {valueFit.text}
-            </text>
+            {tailFit ? (
+              <>
+                <text
+                  x={cx}
+                  y={cy - tailFit.fontSize * 0.35 + valueSize * BASELINE_FUDGE}
+                  textAnchor="middle"
+                  fontSize={valueSize}
+                  fontWeight="bold"
+                  fill={valueInk}
+                  fontFamily={ctx.fonts.heading}
+                  dominantBaseline="alphabetic"
+                >
+                  {headFit.text}
+                </text>
+                <text
+                  x={cx}
+                  y={cy + tailFit.fontSize * 0.95}
+                  textAnchor="middle"
+                  fontSize={tailFit.fontSize}
+                  fontWeight="bold"
+                  fill={valueInk}
+                  fontFamily={ctx.fonts.heading}
+                  dominantBaseline="alphabetic"
+                >
+                  {tailFit.text}
+                </text>
+              </>
+            ) : (
+              <text
+                x={cx}
+                y={cy + valueSize * BASELINE_FUDGE}
+                textAnchor="middle"
+                fontSize={valueSize}
+                fontWeight="bold"
+                fill={valueInk}
+                fontFamily={ctx.fonts.heading}
+                dominantBaseline="alphabetic"
+              >
+                {headFit.text}
+              </text>
+            )}
             <text
               data-truncated={label.truncated ? "1" : undefined}
               x={cx}

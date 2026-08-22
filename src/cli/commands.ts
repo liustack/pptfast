@@ -35,6 +35,7 @@ import {
   readDeckDir,
   resolveDeckTarget,
   writeDeckAssets,
+  ASSETS_DIRNAME,
   PLAN_FILENAME,
   SPEC_FILENAME,
   THEME_FILENAME,
@@ -46,6 +47,7 @@ import {
   prepareWorkspaceDir,
   pruneRenderedSvgs,
   resolveWorkspaceLocation,
+  scanWorkspaceAssets,
   type GitRunner,
 } from "./workspace"
 
@@ -268,12 +270,37 @@ export async function applyDeckConfig(
  * that module re-deriving the same bare-name/`decksDir` resolution a second
  * time.
  */
+function mergeWorkspaceImages(raw: unknown, extras: Record<string, { src: string }>): unknown {
+  if (typeof raw !== "object" || raw === null) return raw
+  const deck = raw as { assets?: { images?: Record<string, { src: string }> } }
+  const existing = deck.assets?.images ?? {}
+  return { ...deck, assets: { images: { ...extras, ...existing } } }
+}
+
+async function loadWorkspaceStock(
+  cwd: string,
+  projectHit: ProjectConfigHit,
+  resolvedTarget: string,
+  isDir: boolean,
+): Promise<{ workspaceAssetsDir: string; images: Record<string, { src: string }> }> {
+  const location = resolveWorkspaceLocation({
+    cwd,
+    projectConfigPath: projectHit?.path,
+    outDir: projectHit?.config.outDir,
+    target: resolvedTarget,
+    isDir,
+  })
+  const workspaceAssetsDir = join(location.dir, ASSETS_DIRNAME)
+  const images = await scanWorkspaceAssets(workspaceAssetsDir)
+  return { workspaceAssetsDir, images }
+}
+
 async function loadDeckTarget(
   arg: string,
   cwd: string,
   projectHit: ProjectConfigHit,
   userHit: UserConfigHit,
-): Promise<{ raw: unknown; baseDir: string; isDir: boolean; resolvedTarget: string }> {
+): Promise<{ raw: unknown; baseDir: string; isDir: boolean; resolvedTarget: string; workspaceAssetsDir: string }> {
   const target = await resolveDeckTarget(arg, resolveDecksDirSource(projectHit, userHit), cwd)
   if (await isDeckDirectory(target)) {
     // Brand-extract wave: a deck-local theme.json must be registered before
@@ -281,11 +308,42 @@ async function loadDeckTarget(
     // registerDeckThemeFile's doc comment.
     await registerDeckThemeFile(target)
     const { ir, deckDir } = await readDeckDir(target)
-    return { raw: ir, baseDir: deckDir, isDir: true, resolvedTarget: deckDir }
+    const stock = await loadWorkspaceStock(cwd, projectHit, deckDir, true)
+    return {
+      raw: mergeWorkspaceImages(ir, stock.images),
+      baseDir: deckDir,
+      isDir: true,
+      resolvedTarget: deckDir,
+      workspaceAssetsDir: stock.workspaceAssetsDir,
+    }
   }
   const raw = await loadIrFile(target)
   const resolvedFile = resolve(target)
-  return { raw, baseDir: dirname(resolvedFile), isDir: false, resolvedTarget: resolvedFile }
+  const stock = await loadWorkspaceStock(cwd, projectHit, resolvedFile, false)
+  return {
+    raw: mergeWorkspaceImages(raw, stock.images),
+    baseDir: dirname(resolvedFile),
+    isDir: false,
+    resolvedTarget: resolvedFile,
+    workspaceAssetsDir: stock.workspaceAssetsDir,
+  }
+}
+
+/** Load, apply deck config, validate, and resolve local assets — the same
+ *  sequence `runAssetBrief` uses, exported so `images generate` can read
+ *  `suggested_prompt` without duplicating the chain. */
+export async function loadValidatedDeckIr(target: string, cwd: string): Promise<PptxIR> {
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir, workspaceAssetsDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  const v = validateIr(raw)
+  if (!v.ok) {
+    throw new PptfastError(
+      `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
+    )
+  }
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
+  return v.ir!
 }
 
 export interface RenderOptions {
@@ -337,7 +395,7 @@ export interface RenderOptions {
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir, isDir, resolvedTarget } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  const { raw, baseDir, isDir, resolvedTarget, workspaceAssetsDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
   await applyDeckConfig(raw, {
     theme: opts.theme,
     themeFilePath: opts.themeFilePath,
@@ -348,7 +406,7 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
-  await resolveLocalAssets(v.ir!, baseDir)
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
   const bytes = await generatePptx(v.ir!, {
     draft: opts.draft,
     allowDroppedContent: opts.allowDroppedContent,
@@ -479,14 +537,14 @@ export async function runValidate(
   opts: { themeFilePath?: string } = {},
 ): Promise<string> {
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir, isDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  const { raw, baseDir, isDir, workspaceAssetsDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
-  await resolveLocalAssets(v.ir!, baseDir)
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
   const ok = `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
   const notes: string[] = []
   const warnNote = warningsNote(v.warnings)
@@ -613,7 +671,7 @@ export interface AuditCliResult {
 export async function runAudit(target: string, opts: AuditOptions = {}): Promise<AuditCliResult> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  const { raw, baseDir, workspaceAssetsDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) {
@@ -621,7 +679,7 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
   }
-  await resolveLocalAssets(v.ir!, baseDir)
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
   const report = opts.pixels ? await auditDeck(v.ir!, { pixels: true }) : auditDeck(v.ir!)
   const hasFindings = report.findings.length > 0
   const output = opts.json ? JSON.stringify(report, null, 2) : formatAuditReport(report, v.ir!)
@@ -704,7 +762,7 @@ export interface AssetBriefOptions {
 export async function runAssetBrief(target: string, opts: AssetBriefOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  const { raw, baseDir, workspaceAssetsDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) {
@@ -712,7 +770,7 @@ export async function runAssetBrief(target: string, opts: AssetBriefOptions = {}
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
   }
-  await resolveLocalAssets(v.ir!, baseDir)
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
   const brief = buildAssetBrief(v.ir!)
   return opts.json ? JSON.stringify(brief, null, 2) : formatAssetBriefReport(brief)
 }
@@ -964,11 +1022,11 @@ async function renderDeckSlides(
 ): Promise<DeckRenderResult> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir, isDir, resolvedTarget } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  const { raw, baseDir, isDir, resolvedTarget, workspaceAssetsDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
-  await resolveLocalAssets(v.ir!, baseDir)
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
   const ir = v.ir!
   const svgs = ir.slides.map((_, i) => renderSlideSvg(ir, i))
   return { ir, svgs, resolvedTarget, isDir, normalized: v.normalized }

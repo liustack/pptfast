@@ -6,7 +6,7 @@ import { accessibleOpacity, readableOn } from "../ink"
 import { sparseFace } from "./sparse/registry"
 
 /**
- * 待第二批设计稿锁定
+ * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * mono-bleed 通用脸：满版品牌色，字当图。`pinOnly` + `chrome: "none"` +
  * `paintsOwnBackground`。整页 fill 是 `colors.primary`，字色走 `readableOn`。

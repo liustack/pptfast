@@ -1,9 +1,15 @@
 import type { ReactElement } from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../../lib/svg-text-layout"
 import { accessibleInk } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  FORM_BODY_FLOOR,
+  FORM_TITLE_FLOOR,
+  fitFormTitleLine,
+  layoutFormBody,
+  layoutFormTitle,
+} from "./legibility"
 
 type CycleComponent = Extract<Component, { type: "cycle" }>
 
@@ -12,22 +18,24 @@ function nodeAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n
 }
 
-const CURRENT_R = 46
-const OTHER_RADII = [34, 40, 28, 36, 32, 38, 30]
+const CURRENT_R = 56
+const OTHER_RADII = [44, 50, 42, 46, 42, 48, 42]
 const NODE_GAP = 28
 const MIN_RING_R = 160
 const GAP_NODE_DESC = 14
 const DESC_W = 176
-const DESC_MAX_LINES = 2
-const DESC_FONT = 13
-const DESC_MIN_FONT = 9
+const DESC_MAX_LINES = 3
+const DESC_FONT = 15
+const DESC_MIN_FONT = FORM_BODY_FLOOR
 const DESC_LINE_RATIO = 1.3
 const TITLE_FONT = 20
-const TITLE_MIN = 13
+const TITLE_MIN = FORM_TITLE_FLOOR
 const TITLE_BAND = 36
 const TITLE_PAD = 6
 const NODE_TEXT_RATIO = 0.72
-const MAX_H = 400
+/** After scale, 2 × nr × ratio must hold two 20px CJK chars on a wrap line. */
+const MIN_PAINT_R = FORM_TITLE_FLOOR / NODE_TEXT_RATIO + 0.75
+const MAX_H = 480
 const MAX_UPSCALE = 1.15
 
 function nodeRadius(i: number, highlightFirst: boolean): number {
@@ -70,7 +78,13 @@ function resolveLoop(component: CycleComponent, w: number, knobs: FormKnobs): Lo
   const titleBand = hasTitle ? TITLE_BAND : 0
   const localW = 2 * halfW
   const localH = 2 * halfH + titleBand
-  const scale = Math.min(w / localW, MAX_H / localH, MAX_UPSCALE)
+  const widthScale = w / localW
+  const heightScale = MAX_H / localH
+  let scale = Math.min(widthScale, heightScale, MAX_UPSCALE)
+  const minR = Math.min(...radii)
+  if (minR > 0 && minR * scale < MIN_PAINT_R) {
+    scale = Math.min(widthScale, MAX_UPSCALE, Math.max(scale, MIN_PAINT_R / minR))
+  }
   return {
     n,
     scale,
@@ -133,14 +147,16 @@ export function renderCycleLoop(
         const current = highlightFirst && i === 0
         const fill = ctx.colors.surface
         const stroke = current ? ctx.colors.accent : border
-        const fit = fitSvgLine(item.label, {
+        const fit = layoutFormTitle(item.label, {
           maxWidth: 2 * nr * NODE_TEXT_RATIO,
-          fontSize: Math.max(10, Math.round((current ? 22 : 18) * scale)),
-          minFontSize: 10,
+          fontSize: Math.max(FORM_TITLE_FLOOR, Math.round((current ? 22 : 20) * scale)),
+          maxLines: 2,
           fontFamily: ctx.fonts.body,
         })
         const preferred = current ? ctx.colors.accent : ctx.colors.muted
         const ink = accessibleInk(preferred, fill, fit.fontSize)
+        const totalH = fit.lines.length * fit.lineHeight
+        const top = cy - totalH / 2
         return (
           <g key={`node-${i}`} data-audit-box={`${box.x + cx - nr},${box.y + cy - nr},${2 * nr}`}>
             <circle
@@ -151,19 +167,21 @@ export function renderCycleLoop(
               stroke={stroke}
               strokeWidth={current ? 2 : 1.25}
             />
-            <text
-              data-truncated={fit.truncated ? "1" : undefined}
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily={ctx.fonts.body}
-              fontSize={fit.fontSize}
-              fontWeight={current ? "700" : "600"}
-              fill={ink}
-            >
-              {fit.text}
-            </text>
+            {fit.lines.map((line, li) => (
+              <text
+                key={li}
+                data-truncated={fit.truncated && li === fit.lines.length - 1 ? "1" : undefined}
+                x={cx}
+                y={top + li * fit.lineHeight + fit.fontSize * 0.85}
+                textAnchor="middle"
+                fontFamily={ctx.fonts.body}
+                fontSize={fit.fontSize}
+                fontWeight={current ? "700" : "600"}
+                fill={ink}
+              >
+                {line}
+              </text>
+            ))}
           </g>
         )
       })}
@@ -176,16 +194,15 @@ export function renderCycleLoop(
         const ax = ox + outward.x * anchorR
         const ay = oy + outward.y * anchorR
         const maxWidth = DESC_W * scale
-        const wrapped = layoutSvgText(item.description, {
+        const wrapped = layoutFormBody(item.description, {
           maxWidth,
           fontSize: Math.max(DESC_MIN_FONT, Math.round(DESC_FONT * scale)),
           maxLines: DESC_MAX_LINES,
           lineHeightRatio: DESC_LINE_RATIO,
           fontFamily: ctx.fonts.body,
         })
-        const maxUnits = maxWidth / wrapped.fontSize
-        const lines = wrapped.lines.map((line) => truncateToUnits(line, maxUnits))
-        const truncated = lines.some((line, li) => line !== wrapped.lines[li])
+        const lines = wrapped.lines
+        const truncated = wrapped.truncated
         const textAnchor = outward.x > 0.3 ? "start" : outward.x < -0.3 ? "end" : "middle"
         const stackUp = outward.y < 0
         const totalH = lines.length * wrapped.lineHeight
@@ -211,11 +228,9 @@ export function renderCycleLoop(
       })}
       {hasTitle &&
         (() => {
-          const title = fitSvgLine(component.title!, {
+          const title = fitFormTitleLine(component.title!, {
             maxWidth: 2 * g.halfW * scale * 0.9,
             fontSize: Math.max(TITLE_MIN, Math.round(TITLE_FONT * scale)),
-            minFontSize: TITLE_MIN,
-            bold: true,
             fontFamily: ctx.fonts.heading,
           })
           return (

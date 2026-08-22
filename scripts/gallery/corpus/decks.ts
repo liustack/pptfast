@@ -1,19 +1,17 @@
 /**
  * Turns the corpus into whole decks — the two tables `D2` settled on.
  *
- * Theme table: every theme runs the same nine-page deck, so a reviewer
- * comparing two themes is looking at one variable. Layout/component table:
+ * Theme table: every theme runs a ten-page deck of the same shape, with
+ * content leads rotating from a fixed assignment table. Layout/component table:
  * one page each, pinned, on a fixed baseline theme, so a reviewer comparing
  * two layouts is likewise looking at one variable. Nothing here picks a
  * layout implicitly — every page in the second table carries an explicit
  * `layout` pin, because auto-selection reshuffling between runs would make
  * the review non-reproducible.
  *
- * A third page shape was added later: the density table (`densityPage`),
- * which asks what the nine drop-capable components look like once the
- * content does not fit. Every other page in this file is sized so it does
- * fit — that is the whole point of the two tables above, and the reason
- * the degrade path needed a table of its own to be seen at all.
+ * A third page shape was added later: the full-load table (`densityPage`),
+ * which fills each of nine components to the largest count that still
+ * fits. Every page in this file is sized so it does fit.
  */
 
 import type { Component, PptxIR, Slide } from "@/ir"
@@ -22,6 +20,7 @@ import { LAYOUT_REGISTRY, type LayoutDefinition } from "@/svg/layouts/registry"
 import { COMPONENT_BUILDERS, LOGO_ASSETS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
 import type { Lexicon } from "./lexicon"
 import { placeholderImage, placeholderLogo, placeholderScreenshot } from "./placeholders"
+import { THEME_CONTENT_SLOTS, buildThemeSlot } from "./theme-slots"
 
 /** The theme held fixed while layouts and components are under review. */
 export const BASELINE_THEME = "consulting"
@@ -80,41 +79,36 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Theme table — one nine-page deck, rendered once per theme
+// Theme table — one ten-page deck, rendered once per theme
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * The nine pages a real deck actually contains, in the order it contains
- * them: an opening, a section break, and the body shapes that carry most
- * of the weight in practice — an argument in prose, headline numbers, a
- * chart, a comparison, a picture, a pull quote — then a close.
+ * The ten pages a real deck actually contains, in the order it contains
+ * them: an opening, a section break, seven content pages each led by a
+ * different component (looked up in `THEME_CONTENT_SLOTS`), then a close.
  *
  * Layouts are left unpinned here on purpose. This table asks "does this
  * theme look good doing its own thing", and its own thing includes which
  * layout it reaches for. The `seed` on the deck keeps that choice stable.
  */
 export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): PptxIR {
-  const b = COMPONENT_BUILDERS
+  const slots = THEME_CONTENT_SLOTS[themeId]
+  if (!slots || slots.length !== 7) {
+    throw new Error(`theme table has no 7-slot assignment for ${themeId}`)
+  }
+  const content: Slide[] = slots.map((spec, i) => {
+    const component = buildThemeSlot(spec, lex)
+    return {
+      type: "content" as const,
+      heading: lex.headings[i]!,
+      components: [component],
+      ...(component.type === "data_table" ? { footnote: lex.sources[0]!.label } : {}),
+    }
+  })
   const slides: Slide[] = [
     { type: "cover", heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
-    {
-      // A full paragraph *and* five bullets is more than one content rect
-      // holds, and the deck audit reported the overflow on all 17 themes —
-      // the corpus authoring the page badly, not the themes failing. Three
-      // bullets under the paragraph is what a real page of this shape
-      // carries.
-      type: "content",
-      heading: lex.headings[0]!,
-      components: [b.paragraph!(lex), { type: "bullets", items: lex.bullets.slice(0, 3), style: "default" }],
-      footnote: lex.sources[0]!.label,
-    },
-    { type: "content", heading: lex.headings[1]!, components: [b.kpi_cards!(lex)] },
-    { type: "content", heading: lex.headings[2]!, components: [b.chart!(lex)] },
-    { type: "content", heading: lex.headings[3]!, components: [b.steps!(lex), b.callout!(lex)] },
-    { type: "content", heading: lex.headings[4]!, components: [b.comparison!(lex)] },
-    { type: "content", heading: lex.headings[5]!, components: [b.image!(lex), b.paragraph!(lex)] },
-    { type: "content", heading: lex.headings[6]!, components: [b.quote!(lex)] },
+    ...content,
     { type: "ending", heading: lex.chapters[5]!, subheading: lex.verdicts.positive, components: [] },
   ]
   return deckShell(lex, assets, themeId, `theme-${themeId}-${lex.id}`, slides)
@@ -135,6 +129,11 @@ function bodyCapacity(def: LayoutDefinition): number {
 
 function wantsImage(def: LayoutDefinition): boolean {
   return def.slots.some((s) => s.name === "image" || s.name === "hero" || s.name === "lead")
+}
+
+function shortCitation(lex: Lexicon): Component {
+  const s = lex.sources[0]!
+  return { type: "citation", sources: [{ label: s.label, ref: s.ref }] }
 }
 
 /**
@@ -167,35 +166,64 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     return [kpi]
   }
 
-  if (capacity <= 1) {
-    const s = lex.sources[0]!
-    return [{ type: "citation", sources: [{ label: s.label, ref: s.ref }] }]
+  // Sparse and a few ordinary layouts have a body slot whose declared
+  // capacity is the wrong signal: citation is the capacity-1 default, but
+  // these pages draw a quote, a chart, a bento grid, or a hero+strip. Match
+  // the layout's own comments rather than broadening the default.
+  if (def.id === "pull-quote") return [b.quote!(lex)]
+  if (def.id === "one-evidence") return [b.chart!(lex)]
+  if (def.id === "bento-panel") {
+    const kpi = b.kpi_cards!(lex)
+    const icons = b.icon_cards!(lex)
+    if (kpi.type === "kpi_cards") kpi.items = kpi.items.slice(0, 3)
+    if (icons.type === "icon_cards") icons.items = icons.items.slice(0, 3)
+    return [kpi, icons]
+  }
+  if (def.id === "stacked-poster") {
+    // The 108px caption strip under the poster hero cannot hold
+    // shortParagraph. A one-source citation fits the strip, so the page
+    // stays on the two-block poster path instead of dropping the body.
+    return [b.image!(lex), shortCitation(lex)]
+  }
+  if (def.id === "quote-stage") return [shortCitation(lex)]
+  if (def.id === "statement") return [{ type: "paragraph", text: lex.shortParagraph }]
+
+  if (capacity <= 1) return [shortCitation(lex)]
+
+  const shortParagraph: Component = { type: "paragraph", text: lex.shortParagraph }
+
+  // Per-layout bodies. Same capacity intent as before (two compact blocks
+  // for the two-column-ish family, image plus a short companion for
+  // takeovers) but different types, so paging the table is not eight
+  // copies of bullets+kpi.
+  const bodies: Record<string, Component[]> = {
+    "two-column": (() => {
+      // Four KPI cards in a half-width column fall under MIN_READABLE_CARD_W
+      // and draw a +N marker. Two cards still read as a kpi pair.
+      const kpi = b.kpi_cards!(lex)
+      if (kpi.type === "kpi_cards") kpi.items = kpi.items.slice(0, 2)
+      return [b.bullets!(lex), kpi]
+    })(),
+    "narrow-column": [b.callout!(lex), b.numbered_cards!(lex)],
+    "rail-numbered": [b.steps!(lex), shortCitation(lex)],
+    "banner-heading": [b.icon_cards!(lex), b.bullets!(lex)],
+    "tone-adaptive-content": [b.quote!(lex), b.kpi_cards!(lex)],
+    "quiet-frame": [b.tag_row!(lex), b.callout!(lex)],
+    "side-highlight": [b.bullets!(lex), b.verdict_banner!(lex)],
+    "split-band": [b.icon_cards!(lex), shortCitation(lex)],
+    "asymmetric-triptych": [b.image!(lex), b.quote!(lex)],
+    "image-lead-split": [b.image!(lex), shortParagraph, b.callout!(lex)],
+    "image-split": [b.image!(lex), b.bullets!(lex), shortParagraph],
+    "image-top": [b.image!(lex), b.callout!(lex), shortParagraph],
+    "image-bottom": [b.image!(lex), b.quote!(lex), shortParagraph],
+    "image-annotate": [b.image!(lex), b.bullets!(lex)],
   }
 
-  // Two-column layouts split the body's height between columns but declare
-  // capacity per slot, so a block sized for a full-width rect does not fit
-  // a half-width one. When it doesn't, `layoutContentFit` drops it whole
-  // (its truncation budget only applies when nothing at all fits), and the
-  // page renders as one column of content beside an empty one — which is
-  // what the first review round saw. Compact blocks, and only two of them,
-  // are what a two-column page actually holds.
-  const splitsColumns =
-    def.arrangements === "all" || (Array.isArray(def.arrangements) && def.arrangements.includes("two_column"))
-  if (splitsColumns && !wantsImage(def)) {
-    return [b.bullets!(lex), b.kpi_cards!(lex)]
-  }
+  const mapped = bodies[def.id]
+  if (mapped) return capacity < mapped.length ? mapped.slice(0, capacity) : mapped
 
-  // Same lesson as the two-column branch above, one slot shape further on.
-  // An image takeover spends most of the page on the picture and leaves the
-  // prose a narrow column — `image-split` gives it 564x238, seven lines.
-  // `lex.paragraph` is written for a full content rect and runs thirteen
-  // lines in English, so the renderer truncated it and covered the page in
-  // an ellipsis: `image-split--{en,mixed}`, `image-top--en` and
-  // `image-bottom--en` were all showing the degrade path rather than the
-  // layout. `lex.shortParagraph` is the same argument at the length the
-  // narrow column holds.
   const pool: Component[] = wantsImage(def)
-    ? [b.image!(lex), { type: "paragraph", text: lex.shortParagraph }, b.bullets!(lex), b.callout!(lex)]
+    ? [b.image!(lex), shortParagraph, b.bullets!(lex), b.callout!(lex)]
     : [b.paragraph!(lex), b.bullets!(lex), b.kpi_cards!(lex), b.callout!(lex)]
   return pool.slice(0, Math.min(capacity, 3))
 }
@@ -274,21 +302,17 @@ export function componentPage(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Density table — one deliberately over-capacity component per page
+// Full-load table — one component filled to its geometric ceiling per page
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * One overfilled component (`DENSITY_BUILDERS`), alone on the page.
+ * One full-load component (`DENSITY_BUILDERS`), alone on the page.
  *
  * Alone is the whole trick. `layoutContentFit` drops a block whole when it
- * does not fit alongside its neighbours, and a component's own truncation
- * budget only applies once nothing at all fits — so an overfilled component
- * sharing a page with the component table's lead-in paragraph gets deleted
- * at the slide level and never reaches its own "+N …" branch. Measured
- * with the lead-in in place: every component that overflows vertically was
- * deleted whole, and 15 of these 27 pages rendered the lead-in and nothing
- * else. Solo hands the component the entire content rect, and the only way
- * left to fit is the one this table exists to show.
+ * does not fit alongside its neighbours, so sharing a page with the
+ * component table's lead-in paragraph would delete the component at the
+ * slide level. Solo hands it the entire content rect. The counts in
+ * `DENSITY_BUILDERS` are the largest that still fit that rect.
  *
  * The footnote stays because a real slide has one, and because it is part
  * of what squeezes the rect.

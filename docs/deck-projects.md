@@ -76,9 +76,14 @@ Four-layer precedence, highest wins: **CLI flag** > **project config** (`pptfast
     manifest.json
     001-cover.svg
     <deck-slug>.pptx
+    assets/             pinned stock photos (not regenerable)
+      hero.jpg
+      hero.json
 ```
 
-The anchor is the directory of the nearest `pptfast.config.json`, else cwd. The slug is the deck directory name, or the IR filename without its extension. Only regenerable output lives here. `deck.spec.json`, `pages/`, `assets/`, `theme.json`, `pptfast.config.json`, and assemble's `deck.json` stay where they already are.
+The anchor is the directory of the nearest `pptfast.config.json`, else cwd. The slug is the deck directory name, or the IR filename without its extension.
+
+Two zones live here. Render output (pptx, preview.html, `NNN-*.svg`, manifest.json) is regenerable: delete those files and re-run, they grow back. Stock-photo files under `.pptfast/<deck>/assets/` (plus sidecars) are pinned downloads. Deleting the whole `.pptfast/` directory drops those photos. `deck.spec.json`, `pages/`, project `assets/`, `theme.json`, `pptfast.config.json`, and assemble's `deck.json` stay where they already are.
 
 On a default-path preview, leftover files matching `^\d{3}-[a-z-]+\.svg$` in that deck directory are deleted first, so a shorter deck does not leave orphan SVGs. An explicit `-o` is never pruned.
 

@@ -22,12 +22,13 @@ import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
-import { resolveComponentForm } from "@/svg/components/form-assignments"
-import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
+import { THEME_TABLE_REQUIRED_SURFACES } from "./gallery/corpus/theme-slots"
+import { COMPONENT_FORMS, resolveComponentForm } from "@/svg/components/form-assignments"
+import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
-import { assertFullCoverage, buildMatrix, SPEECH_LAYOUT_IDS } from "./gallery/matrix"
-import { themeOffersSparse } from "@/themes/definitions"
+import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { SPARSE_LAYOUT_IDS, THEME_DEFINITIONS, themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
 // `renderMatrix` audits every page it renders, and the auditor parses SVG
@@ -91,9 +92,10 @@ describe("gallery coverage", () => {
     expect(() => assertFullCoverage(themeIds, themeIds.length + 1)).toThrow(/expected/)
   })
 
-  it("speech table skips sparse pins a theme does not offer", async () => {
-    const jobs = buildMatrix(themeIds, await assets(), { only: "speech" })
-    const subjects = (themeId: string) => jobs.filter((j) => j.theme === themeId).map((j) => j.subject)
+  it("layout table expands sparse layouts only on themes that offer them", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout" })
+    const sparse = jobs.filter((j) => (SPARSE_LAYOUT_IDS as readonly string[]).includes(j.subject))
+    const subjects = (themeId: string) => sparse.filter((j) => j.theme === themeId).map((j) => j.subject)
 
     expect(subjects("crayon")).toEqual([])
     expect(subjects("classroom")).toEqual([])
@@ -103,14 +105,197 @@ describe("gallery coverage", () => {
     expect(stage).toContain("statement")
     expect(stage).not.toContain("one-evidence")
 
-    expect(subjects("consulting").sort()).toEqual([...SPEECH_LAYOUT_IDS].sort())
+    expect([...new Set(subjects("consulting"))].sort()).toEqual([...THEME_DEFINITIONS.consulting.sparseLayouts!].sort())
 
-    const derived = themeIds.reduce(
-      (n, themeId) => n + SPEECH_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length,
-      0,
+    const derived = themeIds.reduce((n, themeId) => {
+      const offered = SPARSE_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length
+      return n + offered * (themeId === BASELINE_THEME ? LANGUAGE_IDS.length : 1)
+    }, 0)
+    expect(sparse).toHaveLength(derived)
+  })
+
+  it("emits only the theme, layout, component, and density tables", async () => {
+    const jobs = buildMatrix(themeIds, await assets())
+    expect([...new Set(jobs.map((j) => j.table))].sort()).toEqual(["component", "density", "layout", "theme"])
+  })
+})
+
+const THEME_CHART_SURFACES = [
+  "chart:bar",
+  "chart:bar-horizontal",
+  "chart:line",
+  "chart:area",
+  "chart:pie",
+  "chart:donut",
+  "chart:funnel",
+  "chart:dumbbell",
+  "chart:scatter",
+  "chart:gauge",
+] as const
+
+function leadComponent(job: { ir: { slides: { components: Component[] }[] }; slideIndex: number }): Component | undefined {
+  return job.ir.slides[job.slideIndex]!.components[0]
+}
+
+function chartSurfaceId(c: Extract<Component, { type: "chart" }>): string {
+  if (c.chart_type === "bar" && c.direction === "horizontal") return "chart:bar-horizontal"
+  return `chart:${c.chart_type}`
+}
+
+function themeTableSurfaces(
+  jobs: Array<{
+    slideType: string
+    theme: string
+    ir: { slides: { components: Component[] }[] }
+    slideIndex: number
+  }>,
+): string[] {
+  const surfaces = new Set<string>()
+  for (const job of jobs) {
+    if (job.slideType !== "content") continue
+    const c = leadComponent(job)
+    if (!c) continue
+    surfaces.add(c.type)
+    if (c.type === "chart") surfaces.add(chartSurfaceId(c))
+    const form = resolveComponentForm(c.type, job.theme)?.form
+    if (form) surfaces.add(`form:${form}`)
+  }
+  return [...surfaces].sort()
+}
+
+describe("gallery theme table corpus", () => {
+  it("keeps the coverage list aligned with IR types, chart surfaces, and forms", () => {
+    const expected = [
+      ...COMPONENT_TYPES,
+      ...THEME_CHART_SURFACES,
+      ...COMPONENT_FORMS.map((f) => `form:${f}`),
+    ].sort()
+    const listed = [...THEME_TABLE_REQUIRED_SURFACES].sort()
+    expect(listed).toEqual(expected)
+    expect(new Set(THEME_TABLE_REQUIRED_SURFACES).size).toBe(THEME_TABLE_REQUIRED_SURFACES.length)
+  })
+
+  it("runs a ten-page deck on every theme, with seven unique content leads", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
+
+    for (const themeId of themeIds) {
+      const pages = jobs.filter((j) => j.subject === themeId).sort((a, b) => a.page - b.page)
+      expect(pages, themeId).toHaveLength(10)
+      expect(pages.map((p) => p.slideType)).toEqual([
+        "cover",
+        "chapter",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "ending",
+      ])
+
+      const content = pages.filter((p) => p.slideType === "content")
+      const types = content.map((p) => leadComponent(p)!.type)
+      expect(new Set(types).size, themeId).toBe(7)
+    }
+  })
+
+  it("covers every required surface at least once across the 25×7 union", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const drawn = themeTableSurfaces(jobs)
+    const required = [...THEME_TABLE_REQUIRED_SURFACES].sort()
+    const missing = required.filter((s) => !drawn.includes(s))
+    const extra = drawn.filter((s) => !(THEME_TABLE_REQUIRED_SURFACES as readonly string[]).includes(s))
+    expect(missing, `missing surfaces: ${missing.join(", ")}`).toEqual([])
+    expect(extra, `stale surfaces: ${extra.join(", ")}`).toEqual([])
+    expect(drawn).toEqual(required)
+
+    const types = new Set<string>(jobs.filter((j) => j.slideType === "content").map((j) => leadComponent(j)!.type))
+    for (const type of COMPONENT_TYPES) {
+      expect(types.has(type), type).toBe(true)
+    }
+
+    const charts = new Set(
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => leadComponent(j))
+        .filter((c): c is Extract<Component, { type: "chart" }> => c?.type === "chart")
+        .map(chartSurfaceId),
     )
-    expect(jobs).toHaveLength(derived)
-    expect(derived).toBe(92)
+    for (const surface of THEME_CHART_SURFACES) {
+      expect(charts.has(surface), surface).toBe(true)
+    }
+
+    const forms = new Set(
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => {
+          const c = leadComponent(j)
+          return c ? resolveComponentForm(c.type, j.theme)?.form : undefined
+        })
+        .filter((f): f is (typeof COMPONENT_FORMS)[number] => f !== undefined),
+    )
+    for (const form of COMPONENT_FORMS) {
+      expect(forms.has(form), form).toBe(true)
+    }
+  })
+
+  it("assigns the same lead types on a second buildMatrix call", async () => {
+    const first = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const second = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const typesOf = (jobs: typeof first) =>
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => `${j.subject}:${j.page}:${leadComponent(j)!.type}`)
+    expect(typesOf(second)).toEqual(typesOf(first))
+  })
+})
+
+describe("gallery layout table corpus", () => {
+  it("authors bodies that match what those layouts actually draw", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const typesOf = (layoutId: string): string[] => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      return job!.ir.slides[0]!.components.map((c) => c.type)
+    }
+
+    expect(typesOf("pull-quote")).toContain("quote")
+    expect(typesOf("one-evidence")).toContain("chart")
+    expect(typesOf("bento-panel")).toEqual(expect.arrayContaining(["kpi_cards", "icon_cards"]))
+    expect(typesOf("stacked-poster")).toContain("image")
+  })
+
+  it("varies the first body type across the two-compact layout family", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const twoCompact = [
+      "two-column",
+      "narrow-column",
+      "rail-numbered",
+      "banner-heading",
+      "tone-adaptive-content",
+      "quiet-frame",
+      "side-highlight",
+      "split-band",
+    ]
+    const leads = twoCompact.map((layoutId) => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      return job!.ir.slides[0]!.components[0]!.type
+    })
+    expect(new Set(leads).size, `leads: ${leads.join(", ")}`).toBeGreaterThanOrEqual(4)
+  })
+
+  it("gives image-split, image-top, and image-bottom different secondary types", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const secondaries = (["image-split", "image-top", "image-bottom"] as const).map((layoutId) => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      const types = job!.ir.slides[0]!.components.map((c) => c.type)
+      expect(types[0], layoutId).toBe("image")
+      return types[1]
+    })
+    expect(new Set(secondaries).size, `secondaries: ${secondaries.join(", ")}`).toBe(3)
   })
 })
 
@@ -333,19 +518,16 @@ describe("gallery page", () => {
   }, 60_000)
 })
 
-// The density table exists because nine components share a "keep what fits,
-// mark the rest" branch that no gallery page had ever drawn: the ordinary
-// corpus tops out at five bullets and the marker needs twelve, so 434 review
-// pages missed it by construction and one review verdict about the marker
-// ended up naming a page that never had one. That blind spot closes only
-// while these pages keep reaching the branch, and nothing about them says so
-// on inspection — a threshold moving by a few pixels puts it back silently.
-//
-// Gallery review r1 retired the painted "+N …" copy (debug voice on a
-// customer slide). The branch is now a silent `data-dropped` attribute:
-// audit still sees the drop, the page does not print maintainer vocabulary.
+// The full-load table (满载表) fills each of nine components to the largest
+// count that still fits the consulting density page. Authoring cuts or
+// splits content. These pages must not stamp a silent `data-dropped`
+// overflow attribute or drop the block whole. Gallery review r1 retired
+// the painted "+N …" copy. The drop path is now the attribute, and a
+// full-load page should not reach it. A tenth component that grows a
+
+// drop branch still fails the coverage test below until a builder is added.
 describe("gallery density table", () => {
-  it("draws a drop marker on every page", async () => {
+  it("renders every page at full load, with no drop marker and no silent drop", async () => {
     const { renderMatrix } = await import("./gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
@@ -355,16 +537,14 @@ describe("gallery density table", () => {
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
     const { svgs } = renderMatrix(jobs, outDir, "test")
 
-    const unmarked = [...svgs].filter(([, svg]) => !/data-dropped="[1-9]/.test(svg)).map(([id]) => id)
-    expect(unmarked, "these density pages fit after all — raise their item counts").toEqual([])
+    const marked = [...svgs].filter(([, svg]) => /data-dropped="[1-9]/.test(svg)).map(([id]) => id)
+    expect(marked, "these full-load pages still stamp data-dropped. lower their item counts").toEqual([])
 
-    // The failure mode that cost the first attempt at this table: the whole
-    // component overflows, `layoutContentFit` deletes the block rather than
-    // handing it a budget to clip into, and the page renders its chrome and
-    // nothing else. That reads as a drop too, but it is the slide-level one,
-    // not the component-level branch these pages are here to show.
+    const painted = [...svgs].filter(([, svg]) => /\+\d+ …/.test(svg)).map(([id]) => id)
+    expect(painted, "painted +N copy must stay gone").toEqual([])
+
     const swallowed = [...svgs].filter(([, svg]) => svg.includes("data-dropped-silent")).map(([id]) => id)
-    expect(swallowed, "the component was dropped whole instead of clipping itself").toEqual([])
+    expect(swallowed, "the component was dropped whole instead of fitting").toEqual([])
   }, 60_000)
 
   it("covers every component that can draw a drop marker", async () => {

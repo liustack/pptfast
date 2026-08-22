@@ -1,9 +1,15 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText } from "../../../lib/svg-text-layout"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  FORM_BODY_FLOOR,
+  FORM_TITLE_FLOOR,
+  fitFormLine,
+  fitFormTitleLine,
+  layoutFormBody,
+} from "./legibility"
 
 type TimelineComponent = Extract<Component, { type: "timeline" }>
 
@@ -13,9 +19,9 @@ const NODE_R = 20
 const TEXT_GAP = 28
 const TOP_PAD = 8
 const ROW_GAP = 22
-const TITLE_SIZE = 18
-const DESC_SIZE = 14
-const DATE_SIZE = 12
+const TITLE_SIZE = FORM_TITLE_FLOOR
+const DESC_SIZE = FORM_BODY_FLOOR
+const DATE_SIZE = FORM_BODY_FLOOR
 const BOTTOM_PAD = 12
 
 function visibleVerticalRowCount(
@@ -42,25 +48,23 @@ function layoutRows(component: TimelineComponent, w: number, knobs: FormKnobs, c
   const textW = Math.max(1, w - tx)
   return component.milestones.map((m) => {
     const date = m.date
-      ? fitSvgLine(m.date, {
+      ? fitFormLine(m.date, {
           maxWidth: textW,
           fontSize: DATE_SIZE,
-          minFontSize: 10,
+          floor: FORM_BODY_FLOOR,
           fontFamily: ctx.fonts.body,
         })
       : null
-    const title = fitSvgLine(m.title, {
+    const title = fitFormTitleLine(m.title, {
       maxWidth: textW,
       fontSize: TITLE_SIZE,
-      minFontSize: 13,
-      bold: true,
       fontFamily: ctx.fonts.body,
     })
     const desc = m.desc
-      ? layoutSvgText(m.desc, {
+      ? layoutFormBody(m.desc, {
           maxWidth: textW,
           fontSize: DESC_SIZE,
-          maxLines: 2,
+          maxLines: 3,
           lineHeightRatio: 1.35,
           fontFamily: ctx.fonts.body,
         })

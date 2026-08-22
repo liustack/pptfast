@@ -873,18 +873,7 @@ describe("pinOnly layout tier: registerTheme still legally allows curating a pin
 })
 
 const EMPTY_SPARSE_THEME_IDS = ["crayon", "classroom", "bloom", "enterprise", "pulse", "runway", "ember"] as const
-const OMITTED_SPARSE_THEME_IDS = [
-  "consulting",
-  "insight",
-  "academic",
-  "tech",
-  "journal",
-  "campaign",
-  "heritage",
-  "terra",
-  "vermilion",
-  "arena",
-] as const
+const OMITTED_SPARSE_THEME_IDS: readonly string[] = []
 
 describe("sparseLayouts offer table", () => {
   it("boarded themes list Object.keys(FACES) plus verse-chapter, in that order", () => {
@@ -904,9 +893,9 @@ describe("sparseLayouts offer table", () => {
     }
   })
 
-  it("the ten unboarded builtins omit sparseLayouts (undefined = offer every sparse id)", () => {
+  it("no builtin omits sparseLayouts", () => {
     for (const id of OMITTED_SPARSE_THEME_IDS) {
-      expect(THEME_DEFINITIONS[id].sparseLayouts, id).toBeUndefined()
+      expect(THEME_DEFINITIONS[id as keyof typeof THEME_DEFINITIONS].sparseLayouts, id).toBeUndefined()
     }
   })
 

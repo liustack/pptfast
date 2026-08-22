@@ -1,17 +1,17 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { wrapClip } from "./clip-text"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import { FORM_BODY_FLOOR, FORM_TITLE_FLOOR, fitFormLine, fitFormTitleLine } from "./legibility"
 
 type ComparisonComponent = Extract<Component, { type: "comparison" }>
 
 const PILL_H = 48
 const GAP = 24
 const PAD = 18
-const LABEL_SIZE = 13
+const LABEL_SIZE = FORM_BODY_FLOOR
 const CELL_SIZE = 16
 
 function pillRx(knobs: FormKnobs, _pillH: number, ctx: ComponentCtx): number {
@@ -34,6 +34,7 @@ function cellLayout(text: string, maxWidth: number, fontFamily: string) {
   return wrapClip(text, {
     maxWidth,
     fontSize: CELL_SIZE,
+    minPt: FORM_BODY_FLOOR,
     maxLines: 3,
     lineHeightRatio: 1.3,
     fontFamily,
@@ -112,11 +113,9 @@ export function renderPillPanels(
         const pillW = Math.min(panelW * 0.72, panelW - 24)
         const pillX = x + (panelW - pillW) / 2
         const rx = pillRx(knobs, PILL_H, ctx)
-        const titleFit = fitSvgLine(title, {
+        const titleFit = fitFormTitleLine(title, {
           maxWidth: Math.max(1, pillW - 20),
-          fontSize: 18,
-          minFontSize: 12,
-          bold: true,
+          fontSize: FORM_TITLE_FLOOR,
           fontFamily: ctx.fonts.body,
         })
         let cursor = frameY + PILL_H / 2 + 10
@@ -179,10 +178,10 @@ export function renderPillPanels(
                 <g key={ri}>
                   {label ? (
                     (() => {
-                      const fitted = fitSvgLine(label, {
+                      const fitted = fitFormLine(label, {
                         maxWidth: bodyW,
                         fontSize: LABEL_SIZE,
-                        minFontSize: 9,
+                        floor: FORM_BODY_FLOOR,
                         bold: true,
                         fontFamily: ctx.fonts.body,
                       })

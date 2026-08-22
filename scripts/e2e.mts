@@ -1132,4 +1132,47 @@ if (!wsPreview.includes(wsHtml)) {
 rmSync(ws, { recursive: true, force: true })
 console.log(`workspace default-path leg OK (${wsDir} tree: ${wsFiles.join(", ")})`)
 
+// Stock-photo workspace assets: an image that lives only under
+// `.pptfast/<deck>/assets/` must render, twice, to identical bytes, with no
+// network. The CLI binary path is the gate — same as the webp leg.
+console.log("--- workspace stock-asset render leg ---")
+const stockRoot = mkdtempSync(join(tmpdir(), "pptfast-e2e-stock-"))
+const PNG_1PX_STOCK = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+)
+const stockIr = {
+  version: "4",
+  filename: "stock",
+  theme: { id: "consulting" },
+  slides: [
+    { type: "cover", heading: "Stock" },
+    {
+      type: "content",
+      heading: "Hero",
+      layout: "image-top",
+      components: [{ type: "image", asset_id: "hero" }],
+    },
+    { type: "ending", heading: "End" },
+  ],
+}
+writeFileSync(join(stockRoot, "stock.json"), JSON.stringify(stockIr))
+mkdirSync(join(stockRoot, ".pptfast", "stock", "assets"), { recursive: true })
+writeFileSync(join(stockRoot, ".pptfast", "stock", "assets", "hero.png"), PNG_1PX_STOCK)
+const stockA = join(stockRoot, "a.pptx")
+const stockB = join(stockRoot, "b.pptx")
+execFileSync("node", [cli, "render", "stock.json", "-o", stockA], { cwd: stockRoot, encoding: "utf8" })
+execFileSync("node", [cli, "render", "stock.json", "-o", stockB], { cwd: stockRoot, encoding: "utf8" })
+const stockBytesA = readFileSync(stockA)
+const stockBytesB = readFileSync(stockB)
+if (!stockBytesA.equals(stockBytesB)) {
+  throw new Error("e2e: workspace stock-asset leg — two renders of the same workspace-only image were not byte-identical")
+}
+const stockZip = await JSZip.loadAsync(stockBytesA)
+if (!Object.keys(stockZip.files).some((k) => k.startsWith("ppt/media/"))) {
+  throw new Error("e2e: workspace stock-asset leg — no ppt/media/* part, workspace image was not embedded")
+}
+rmSync(stockRoot, { recursive: true, force: true })
+console.log("workspace stock-asset render leg OK")
+
 console.log("e2e OK")

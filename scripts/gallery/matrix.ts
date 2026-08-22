@@ -16,10 +16,7 @@ import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } f
 import { BASELINE_THEME, componentPage, densityPage, layoutPage, themeDeck, type CorpusAssets } from "./corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./corpus/lexicon"
 
-export type TableId = "theme" | "layout" | "component" | "density" | "speech"
-
-/** The pinOnly chrome-free speech/minimal layouts (never auto-picked, so only this table shows them). */
-export const SPEECH_LAYOUT_IDS = SPARSE_LAYOUT_IDS
+export type TableId = "theme" | "layout" | "component" | "density"
 
 export interface Job {
   /** Stable, filename-safe page id — also the key verdicts are recorded against. */
@@ -104,39 +101,41 @@ export function buildMatrix(
     }
   }
 
-  // ── Speech-layout table ────────────────────────────────────────────────
-  // The six pinOnly chrome-free layouts never enter the auto pool, so the
-  // theme table can never show them — this slice is the only place a
-  // reviewer sees a pinned sparse layout on a theme that offers it
-  // (`themeOffersSparse`). zh corpus only: the layout table already covers
-  // the three-corpus fit question on the baseline theme; here the question
-  // is token generalization.
-  if (!opts.only || opts.only === "speech") {
-    const lex = LEXICONS[themeLanguage]
-    for (const layoutId of SPEECH_LAYOUT_IDS) {
-      for (const themeId of themeIds) {
-        if (!themeOffersSparse(themeId, layoutId)) continue
-        const ir = layoutPage(layoutId, lex, assets[themeLanguage], themeId)
-        push({
-          id: `speech--${safe(layoutId)}--${safe(themeId)}--${themeLanguage}`,
-          table: "speech",
-          subject: layoutId,
-          language: themeLanguage,
-          theme: themeId,
-          page: 1,
-          pageCount: 1,
-          slideType: ir.slides[0]!.type ?? "content",
-          heading: ir.slides[0]!.heading ?? "",
-          ir,
-          slideIndex: 0,
-        })
-      }
-    }
-  }
-
   // ── Layout table ───────────────────────────────────────────────────────
+  // Ordinary layouts stay on the baseline theme × the language axis, so two
+  // pages differ by one variable. Sparse layouts never enter the auto pool,
+  // so they also expand across every theme that offers them
+  // (`themeOffersSparse`). The baseline theme still runs all three corpora;
+  // every other eligible theme runs `themeLanguage` only, matching the old
+  // sparse slice and keeping the table from exploding 3×.
   if (!opts.only || opts.only === "layout") {
     for (const layoutId of Object.keys(LAYOUT_REGISTRY).sort()) {
+      const sparse = (SPARSE_LAYOUT_IDS as readonly string[]).includes(layoutId)
+      if (sparse) {
+        for (const themeId of themeIds) {
+          if (!themeOffersSparse(themeId, layoutId)) continue
+          const langs = themeId === BASELINE_THEME ? languages : [themeLanguage]
+          for (const language of langs) {
+            const lex = LEXICONS[language]
+            const ir = layoutPage(layoutId, lex, assets[language], themeId)
+            push({
+              id: `layout--${safe(layoutId)}--${safe(themeId)}--${language}`,
+              table: "layout",
+              subject: layoutId,
+              language,
+              theme: themeId,
+              page: 1,
+              pageCount: 1,
+              slideType: ir.slides[0]!.type ?? "content",
+              heading: ir.slides[0]!.heading ?? "",
+              ir,
+              slideIndex: 0,
+            })
+          }
+        }
+        continue
+      }
+
       for (const language of languages) {
         const lex = LEXICONS[language]
         const ir = layoutPage(layoutId, lex, assets[language])
@@ -207,14 +206,12 @@ export function buildMatrix(
     }
   }
 
-  // ── Density table ──────────────────────────────────────────────────────
-  // One overfilled component per page, so the "+N …" degrade path the
-  // nine drop-capable components share gets looked at by a person. Kept as
-  // its own table rather than mixed into the component table because it
-  // answers a different question, and because its findings are the point
-  // rather than a regression — a reviewer scanning the component table for
-  // `content-dropped` should not have to skip nine pages that are supposed
-  // to drop content.
+  // ── Full-load table (id stays "density") ───────────────────────────────
+  // One component per page, filled to the largest count that still fits.
+  // Kept as its own table rather than mixed into the component table
+  // because it answers a different question (full load, not the ordinary
+  // case). Table id stays "density" so `--only=density` and job ids
+  // `density--…` keep working.
   if (!opts.only || opts.only === "density") {
     for (const [componentId, build] of Object.entries(DENSITY_BUILDERS).sort(([a], [b]) => a.localeCompare(b))) {
       for (const language of languages) {

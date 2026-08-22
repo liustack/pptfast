@@ -8,7 +8,7 @@ import { latinUpper, pullQuoteAttribution, pullQuoteBody, trackingPx } from "./m
 import { sparseFace } from "./sparse/registry"
 
 /**
- * 待第二批设计稿锁定
+ * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * pull-quote 通用脸：居中引言页。章节眉 + 大引言 + 出处小字 + 一段散文。
  * `pinOnly` + `chrome: "none"`。不自己铺暗底，暗不暗由主题 `colors.bg` /

@@ -1,14 +1,14 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import { FORM_BODY_FLOOR, fitFormLine } from "./legibility"
 
 type ImageGridComponent = Extract<Component, { type: "image_grid" }>
 
 const GAP = 16
-const CAPTION_H = 36
+const CAPTION_H = 40
 const MAX_IMAGE_H = 300
 
 function gridShape(n: number): { cols: number; rows: number } {
@@ -90,10 +90,10 @@ export function renderNumberedPhotos(
         const src = ctx.images?.[item.asset_id]?.src
         const alt = ctx.images?.[item.asset_id]?.alt
         const caption = item.caption
-          ? fitSvgLine(item.caption, {
+          ? fitFormLine(item.caption, {
               maxWidth: cellW - 4,
               fontSize: 16,
-              minFontSize: 11,
+              floor: FORM_BODY_FLOOR,
               bold: true,
               fontFamily: ctx.fonts.body,
             })

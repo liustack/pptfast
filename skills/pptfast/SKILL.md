@@ -300,6 +300,39 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 
 Before generating art for any `image` component whose `asset_id` still has no real file behind it, run `pptfast asset-brief <target>` — it renders the deck for real and reports each slot's actual frame (not the layout's nominal slot size), crop mode with a safe-zone note, suggested generation pixels, the theme's palette, and a paste-ready prompt. Matching the reported aspect ratio and palette is what makes a generated image look intentional once it's placed instead of stretched, cropped wrong, or off-tone.
 
+### Stock photos
+
+Run `pptfast asset-brief <target>` first so the frame, crop, and palette are known.
+
+Query rules: short concrete nouns, English 2–4 words (`office desk`, `wind farm`). Chinese is a variant, not the only query. No mood or quality words (`beautiful`, `4k`, `cinematic`). No negative keywords (`not office`, `no people`).
+
+Search order is Pexels, then Pixabay if a key is set, then Openverse (cc0/pdm, commercial filter).
+
+```bash
+pptfast config set pexels.apiKey
+pptfast images search "office desk" --orientation landscape
+```
+
+Do not auto-pick the first result. A person or a vision model picks from the ~8 thumbs. Then download:
+
+```bash
+pptfast images fetch pexels:123 --deck <dir> --as hero
+pptfast images list --deck <dir>
+pptfast images generate --deck <dir> --as <asset_id>
+```
+
+Local generators stay off until enabled:
+
+```bash
+pptfast config set images.generators.grok.enabled true
+pptfast config set images.generators.codex.enabled true
+pptfast config set images.generators.antigravity.enabled true
+```
+
+The file lands in `.pptfast/<deck>/assets/<asset_id>.jpg` with a sidecar next to it. Reference that `asset_id` from the page. Do not delete `.pptfast/` wholesale to "rerun". That drops pinned photos.
+
+No key: leave the slot `missing` (grey frame). Do not invent a photo. Do not scrape. Do not use Unsplash. This is a local client fetching with the user's own key. Commercial use in a presentation is allowed. Do not resell the photo standalone. Print attribution in the terminal, not on the slide by default.
+
 ### Pin-only layouts
 
 These layouts never appear through auto-selection. Set `layout` explicitly every time you want one. `validate` hard-errors if a pin-only content layout carries more components than its declared capacity (an ordinary layout pinned over capacity only warns).

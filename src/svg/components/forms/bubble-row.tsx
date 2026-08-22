@@ -1,21 +1,21 @@
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { Icon } from "../../icons"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
 import { parseKpiMagnitude } from "./kpi-value"
+import { FORM_BODY_FLOOR, FORM_BUBBLE_R_MIN, fitFormLine } from "./legibility"
 
 type KpiComponent = Extract<Component, { type: "kpi_cards" }>
 type KpiItem = KpiComponent["items"][number]
 
 const PAD = 10
 const GAP = 14
-const R_MIN = 28
+const R_MIN = FORM_BUBBLE_R_MIN
 const R_MAX = 110
 const BASELINE_FUDGE = 0.35
-const UNDER_LABEL = 20
-const SOURCE_BAND = 18
+const UNDER_LABEL = 28
+const SOURCE_BAND = 22
 
 interface Ranked {
   item: KpiItem
@@ -155,10 +155,10 @@ export function renderBubbleRow(
         const p = paint(d.rank, d.index, knobs, ctx)
         const value = String(d.item.value)
         const innerW = Math.max(8, r * 1.4)
-        const valueFit = fitSvgLine(value, {
+        const valueFit = fitFormLine(value, {
           maxWidth: innerW,
-          fontSize: Math.min(r * 0.42, 40),
-          minFontSize: 8,
+          fontSize: Math.max(FORM_BODY_FLOOR, Math.min(r * 0.42, 40)),
+          floor: FORM_BODY_FLOOR,
           bold: true,
           fontFamily: ctx.fonts.heading,
         })
@@ -171,17 +171,19 @@ export function renderBubbleRow(
           p.inkBg,
           valueSize,
         )
-        const label = fitSvgLine(d.item.label, {
+        const label = fitFormLine(d.item.label, {
           maxWidth: Math.max(120, r * 2.6),
-          fontSize: inside ? 14 : 12,
-          minFontSize: 9,
+          fontSize: inside ? 16 : FORM_BODY_FLOOR,
+          floor: FORM_BODY_FLOOR,
+          fontFamily: ctx.fonts.body,
         })
         const labelInk = accessibleInk(ctx.colors.muted, pageBg, label.fontSize)
         const source = d.item.source
-          ? fitSvgLine(d.item.source, {
+          ? fitFormLine(d.item.source, {
               maxWidth: Math.max(40, r * 2.4),
-              fontSize: 11,
-              minFontSize: 8,
+              fontSize: 12,
+              floor: 12,
+              fontFamily: ctx.fonts.body,
             })
           : null
         const iconSize = 12
@@ -219,7 +221,7 @@ export function renderBubbleRow(
             <text
               data-truncated={label.truncated ? "1" : undefined}
               x={cx}
-              y={cy + r + 14}
+              y={cy + L.maxR + 16}
               textAnchor="middle"
               fontSize={label.fontSize}
               fill={labelInk}
@@ -232,7 +234,7 @@ export function renderBubbleRow(
               <text
                 data-truncated={source.truncated ? "1" : undefined}
                 x={cx}
-                y={cy + r + 30}
+                y={cy + L.maxR + 34}
                 textAnchor="middle"
                 fontSize={source.fontSize}
                 fill={accessibleInk(ctx.colors.muted, pageBg, source.fontSize)}

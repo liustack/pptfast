@@ -5,11 +5,14 @@
  * ```
  * <anchor>/.pptfast/
  *   <deck-slug>/
- *     preview.html        preview --html
- *     manifest.json       preview --html
- *     001-cover.svg       preview
+ *     preview.html        preview --html          (regenerable)
+ *     manifest.json       preview --html          (regenerable)
+ *     001-cover.svg       preview                 (regenerable)
  *     002-content.svg
- *     <deck-slug>.pptx    render
+ *     <deck-slug>.pptx    render                  (regenerable)
+ *     assets/             pinned stock photos     (not regenerable)
+ *       hero.jpg
+ *       hero.json         sidecar
  * ```
  *
  * Three properties this module exists to hold:
@@ -19,10 +22,12 @@
  *    — the project root is already a concept this CLI has), else cwd. No git
  *    root probing: a git root and a project root are not the same thing in a
  *    monorepo, and a third rule would only be a third thing to remember.
- * 2. **Only regenerable things live here.** Delete `.pptfast/` and re-run the
- *    command, and it grows back byte for byte. The deck's *sources*
- *    (`deck.spec.json`, `pages/`, `assets/`, `theme.json`) and the project's
- *    config stay where the user put them, tracked and committable.
+ * 2. **Two zones live here.** Render output (pptx, preview.html, `NNN-*.svg`,
+ *    manifest.json) is regenerable: delete those files and re-run, they grow
+ *    back. Stock-photo assets (`.pptfast/<deck>/assets/` plus sidecars) are
+ *    pinned downloads, not garbage. Deleting the whole `.pptfast/` directory
+ *    drops those photos. Deck sources (`deck.spec.json`, `pages/`, project
+ *    `assets/`, `theme.json`) stay where the user put them.
  * 3. **The directory ignores itself, once.** The first time this CLI creates
  *    `.pptfast/` it appends the entry to the repository's *local* exclude
  *    file — never the shared `.gitignore`, which is the user's to write. See
@@ -33,12 +38,12 @@
  * (AGENTS.md's layout rule: Node-only code never enters `src/index.ts`'s
  * dependency closure).
  */
-import { execFile } from "node:child_process"
 import { appendFile, mkdir, readFile, readdir, stat, unlink } from "node:fs/promises"
 import { basename, dirname, extname, join, resolve } from "node:path"
 import { PptfastError } from "../errors"
 import { slugify } from "../themes/brand-extract"
-import { assertSafeFileSegment } from "./deck-dir"
+import { runChild } from "./child"
+import { ASSETS_DIRNAME, assertSafeFileSegment } from "./deck-dir"
 
 /** The default artifact root's directory name, relative to the anchor. A
  *  project config's `outDir` (`./config.ts`) replaces it wholesale. */
@@ -145,25 +150,18 @@ export interface GitResult {
 
 export type GitRunner = (args: string[], cwd: string) => Promise<GitResult | null>
 
-const runGitDefault: GitRunner = (args, cwd) =>
-  new Promise((res) => {
-    execFile("git", args, { cwd, encoding: "utf8" }, (error, stdout) => {
-      if (!error) {
-        res({ code: 0, stdout })
-        return
-      }
-      // execFile puts the exit status in `error.code` as a number, and a
-      // spawn failure's errno string (`"ENOENT"`) in the same field. The
-      // string case is "there is no git here", which is not a failure — it
-      // is one of the four outcomes below.
-      const code = (error as NodeJS.ErrnoException & { code?: number | string }).code
-      if (typeof code !== "number") {
-        res(null)
-        return
-      }
-      res({ code, stdout: stdout ?? "" })
-    })
-  })
+const runGitDefault: GitRunner = async (args, cwd) => {
+  try {
+    const { code, stdout } = await runChild("git", args, { cwd })
+    return { code, stdout }
+  } catch (error) {
+    // A spawn failure's errno string (`"ENOENT"`) is "there is no git here",
+    // which is not a failure — it is one of the four outcomes below.
+    const code = (error as NodeJS.ErrnoException).code
+    if (typeof code !== "number") return null
+    throw error
+  }
+}
 
 /**
  * What {@link ensureGitIgnored} did. Every variant is a normal outcome —
@@ -353,4 +351,45 @@ export async function pruneRenderedSvgs(dir: string): Promise<number> {
   const stale = entries.filter((name) => RENDERED_SVG_PATTERN.test(name))
   await Promise.all(stale.map((name) => unlink(join(dir, name))))
   return stale.length
+}
+
+const WORKSPACE_IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"])
+
+/** Directory under a deck workspace that holds pinned stock photos + sidecars. */
+export function workspaceStockAssetsDir(location: WorkspaceLocation): string {
+  return join(location.dir, ASSETS_DIRNAME)
+}
+
+/**
+ * Scan `.pptfast/<deck>/assets/` for image files. Skips `.json` sidecars and
+ * dotfiles. `src` is the absolute path so {@link resolveLocalAssets} can
+ * inline it without guessing. Duplicate ids (logo.png + logo.jpg) error,
+ * same posture as the deck-project `assets/` scan.
+ */
+export async function scanWorkspaceAssets(assetsDir: string): Promise<Record<string, { src: string }>> {
+  let names: string[]
+  try {
+    names = (await readdir(assetsDir, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && !entry.name.startsWith("."))
+      .map((entry) => entry.name)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return {}
+    throw new PptfastError(`cannot read workspace assets directory ${assetsDir}: ${(e as Error).message}`)
+  }
+  const images: Record<string, { src: string }> = {}
+  const sourceFile = new Map<string, string>()
+  for (const name of names) {
+    const ext = extname(name).toLowerCase()
+    if (ext === ".json" || !WORKSPACE_IMAGE_EXTS.has(ext)) continue
+    const id = basename(name, extname(name))
+    const previous = sourceFile.get(id)
+    if (previous !== undefined) {
+      throw new PptfastError(
+        `workspace ${ASSETS_DIRNAME}/${previous} and ${ASSETS_DIRNAME}/${name} both register image id "${id}" — rename one of the files`,
+      )
+    }
+    sourceFile.set(id, name)
+    images[id] = { src: join(assetsDir, name) }
+  }
+  return images
 }

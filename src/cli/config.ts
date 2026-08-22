@@ -4,6 +4,7 @@ import { z } from "zod"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema } from "../ir"
 import { userConfigPath } from "./home"
+import { ImagesConfigSchema } from "./image-config"
 
 /**
  * Project-level deck defaults. Precedence (spec §7's four-layer chain, W5
@@ -62,9 +63,12 @@ export type PptfastConfig = z.infer<typeof ConfigSchema>
 /**
  * User-level config schema (spec §7's four-layer chain — the layer between
  * project config and the artifact's own value): the same three deck-default
- * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`). `outDir` is
+ * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`), plus optional
+ * `images` (Pexels/Pixabay keys and Openverse OAuth for stock-photo search). `outDir` is
  * deliberately absent — an artifact root belongs to this working tree, not
  * to the user's identity (see {@link ConfigSchema}'s own `outDir` comment).
+ * `images` is user-layer only: project {@link ConfigSchema} rejects it so a
+ * repo file cannot carry API keys.
  * `decksDir` is no longer project-config-free as of W5 task 6 (see
  * {@link ConfigSchema}'s own doc comment on that field), but the two layers
  * still resolve it against different bases: this user layer always resolves
@@ -88,6 +92,7 @@ const UserConfigSchema = z
     theme: z.string().optional(),
     style: StyleOverrideSchema.optional(),
     decksDir: z.string().optional(),
+    images: ImagesConfigSchema.optional(),
   })
   .strict()
 

@@ -340,7 +340,10 @@ describe("checkIrQuality", () => {
     it.each(["statement", "pull-quote"] as const)(
       "pinning %s (capacity 1) with 2 components is a hard error",
       (layoutId) => {
-        const ir = makeIR([{ type: "content", heading: "金句", layout: layoutId, components: paragraphs(2) }])
+        const ir = makeIR(
+          [{ type: "content", heading: "金句", layout: layoutId, components: paragraphs(2) }],
+          layoutId === "pull-quote" ? "heritage" : "consulting",
+        )
         const issues = checkIrQuality(ir)
         expect(codes(issues)).toContain("pin_only_over_capacity")
         const found = issues.find((i) => i.code === "pin_only_over_capacity")!
@@ -392,9 +395,10 @@ describe("checkIrQuality", () => {
     })
 
     it("pinning mono-bleed (capacity 0) with 1 component is a hard error", () => {
-      const ir = makeIR([
-        { type: "content", heading: "把灯关掉", layout: "mono-bleed", components: paragraphs(1) },
-      ])
+      const ir = makeIR(
+        [{ type: "content", heading: "把灯关掉", layout: "mono-bleed", components: paragraphs(1) }],
+        "playbill",
+      )
       const issues = checkIrQuality(ir)
       expect(codes(issues)).toContain("pin_only_over_capacity")
       expect(issues.find((i) => i.code === "pin_only_over_capacity")!.pinOnlyCapacity).toEqual({

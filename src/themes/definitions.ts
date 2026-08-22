@@ -1404,6 +1404,16 @@ const SPARSE_LAYOUTS: Partial<Record<CanonicalThemeId, readonly string[]>> = {
   museum: ["statement", "one-evidence", "stat-hero", "verse-chapter"],
   luxe: ["pull-quote", "stat-hero", "statement", "verse-chapter"],
   ink: ["statement", "stat-hero", "pull-quote", "verse-chapter"],
+  consulting: ["statement", "stat-hero", "one-evidence", "verse-chapter"],
+  insight: ["statement", "stat-hero", "pull-quote", "verse-chapter"],
+  tech: ["stat-hero", "statement", "one-evidence", "verse-chapter"],
+  heritage: ["pull-quote", "statement", "stat-hero", "verse-chapter"],
+  vermilion: ["statement", "stat-hero", "one-evidence", "verse-chapter"],
+  journal: ["pull-quote", "stat-hero", "statement", "verse-chapter"],
+  campaign: ["statement", "stat-hero", "one-evidence", "verse-chapter"],
+  arena: ["stat-hero", "statement", "one-evidence", "verse-chapter"],
+  terra: ["statement", "stat-hero", "one-evidence", "verse-chapter"],
+  academic: ["pull-quote", "stat-hero", "statement", "verse-chapter"],
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

@@ -62,14 +62,16 @@
  * contract every other `run*` command already has (`./commands.ts`), since
  * there is no previous-good HTML yet to fall back to.
  */
-import { spawn } from "node:child_process"
 import { type FSWatcher, watch } from "node:fs"
 import { createServer, type Server, type ServerResponse } from "node:http"
 import { platform as osPlatform } from "node:os"
 import { join } from "node:path"
 import { PptfastError } from "../errors"
+import { spawnHidden } from "./child"
 import { buildDeckPreview } from "./commands"
+import { findConfig } from "./config"
 import { ASSETS_DIRNAME, PAGES_DIRNAME, SPEC_FILENAME } from "./deck-dir"
+import { resolveWorkspaceLocation } from "./workspace"
 
 /** `pptfast serve`'s own default (spec-plan.md §2's worked example,
  *  `pptfast serve <target> [--port 4400] [--no-open]`) — never
@@ -126,9 +128,11 @@ export interface ServeHandle {
  *  given `buildDeckPreview`'s own `resolvedTarget`/`isDir` for it — see this
  *  module's own doc comment for why these three (deck-dir mode) or this one
  *  (bare-IR mode) are the whole watch surface. */
-function watchRoots(resolvedTarget: string, isDir: boolean): string[] {
-  if (!isDir) return [resolvedTarget]
-  return [join(resolvedTarget, SPEC_FILENAME), join(resolvedTarget, PAGES_DIRNAME), join(resolvedTarget, ASSETS_DIRNAME)]
+function watchRoots(resolvedTarget: string, isDir: boolean, extra: string[] = []): string[] {
+  const roots = isDir
+    ? [join(resolvedTarget, SPEC_FILENAME), join(resolvedTarget, PAGES_DIRNAME), join(resolvedTarget, ASSETS_DIRNAME)]
+    : [resolvedTarget]
+  return [...roots, ...extra]
 }
 
 /** Marker on the injected `<script>` element (task S2: "serve 模式检测（注入的
@@ -355,8 +359,20 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
     }, DEBOUNCE_MS)
   }
 
+  const projectHit = await findConfig(cwd)
+  const workspaceAssets = join(
+    resolveWorkspaceLocation({
+      cwd,
+      projectConfigPath: projectHit?.path,
+      outDir: projectHit?.config.outDir,
+      target: initial.resolvedTarget,
+      isDir: initial.isDir,
+    }).dir,
+    ASSETS_DIRNAME,
+  )
+
   const watchers: FSWatcher[] = []
-  for (const path of watchRoots(initial.resolvedTarget, initial.isDir)) {
+  for (const path of watchRoots(initial.resolvedTarget, initial.isDir, [workspaceAssets])) {
     try {
       watchers.push(watch(path, () => scheduleRebuild()))
     } catch (e) {
@@ -439,8 +455,8 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
 
 /**
  * Best-effort browser launch (spec-plan.md S1: "--no-open: 默认行为打开浏览器
- * ... 若无则用 child_process spawn open (darwin) / xdg-open (linux)"). Nothing
- * in this repo already opens URLs (`./update.ts`'s `execFile` runs `npm`, not
+ * ... 若无则 spawn open (darwin) / xdg-open (linux)"). Nothing
+ * in this repo already opens URLs (`./update.ts` runs `npm`, not
  * a GUI app) — this is the one place that does. Never throws and never
  * rejects a caller's own flow: a headless box, a sandboxed CI runner, or a
  * missing `xdg-open` binary all fail silently — the URL `runServe` already
@@ -454,7 +470,7 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
 export function openBrowser(url: string): void {
   const command = osPlatform() === "darwin" ? "open" : "xdg-open"
   try {
-    const child = spawn(command, [url], { stdio: "ignore", detached: true })
+    const child = spawnHidden(command, [url], { stdio: "ignore", detached: true })
     child.on("error", () => {})
     child.unref()
   } catch {

@@ -19,9 +19,14 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # POSIX permission-bit tests (chmod 0600, X_OK, group/other-readable) use
+    # skipIf(win32). Those skips are not product bugs: Windows has no POSIX
+    # permission bits, so chmod 0600 assertions would mis-fire on windows-latest.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +42,8 @@ jobs:
 
   # Full end-to-end chain (build + CLI e2e + LibreOffice visual gate), main only —
   # it is slower than `pnpm check` and needs a LibreOffice install, so PRs stay
-  # on the fast check job.
+  # on the fast check job. Windows is check-only: soffice/LibreOffice is not
+  # installed on windows-latest here.
   e2e:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

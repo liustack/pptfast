@@ -2,8 +2,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { readFileSync } from "node:fs"
-import { beforeAll, describe, expect, it } from "vitest"
+import { chmodSync, readFileSync } from "node:fs"
+import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import {
   buildDoctorReport,
@@ -24,9 +24,34 @@ beforeAll(() => {
 
 const CURRENT = "0.18.0"
 
-/** A fake home, so no test ever reads the machine's real `~`. */
+const originalPptfastHome = process.env.PPTFAST_HOME
+const originalPexels = process.env.PPTFAST_PEXELS_API_KEY
+const originalPixabay = process.env.PPTFAST_PIXABAY_API_KEY
+const originalOvId = process.env.PPTFAST_OPENVERSE_CLIENT_ID
+const originalOvSecret = process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
+
+afterEach(() => {
+  if (originalPptfastHome === undefined) delete process.env.PPTFAST_HOME
+  else process.env.PPTFAST_HOME = originalPptfastHome
+  if (originalPexels === undefined) delete process.env.PPTFAST_PEXELS_API_KEY
+  else process.env.PPTFAST_PEXELS_API_KEY = originalPexels
+  if (originalPixabay === undefined) delete process.env.PPTFAST_PIXABAY_API_KEY
+  else process.env.PPTFAST_PIXABAY_API_KEY = originalPixabay
+  if (originalOvId === undefined) delete process.env.PPTFAST_OPENVERSE_CLIENT_ID
+  else process.env.PPTFAST_OPENVERSE_CLIENT_ID = originalOvId
+  if (originalOvSecret === undefined) delete process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
+  else process.env.PPTFAST_OPENVERSE_CLIENT_SECRET = originalOvSecret
+})
+
+/** A fake home, so no test ever reads the machine's real `~` or `~/.pptfast`. */
 async function makeHome(): Promise<string> {
-  return mkdtemp(join(tmpdir(), "pptfast-doctor-home-"))
+  const dir = await mkdtemp(join(tmpdir(), "pptfast-doctor-home-"))
+  process.env.PPTFAST_HOME = dir
+  delete process.env.PPTFAST_PEXELS_API_KEY
+  delete process.env.PPTFAST_PIXABAY_API_KEY
+  delete process.env.PPTFAST_OPENVERSE_CLIENT_ID
+  delete process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
+  return dir
 }
 
 /** Write a skill copy into `<home>/<relative>/pptfast`, with `pinned` stamped
@@ -440,6 +465,120 @@ describe("runDoctor: workspace artifacts line", () => {
     } finally {
       await rm(home, { recursive: true, force: true })
       await rm(cwd, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("runDoctor: images", () => {
+  it("treats missing keys as info, never errors, and never prints a key value", async () => {
+    const home = await makeHome()
+    try {
+      const configPath = join(home, "config.json")
+      await writeFile(configPath, JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }))
+      if (typeof process.getuid === "function") chmodSync(configPath, 0o600)
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      expect(report.errors).toEqual([])
+      expect(report.warnings.some((w) => w.check === "images")).toBe(false)
+      const { output, hasErrors } = await runDoctor({ home, env: { PATH: "" }, version: CURRENT })
+      expect(hasErrors).toBe(false)
+      expect(output).toContain("Images")
+      expect(output).toContain("pexels: present (file)")
+      expect(output).toContain("pixabay: missing")
+      expect(output).toContain("openverse: missing")
+      expect(output).not.toContain("FILESECRET99")
+      expect(JSON.stringify(report.images)).not.toContain("FILESECRET99")
+      expect(report.images.providers.find((p) => p.provider === "pexels")?.present).toBe(true)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it.skipIf(process.platform === "win32")("probes a fake grok on PATH as found and disabled by default, without leaking secrets", async () => {
+    // Windows: findOnPath only tries PATHEXT, so an extensionless `grok` plus chmod 0755 is not a product bug.
+    const home = await makeHome()
+    const binDir = await mkdtemp(join(tmpdir(), "pptfast-doctor-bin-"))
+    await writeFile(join(binDir, "grok"), "#!/bin/sh\nexit 0\n")
+    chmodSync(join(binDir, "grok"), 0o755)
+    const versionRuns: string[] = []
+    try {
+      const report = await buildDoctorReport({
+        home,
+        env: { PATH: binDir },
+        version: CURRENT,
+        runProcess: async (req) => {
+          versionRuns.push(`${req.command} ${req.args.join(" ")}`)
+          expect(req.timeoutMs).toBe(2000)
+          return { code: 0, stdout: "grok 1.0.5 (5115b46bc909)\n", stderr: "" }
+        },
+      })
+      const grok = report.generators.find((g) => g.id === "grok")
+      expect(grok?.found).toBe(true)
+      expect(grok?.enabled).toBe(false)
+      expect(grok?.version).toBe("1.0.5")
+      expect(grok?.bin).toContain("grok")
+      expect(report.warnings.some((w) => w.check === "generators")).toBe(false)
+      expect(report.errors).toEqual([])
+      const { output, hasErrors } = await runDoctor({
+        home,
+        env: { PATH: binDir },
+        version: CURRENT,
+        json: true,
+        runProcess: async () => ({ code: 0, stdout: "grok 1.0.5 (5115b46bc909)\n", stderr: "" }),
+      })
+      expect(hasErrors).toBe(false)
+      expect(output).toContain("generators")
+      expect(output).not.toContain("FILESECRET99")
+      const rendered = renderDoctorReport(report)
+      expect(rendered).toContain("Image generators")
+      expect(rendered).toContain("disabled")
+      expect(rendered).toContain("pptfast config set images.generators.grok.enabled true")
+      expect(versionRuns.some((l) => l.endsWith("--version"))).toBe(true)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+      await rm(binDir, { recursive: true, force: true })
+    }
+  })
+
+  it("reports Openverse present only when both clientId and clientSecret resolve", async () => {
+    const home = await makeHome()
+    try {
+      const configPath = join(home, "config.json")
+      await writeFile(
+        configPath,
+        JSON.stringify({ images: { openverse: { clientId: "OVCLIENTID99", clientSecret: "OVSECRETKEY99" } } }),
+      )
+      if (typeof process.getuid === "function") chmodSync(configPath, 0o600)
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      expect(report.images.providers.find((p) => p.provider === "openverse")?.present).toBe(true)
+      expect(report.images.providers.find((p) => p.provider === "openverse")?.source).toBe("file")
+      expect(report.errors).toEqual([])
+      expect(report.warnings.some((w) => w.check === "images")).toBe(false)
+      const { output, hasErrors } = await runDoctor({ home, env: { PATH: "" }, version: CURRENT })
+      expect(hasErrors).toBe(false)
+      expect(output).toContain("openverse: present (file)")
+      expect(output).not.toContain("OVCLIENTID99")
+      expect(output).not.toContain("OVSECRETKEY99")
+      expect(JSON.stringify(report.images)).not.toContain("OVSECRETKEY99")
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it.skipIf(process.platform === "win32")("warns when the config file is group/other-readable on POSIX", async () => {
+    // Windows has no POSIX permission bits, so chmod 0600 assertions are not a product bug.
+    const home = await makeHome()
+    try {
+      const path = join(home, "config.json")
+      await writeFile(path, JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }), { mode: 0o644 })
+      chmodSync(path, 0o644)
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      expect(report.images.groupOrOtherReadable).toBe(true)
+      expect(report.errors).toEqual([])
+      const rendered = renderDoctorReport(report)
+      expect(rendered).toContain("group/other-readable")
+      expect(rendered).not.toContain("FILESECRET99")
+    } finally {
+      await rm(home, { recursive: true, force: true })
     }
   })
 })

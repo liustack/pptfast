@@ -78,11 +78,11 @@
 //  - http(s) assets, and local images in formats that need a recode (webp
 //    and friends): still fetched or read per run. See `inlineLocalImages`.
 
-import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { runChild } from './spawnHidden.js'
 
 /**
  * How many pages get their SVG inlined into the bundle.
@@ -896,26 +896,32 @@ async function readRecord(root, id) {
   return record
 }
 
-/** Run the packaged CLI, resolving with its combined output. */
+function resolveCliCommand() {
+  if (process.versions.electron) {
+    return process.env.npm_node_execpath || 'node'
+  }
+  return process.execPath
+}
+
+function cliChildEnv() {
+  return { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+}
+
+/** Run the packaged CLI, resolving with its combined output.
+ *
+ * GitHub issue #1: two libvips in one Electron process crash the renderer.
+ * The plugin must never import() the CLI. Electron's process.execPath is not
+ * a Node binary, so the child is a real node when inside Electron, and
+ * ELECTRON_RUN_AS_NODE is always set so an Electron fallback cannot boot as
+ * an app.
+ */
 function runCli(cliPath, args, signal) {
-  return new Promise((resolve_, reject) => {
-    const child = spawn(process.execPath, [cliPath, ...args], { stdio: ['ignore', 'pipe', 'pipe'] })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (d) => {
-      stdout += d
-    })
-    child.stderr.on('data', (d) => {
-      stderr += d
-    })
-    const onAbort = () => child.kill()
-    signal?.addEventListener('abort', onAbort, { once: true })
-    child.on('error', reject)
-    child.on('close', (code) => {
-      signal?.removeEventListener('abort', onAbort)
-      if (code === 0) resolve_({ stdout, stderr })
-      else reject(new Error(stderr.trim() || stdout.trim() || `pptfast exited with code ${code}`))
-    })
+  return runChild(resolveCliCommand(), [cliPath, ...args], {
+    env: cliChildEnv(),
+    signal,
+  }).then(({ code, stdout, stderr }) => {
+    if (code === 0) return { stdout, stderr }
+    throw new Error(stderr.trim() || stdout.trim() || `pptfast exited with code ${code}`)
   })
 }
 
@@ -1870,4 +1876,6 @@ export const __testing = {
   PreviewExpired,
   PreviewUnreadable,
   PreviewDamaged,
+  resolveCliCommand,
+  cliChildEnv,
 }

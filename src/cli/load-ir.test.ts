@@ -2,10 +2,11 @@
 import { mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { pathToFileURL } from "node:url"
 import { describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { installNodePlatform } from "@/platform/node"
-import { loadIrFile, resolveLocalAssets } from "./load-ir"
+import { loadIrFile, resolveLocalAssets, unwrapFileSrc } from "./load-ir"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -67,6 +68,28 @@ describe("resolveLocalAssets", () => {
     expect(ir.assets.images.b?.src).toBe("https://x.test/i.png")
   })
 
+  it("inlines a file:// URL whose path contains an escaped hash (%23)", async () => {
+    installNodePlatform()
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-fileurl-"))
+    const file = join(dir, "hash#tag.png")
+    await writeFile(file, PNG_1PX)
+    const src = pathToFileURL(file).href
+    expect(src).toContain("%23")
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      filename: "t",
+      theme: { id: "consulting" },
+      assets: { images: { photo: { src } } },
+      slides: [{ type: "cover", heading: "x" }],
+    })
+    await resolveLocalAssets(ir, dir)
+    expect(ir.assets.images.photo?.src).toBe(`data:image/png;base64,${PNG_1PX.toString("base64")}`)
+  })
+
+  it("unwraps a Windows file:// drive letter on any host platform", () => {
+    expect(unwrapFileSrc("file:///C:/Users/x/a%20b.png", "win32")).toBe("C:\\Users\\x\\a b.png")
+  })
+
   it("fails loud with the resolved path for a missing file", async () => {
     const ir = PptxIRSchema.parse({
       version: "4",
@@ -76,6 +99,24 @@ describe("resolveLocalAssets", () => {
       slides: [{ type: "cover", heading: "x" }],
     })
     await expect(resolveLocalAssets(ir, "/nowhere")).rejects.toThrow(/missing\.png/)
+  })
+
+  it("falls back to the workspace assets dir when the relative src is missing under baseDir", async () => {
+    installNodePlatform()
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
+    const workspace = join(dir, ".pptfast", "deck", "assets")
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(workspace, { recursive: true })
+    await writeFile(join(workspace, "hero.png"), PNG_1PX)
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      filename: "t",
+      theme: { id: "consulting" },
+      assets: { images: { hero: { src: "hero.png" } } },
+      slides: [{ type: "cover", heading: "x" }],
+    })
+    await resolveLocalAssets(ir, join(dir, "elsewhere"), workspace)
+    expect(ir.assets.images.hero?.src.startsWith("data:image/png;base64,")).toBe(true)
   })
 
   // Task 2 (borrow wave, D3): magic-byte sniffing for local files, the

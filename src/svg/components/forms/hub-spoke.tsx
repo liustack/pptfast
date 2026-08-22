@@ -1,9 +1,14 @@
 import type { ReactElement } from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../../lib/svg-text-layout"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  FORM_BODY_FLOOR,
+  FORM_TITLE_FLOOR,
+  layoutFormBody,
+  layoutFormTitle,
+} from "./legibility"
 
 type CycleComponent = Extract<Component, { type: "cycle" }>
 
@@ -25,10 +30,10 @@ interface Capsule {
 }
 
 function sizes(n: number): { capW: number; capH: number; hubR: number; spoke: number } {
-  if (n <= 3) return { capW: 300, capH: 84, hubR: 92, spoke: 36 }
-  if (n === 4) return { capW: 300, capH: 84, hubR: 92, spoke: 32 }
-  if (n <= 6) return { capW: 210, capH: 64, hubR: 72, spoke: 24 }
-  return { capW: 168, capH: 52, hubR: 56, spoke: 18 }
+  if (n <= 3) return { capW: 300, capH: 88, hubR: 92, spoke: 36 }
+  if (n === 4) return { capW: 300, capH: 88, hubR: 92, spoke: 32 }
+  if (n <= 6) return { capW: 230, capH: 76, hubR: 72, spoke: 24 }
+  return { capW: 200, capH: 68, hubR: 56, spoke: 18 }
 }
 
 function placeCapsules(n: number, capW: number, capH: number, hubR: number, spoke: number): Capsule[] {
@@ -199,14 +204,11 @@ export function renderHubSpoke(
       />
       {title
         ? (() => {
-            const layout = layoutSvgText(title, {
+            const layout = layoutFormTitle(title, {
               maxWidth: hubR * 1.55,
-              fontSize: Math.max(12, Math.round(22 * scale)),
+              fontSize: Math.max(FORM_TITLE_FLOOR, Math.round(22 * scale)),
               maxLines: 2,
-              lineHeightRatio: 1.15,
-              bold: true,
               fontFamily: ctx.fonts.heading,
-              minPt: 11,
             })
             const lines = layout.lines
             const totalH = lines.length * layout.lineHeight
@@ -239,7 +241,7 @@ export function renderHubSpoke(
         const badgeFill = solidHub ? ctx.colors.surface : ctx.colors.accent
         const badgeStroke = solidHub ? ctx.colors.accent : undefined
         const glyph = badgeGlyph(cap.i, solidHub)
-        const glyphSize = Math.max(10, Math.round(15 * scale))
+        const glyphSize = Math.max(FORM_BODY_FLOOR, Math.round(16 * scale))
         const glyphInk = solidHub
           ? accessibleInk(ctx.colors.primary, badgeFill, glyphSize)
           : readableOn(badgeFill)
@@ -248,29 +250,28 @@ export function renderHubSpoke(
         const textW = Math.max(24, textRight - textLeft)
         const anchor = cap.badge === "left" ? "start" : "end"
         const tx = cap.badge === "left" ? textLeft : textRight
-        const labelFit = fitSvgLine(item.label, {
+        const labelFit = layoutFormTitle(item.label, {
           maxWidth: textW,
-          fontSize: Math.max(11, Math.round(16 * scale)),
-          minFontSize: 10,
-          bold: true,
+          fontSize: Math.max(FORM_TITLE_FLOOR, Math.round(16 * scale)),
+          maxLines: 1,
           fontFamily: ctx.fonts.body,
         })
         const desc = item.description?.trim()
-        const descLayout = desc
-          ? layoutSvgText(desc, {
-              maxWidth: textW,
-              fontSize: Math.max(9, Math.round(13 * scale)),
-              maxLines: 1,
-              lineHeightRatio: 1.25,
-              fontFamily: ctx.fonts.body,
-            })
-          : null
-        const descLine = descLayout
-          ? truncateToUnits(descLayout.lines[0] ?? "", textW / descLayout.fontSize)
-          : ""
+        const descBudget = cap.h - labelFit.lineHeight - 8
+        const descLayout =
+          desc && descBudget >= FORM_BODY_FLOOR
+            ? layoutFormBody(desc, {
+                maxWidth: textW,
+                fontSize: Math.max(FORM_BODY_FLOOR, Math.round(13 * scale)),
+                maxLines: 1,
+                lineHeightRatio: 1.25,
+                fontFamily: ctx.fonts.body,
+              })
+            : null
+        const descLine = descLayout?.lines[0] ?? ""
         const labelInk = ctx.colors.text
         const descInk = accessibleInk(ctx.colors.muted, ctx.colors.surface, descLayout?.fontSize ?? 12)
-        const blockH = labelFit.fontSize + (descLine ? (descLayout!.lineHeight) : 0)
+        const blockH = labelFit.fontSize + (descLine ? descLayout!.lineHeight : 0)
         const labelY = cap.y + cap.h / 2 - blockH / 2 + labelFit.fontSize * 0.9
         const descY = labelY + (descLayout ? descLayout.lineHeight : 0)
         return (
@@ -315,7 +316,7 @@ export function renderHubSpoke(
               fontWeight="700"
               fill={labelInk}
             >
-              {labelFit.text}
+              {labelFit.lines[0] ?? ""}
             </text>
             {descLine ? (
               <text
