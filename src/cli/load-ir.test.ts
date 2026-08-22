@@ -2,10 +2,11 @@
 import { mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { pathToFileURL } from "node:url"
 import { describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { installNodePlatform } from "@/platform/node"
-import { loadIrFile, resolveLocalAssets } from "./load-ir"
+import { loadIrFile, resolveLocalAssets, unwrapFileSrc } from "./load-ir"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -65,6 +66,28 @@ describe("resolveLocalAssets", () => {
     await resolveLocalAssets(ir, "/nowhere")
     expect(ir.assets.images.a?.src).toBe("data:image/png;base64,AAAA")
     expect(ir.assets.images.b?.src).toBe("https://x.test/i.png")
+  })
+
+  it("inlines a file:// URL whose path contains an escaped hash (%23)", async () => {
+    installNodePlatform()
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-fileurl-"))
+    const file = join(dir, "hash#tag.png")
+    await writeFile(file, PNG_1PX)
+    const src = pathToFileURL(file).href
+    expect(src).toContain("%23")
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      filename: "t",
+      theme: { id: "consulting" },
+      assets: { images: { photo: { src } } },
+      slides: [{ type: "cover", heading: "x" }],
+    })
+    await resolveLocalAssets(ir, dir)
+    expect(ir.assets.images.photo?.src).toBe(`data:image/png;base64,${PNG_1PX.toString("base64")}`)
+  })
+
+  it("unwraps a Windows file:// drive letter on any host platform", () => {
+    expect(unwrapFileSrc("file:///C:/Users/x/a%20b.png", "win32")).toBe("C:\\Users\\x\\a b.png")
   })
 
   it("fails loud with the resolved path for a missing file", async () => {

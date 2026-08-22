@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { basename, extname, isAbsolute, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { PptfastError } from "../errors"
 import type { PptxIR } from "../ir"
 import { FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "../ir/asset-sniff"
@@ -39,6 +40,21 @@ export const EXT_BY_MIME: Record<string, string> = {
  *  common caller (`runRender`/`runValidate`/`runPreview`, `./commands.ts`);
  *  `runSpecValidate` passes "spec" so its own errors read correctly instead
  *  of borrowing IR's wording for a file that was never one. */
+/** Decode a `file:` asset src with `fileURLToPath` (or the Windows mapping
+ *  when `platform` is injected so Darwin tests can pin a drive letter). */
+export function unwrapFileSrc(src: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") {
+    const url = new URL(src)
+    let pathname = decodeURIComponent(url.pathname.replace(/\//g, "\\"))
+    if (url.hostname) return `\\\\${url.hostname}${pathname}`
+    if (pathname.startsWith("\\") && pathname.length >= 3 && pathname[2] === ":") {
+      return pathname.slice(1)
+    }
+    return pathname
+  }
+  return fileURLToPath(src)
+}
+
 export async function loadIrFile(irPath: string, kind = "IR"): Promise<unknown> {
   let text: string
   try {
@@ -99,7 +115,11 @@ export async function resolveLocalAssets(ir: PptxIR, baseDir: string, workspaceA
   for (const [name, asset] of Object.entries(ir.assets.images)) {
     const src = asset.src
     if (src.startsWith("data:") || /^https?:\/\//.test(src)) continue
-    const abs = isAbsolute(src) ? src : resolve(baseDir, src)
+    const abs = src.startsWith("file:")
+      ? unwrapFileSrc(src)
+      : isAbsolute(src)
+        ? src
+        : resolve(baseDir, src)
     let bytes: Buffer
     try {
       bytes = await readFile(abs)
