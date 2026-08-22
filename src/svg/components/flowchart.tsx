@@ -1,5 +1,4 @@
 import { Fragment } from "react"
-import dagre from "dagre"
 import type { Component } from "@/ir"
 import {
   fitSvgLine,
@@ -9,21 +8,27 @@ import {
 import { readableOn } from "../ink"
 import { mixHex } from "./color-mix"
 import { resolveComponentForm, type FormKnobs } from "./form-assignments"
+import {
+  layoutFlowchart,
+  type LayoutEdge as FlowLayoutEdge,
+  type Rankdir,
+  type SizedNode,
+} from "./flowchart-layout"
 import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type FlowchartComponent = Extract<Component, { type: "flowchart" }>
 
 type FlowDirection = "TB" | "TD" | "BT" | "LR" | "RL"
 
-/** dagre accepts TB/BT/LR/RL. Mermaid "TD" is an alias for "TB". */
-function toRankdir(d: FlowDirection): "TB" | "BT" | "LR" | "RL" {
+/** Rankdir is TB/BT/LR/RL. Mermaid "TD" is an alias for "TB". */
+function toRankdir(d: FlowDirection): Rankdir {
   return d === "TD" ? "TB" : d
 }
 
 const NODE_MIN_W = 80
 const NODE_MAX_W = 260
 /**
- * Horizontal breathing room per side, in *local* (dagre) units so it scales
+ * Horizontal breathing room per side, in *local* (pre-scale) units so it scales
  * with the diagram. It enters the box-width budget (`nodeWidth`) AND the
  * render-time fitting budget (`usableW`) with the same value — the two used
  * to disagree (budget 10px, render-time only 6px fixed) while the render
@@ -55,7 +60,7 @@ const ARROW_SIZE = 6
 /** Page-space corner radius for orthogonal elbows. Tight gaps may go down to CORNER_R_MIN. */
 const CORNER_R = 8
 const CORNER_R_MIN = 6
-/** Outward stub before the first bend, in local (dagre) units. */
+/** Outward stub before the first bend, in local (pre-scale) units. */
 const PORT_STUB = 12
 /** Minimum along-side spacing between same-side attachment points, local units. */
 const PORT_FAN_MIN = 12
@@ -63,13 +68,13 @@ const PORT_FAN_MIN = 12
 const LABEL_LINE_CLEAR = 8
 const PATH_EPS = 0.05
 /**
- * Max height (px) the flowchart may occupy in the content area. The dagre layout
+ * Max height (px) the flowchart may occupy in the content area. The layered layout
  * is scaled to fit BOTH the target width and this height, so a tall top-to-bottom
  * chart shrinks to fit instead of scaling by width alone and overflowing the slide.
  */
 const MAX_FLOW_HEIGHT = 360
 /**
- * Fixed *local* (pre-scale, dagre-coordinate) clearance subtracted from an
+ * Fixed *local* (pre-scale) clearance subtracted from an
  * edge's raw gap before it becomes an edge label's fitting budget (see
  * `computeEdgeLabel`) — kept in the same unit space as `NODE_SEP`/`RANK_SEP`
  * so it shrinks right along with the gap at low scale.
@@ -111,7 +116,7 @@ const LABEL_CHIP_RX = 2
  */
 const MIN_LABEL_WIDTH = 2 * MIN_FONT_SIZE
 
-/** Uniform scale that fits the dagre layout within width `w` and MAX_FLOW_HEIGHT. */
+/** Uniform scale that fits the layered layout within width `w` and MAX_FLOW_HEIGHT. */
 function fitScale(layout: Layout, w: number): number {
   // 允许适度放大填充画布（上限 1.4，避免 3 节点小图膨胀失真）
   return Math.min(w / layout.width, MAX_FLOW_HEIGHT / layout.height, 1.4)
@@ -328,57 +333,41 @@ function routeOrthogonal(
 }
 
 function computeLayout(component: FlowchartComponent, direction: FlowDirection): Layout {
-  const g = new dagre.graphlib.Graph()
-  g.setGraph({
-    rankdir: toRankdir(direction),
-    nodesep: NODE_SEP,
-    ranksep: RANK_SEP,
-  })
-  g.setDefaultEdgeLabel(() => ({}))
-
+  const sized: SizedNode[] = []
+  const extras: { lines: string[]; kind: LayoutNode["kind"] }[] = []
   for (const n of component.nodes) {
     const kind = n.kind ?? "rect"
     const lines = kind === "diamond" ? wrapDiamondLabel(n.label) : normalizeLabelLines(n.label)
-    g.setNode(n.id, {
-      width: kind === "diamond" ? diamondWidthForLines(lines) : nodeWidth(lines),
-      height: nodeHeight(lines),
-      lines,
-      kind,
+    sized.push({
+      id: n.id,
+      w: kind === "diamond" ? diamondWidthForLines(lines) : nodeWidth(lines),
+      h: nodeHeight(lines),
     })
+    extras.push({ lines, kind })
   }
   const knownIds = new Set(component.nodes.map((n) => n.id))
+  const rawEdges: FlowLayoutEdge[] = []
   for (const e of component.edges) {
     if (!knownIds.has(e.from) || !knownIds.has(e.to)) continue
-    // 边标签是单行元素：换行标记（<br/>、\n）归一化成空格。
-    g.setEdge(e.from, e.to, {
-      label: (e.label ?? "").replace(/<br\s*\/?>|\n/gi, " ").trim(),
-    })
+    rawEdges.push({ from: e.from, to: e.to })
   }
 
-  dagre.layout(g)
-
-  const graphLabel = g.graph()
-  const width = graphLabel.width ?? 400
-  const height = graphLabel.height ?? 200
-
-  const nodes: LayoutNode[] = g.nodes().flatMap((id) => {
-    const n = g.node(id) as dagre.Node & {
-      lines: string[]
-      kind: "rect" | "diamond" | "round"
-    }
-    if (!n || !Number.isFinite(n.x) || !Number.isFinite(n.width)) return []
-    return [
-      {
-        id,
-        x: n.x - n.width / 2,
-        y: n.y - n.height / 2,
-        w: n.width,
-        h: n.height,
-        lines: n.lines,
-        kind: n.kind,
-      },
-    ]
+  const placed = layoutFlowchart(sized, rawEdges, toRankdir(direction), {
+    nodesep: NODE_SEP,
+    ranksep: RANK_SEP,
   })
+  const width = placed.width
+  const height = placed.height
+
+  const nodes: LayoutNode[] = placed.nodes.map((p, i) => ({
+    id: p.id,
+    x: p.x,
+    y: p.y,
+    w: p.w,
+    h: p.h,
+    lines: extras[i]!.lines,
+    kind: extras[i]!.kind,
+  }))
 
   const nodeById = new Map(nodes.map((n) => [n.id, n]))
   const planned = component.edges.flatMap((e, edgeI) => {
@@ -531,15 +520,9 @@ interface EdgeLabelVisual {
 
 /**
  * Fit an edge's label to the gap it actually has to live in and lay out its
- * backing chip. `mid` (the label's anchor, `text-anchor="middle"`) is one of
- * the polyline's own vertices, not an interpolated point — for the common
- * direct-edge case dagre emits exactly 3 points (source boundary, true gap
- * midpoint, target boundary), so the points flanking the midpoint (skipping
- * over it) bound the *whole* visual gap the label sits in, not half of it.
- * That matches a horizontal (LR/RL) layout's node-to-node gap exactly; for a
- * vertical (TB/BT) layout it degrades to the rank gap, which is tighter but
- * still workable since TB diagrams are typically decision trees with short
- * 是/否-style labels rather than the long descriptive labels LR pipelines use.
+ * backing chip. The label parks on the longest orthogonal segment (typically
+ * the rank-gap run between port stubs). That span is the node-to-node gap on
+ * a horizontal (LR/RL) chain, and the rank gap on a vertical (TB/BT) tree.
  *
  * Returns `null` both when the edge has no label and when the gap is too
  * narrow for even one character to survive `fitSvgLine`'s shrink-then-

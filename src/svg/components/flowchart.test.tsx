@@ -139,7 +139,7 @@ describe("flowchart component", () => {
   })
 
   it("bounds height so a tall TB flowchart never overflows the slide", () => {
-    // A 6-node vertical chain: dagre lays this out tall-and-narrow. Width-only
+    // A 6-node vertical chain: layered layout is tall-and-narrow. Width-only
     // scaling would blow it up to thousands of px (overflowing the 720px slide).
     const tall = {
       type: "flowchart" as const,
@@ -801,7 +801,7 @@ describe("flowchart diamond label and edge-label clearance (ember p05 leftover)"
 })
 
 // 2026-08-23 用户裁定：推翻 2026-07-14「连线一律曲线」，flowchart 连线改
-// 正交圆角肘（禁斜线，圆角半径小，箭头继续 polygon）。层序仍走 dagre，
+// 正交圆角肘（禁斜线，圆角半径小，箭头继续 polygon）。层序走仓库内分层布局，
 // 同边多出边扇口，标签离描边 6-10px，先线后盒。
 describe("flowchart orthogonal rounded routing", () => {
   const fork = {

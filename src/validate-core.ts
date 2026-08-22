@@ -3,7 +3,7 @@
  * browser-distribution wave, task 1) so the light `./validate` SDK entry
  * (`src/validate.ts`) can import this file directly and, by simple
  * file-level reachability, never touch `./pptx/generate` or
- * `./svg/render-slide` (react-dom/server, jszip, pptxgenjs, dagre) at all —
+ * `./svg/render-slide` (react-dom/server, jszip, pptxgenjs) at all —
  * a physical module boundary, not a bet on a bundler's cross-file
  * tree-shaking of an unused re-export (tried first; esbuild's CJS-interop
  * wrapper for jszip/react-dom's `require()`-based deps kept pulling their

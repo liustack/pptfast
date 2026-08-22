@@ -121,7 +121,7 @@ function tangentAtAngle(angle: number): Pt {
  * `chord = 2*r*sin(π/n)`), floored at `MIN_RING_R`. Grows with `n` (more
  * nodes need more circumference to keep the same per-node size and gap),
  * which is the intended "n 大时挤" pressure `resolveGeometry`'s scale-fit
- * absorbs uniformly, exactly like flowchart.tsx's dagre-produced layout
+ * absorbs uniformly, exactly like flowchart.tsx's layered layout
  * growing with node/edge count before `fitScale` shrinks it back down.
  */
 function ringRadius(n: number): number {
@@ -158,7 +158,7 @@ function anyHasDescription(component: CycleComponent): boolean {
  * (`ringR + NODE_R` on every side, plus a flat description/title
  * reservation when either is present) rather than an exact per-node bbox —
  * safe over-approximation, same posture flowchart.tsx's own `fitScale`
- * takes with dagre's reported width/height.
+ * takes with flowchart's fitScale on the layered layout's width/height.
  */
 function resolveGeometry(component: CycleComponent, w: number): CycleGeometry {
   const n = component.items.length

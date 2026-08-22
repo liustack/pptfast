@@ -5,7 +5,7 @@
  * of this module keeps working exactly as before. `renderSlideSvg` and
  * `generatePptx` stay defined here — this is the one file allowed to reach
  * into `./svg/render-slide` and `./pptx/generate` (react-dom/server, jszip,
- * pptxgenjs, dagre).
+ * pptxgenjs).
  */
 export {
   validateIr,

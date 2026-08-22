@@ -10,7 +10,7 @@ import { defineConfig } from "tsup"
 // the sealing.
 //
 // Dependencies stay external (npm's normal resolution) — an install pulls
-// react/zod/jszip/dagre/pptxgenjs from its own node_modules.
+// react/zod/jszip/pptxgenjs from its own node_modules.
 export default defineConfig([
   {
     entry: { index: "src/index.ts", node: "src/node.ts", cli: "src/cli.ts" },

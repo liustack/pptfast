@@ -108,7 +108,7 @@ in a browser" are two different claims — the P2 browser-distribution wave
 closed the gap between them. The seam above has always been true (verified
 against a real Chromium tab, not just jsdom), but the default build
 (`tsup.config.ts`'s `index`/`node`/`cli` entries) externalizes every
-`dependencies` entry (`react`, `react-dom`, `zod`, `jszip`, `dagre`,
+`dependencies` entry (`react`, `react-dom`, `zod`, `jszip`,
 `pptxgenjs`) as bare ESM specifiers — correct for a bundler consumer
 (Vite/webpack resolve them from `node_modules`, deduped against the rest of
 the app), fatal for a bare `<script type="module">` (`Failed to resolve
@@ -121,7 +121,7 @@ through two more `tsup.config.ts` array entries (`platform: "browser"`,
 relative-chunk fetches and zero bare specifiers left to resolve):
 
 - **`./browser`** (`dist/browser.js`) — the full engine, every dependency
-  inlined (react + react-dom/server + zod + jszip + dagre + pptxgenjs, ~1.7 MB
+  inlined (react + react-dom/server + zod + jszip + pptxgenjs, ~1.7 MB
   raw / ~455 KB gzip). `platform: "browser"` makes esbuild honor each
   dependency's own package.json `browser` field (pptxgenjs and jszip both
   ship one, remapping their Node-only `fs`/`https` code paths away) instead
@@ -131,7 +131,7 @@ relative-chunk fetches and zero bare specifiers left to resolve):
   all functionally correct, byte-identical output to the Node CLI).
 - **`./validate`** (`dist/validate.js`) — `validateIr` and nothing else
   reachable from the render/export chain, for an "embed a validator" page
-  that has no reason to carry `react`/`pptxgenjs`/`jszip`/`dagre` at all
+  that has no reason to carry `react`/`pptxgenjs`/`jszip` at all
   (~730 KB raw / ~155 KB gzip, a fraction of `/browser`'s size). Its source,
   `src/validate.ts`, imports from `src/validate-core.ts` — a module carved
   out of what used to be all of `src/api.ts` — directly, not through
