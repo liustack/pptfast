@@ -185,7 +185,7 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Signature node-line motif: 9 nodes at varying radii (not a uniform
           dot grid) connected by a single faint polyline, with the largest
           node picking up a soft concentric glow — same glow technique the
-          bento KPI card body uses (no SVG filter; Chrome 103's controlled
+          bento KPI card body uses (no SVG filter; Chromium 103's controlled
           subset has none). */}
       <polyline
         points={COVER_MOTIF_POINTS.map((p) => `${p.x},${p.y}`).join(" ")}
@@ -242,9 +242,9 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// COVER_LAYOUT_DEFS["constellation"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// COVER_LAYOUT_DEFS["constellation"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {

@@ -25,7 +25,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
     version: "3",
     filename: "x.pptx",
     theme: { id: theme },
-    chrome: "full",
+    branding: "full",
     meta: { organization: "维岚科技", date: "2026-07-09" },
     assets: { images: {} },
     slides: [slide],
@@ -66,7 +66,7 @@ describe("MastheadEnding", () => {
   })
 
   /**
-   * 页脚呼吸感（2026-08-20 第四轮评审，批 2 波 H）。ending 页不画 BrandChrome
+   * 页脚呼吸感（2026-08-20 第四轮评审，批 2 波 H）。ending 页不画 Branding
    * 的页脚，底部那条带子归 motif：与本版式配对的两家里，heritage 的底缘线
    * 在 y626、线上金菱旋转后最低点 633.07，luxe 的金框下边在 y624。meta 行
    * 基线原是 640（em 框顶 627），正压在金菱上。把基线改回 640 这条立刻红。

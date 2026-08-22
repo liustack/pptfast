@@ -11,7 +11,7 @@ import { sparseFace } from "./sparse/registry"
  * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * statement 通用脸：整页就是 heading 的 2–4 行诗行 / 金句。`pinOnly` +
- * `chrome: "none"`——只能被 `slide.layout: "statement"` 点名，不进自动池。
+ * `branding: "none"`——只能被 `slide.layout: "statement"` 点名，不进自动池。
  * 品牌页脚 / logo / 页码一律不画。motif 仍画。
  *
  * 和 quote-stage 的差别不是「再居中一点」：字重 500 斜体（禁止 800），
@@ -129,13 +129,13 @@ function GenericStatementContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 export const layoutDef = {
   // content-statement.tsx: a pinOnly editorial-verse page. Heading is the
   // whole visual (2–4 italic lines, weight 500). Capacity-1 body is an
-  // attribution caption, never a card. chrome: "none" skips brand footer,
+  // attribution caption, never a card. branding: "none" skips brand footer,
   // logo, and page numbers. The theme motif still paints. The fifth-band
   // decoration safe-zone does not apply — the whole canvas is the layout's.
   id: "statement",
   kind: "archetype",
   pinOnly: true,
-  chrome: "none",
+  branding: "none",
   slideTypes: ["content"],
   slots: [
     { name: "kicker", accepts: [] },

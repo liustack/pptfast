@@ -7,10 +7,10 @@ import { resolveStyle } from "../../themes"
 import { accessibleInk, readableOn } from "../ink"
 import { BannerHeadingContent } from "./content-banner-heading"
 import type { PptxIR, Slide } from "@/ir"
-import { FOOTER_DIVIDER_Y, footnoteBaselineFor } from "../chrome-geometry"
+import { FOOTER_DIVIDER_Y, footnoteBaselineFor } from "../branding-geometry"
 import { BLOCK_GAP } from "../layout"
 
-// BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
+// Branding's brand logo bands (see templates/consulting.test.tsx's own
 // LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
 // the legacy test file) for the kicker/banner logo-avoidance backfills below.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -81,7 +81,7 @@ function ir(
 // gathered body follows the banner under the golden-top cap instead of
 // taking 38% of a tall leftover. Token counts unchanged. Every differing
 // token is a y / height / translate y. No x, no element added or dropped.
-//   - chrome: kicker 52->60, banner 72->80, heading 127->135, subheading
+//   - heading band: kicker 52->60, banner 72->80, heading 127->135, subheading
 //     184->192, content rect 230->238 (h 390->382).
 //   - body: paragraph 301.44->270, bullets 359.44->328. Both by the same
 //     31.44, so the pair stays 58 apart (the 1.5x gap ceiling).
@@ -170,7 +170,7 @@ describe("BannerHeadingContent", () => {
 
   // 回填旧测试「tl brand entry present but the asset failed to load」（旧文件
   // consulting.test.tsx L251-258）：tl 位 logo 资产加载失败（asset.error）时
-  // 视为无 logo（镜像 BrandChrome 自己的 `!logo.error` 判定），kicker 对齐
+  // 视为无 logo（镜像 Branding 自己的 `!logo.error` 判定），kicker 对齐
   // banner。
   it("tl 位 logo 资产加载失败（asset.error）：视为无 logo，kicker 对齐 banner", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
@@ -246,7 +246,7 @@ describe("BannerHeadingContent", () => {
 
   // 回填旧测试「Content does not draw its own source hairline ... footnote
   // stays below it」（旧文件 consulting.test.tsx L171-192）：本 layout 不
-  // 画自己的 y=648 源信息 hairline（BrandChrome 已经画了），footnote 落在
+  // 画自己的 y=648 源信息 hairline（Branding 已经画了），footnote 落在
   // 其下方。
   it("不画自己的 y=648 源信息 hairline，footnote 落在其下方", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
@@ -267,7 +267,7 @@ describe("BannerHeadingContent", () => {
       (t.textContent ?? "").includes("数据来源"),
     )!
     // The footnote sits on the shared baseline (`footnoteBaselineFor`,
-    // chrome-geometry.ts) rather than 28px below the hairline this layout
+    // branding-geometry.ts) rather than 28px below the hairline this layout
     // does not draw. At the old +28 it landed at 676 — under the footer
     // divider at 664, through the footer's own text row. The baseline is
     // derived from the *rendered* size, so a footnote that `fitSvgLine`

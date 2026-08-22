@@ -1,11 +1,11 @@
 /**
- * Shared chrome geometry: the title-zone top edge and the footer rule.
+ * Shared branding geometry: the title-zone top edge and the footer rule.
  *
  * A leaf module on purpose: it imports nothing. These constants are needed
- * by `./brand-chrome.tsx` (which draws the divider) *and* by layouts that
- * place a kicker or a footnote, and `brand-chrome` itself reaches the
+ * by `./branding.tsx` (which draws the divider) *and* by layouts that
+ * place a kicker or a footnote, and `branding` itself reaches the
  * theme registry, which reaches the layout registry, which reaches the
- * layouts — so a layout importing back into `brand-chrome` closes a
+ * layouts — so a layout importing back into `branding` closes a
  * cycle that leaves the layout registry half-built at module-init time.
  * Shared geometry with no behaviour lives here instead.
  */
@@ -20,7 +20,7 @@
  */
 export const TITLE_ZONE_TOP = 48
 
-/** The hairline `BrandChrome` draws across the bottom of content slides when deck chrome is explicit `"full"`. */
+/** The hairline `Branding` draws across the bottom of content slides when deck branding is explicit `"full"`. */
 export const FOOTER_DIVIDER_Y = 664
 
 /**

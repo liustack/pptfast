@@ -1,5 +1,5 @@
 /**
- * The v4 IR schema root: theme/meta/assets/brand/chrome/background/slide/narrative
+ * The v4 IR schema root: theme/meta/assets/brand/branding/background/slide/narrative
  * and the top-level `PptxIRSchema` a deck document parses against
  * (`parsePptxIR`). The frozen v3 shape lives in `./legacy-v3.ts`, kept only
  * for `migrateIrV3ToV4`'s input parsing (spec §9.3).
@@ -26,7 +26,7 @@
  *
  * The rest of this module — everything outside the `// ── Components` section
  * — is unrelated to the component-domain split and was never in its scope:
- * background/theme/meta/assets/brand/chrome/slide/narrative and the top-level
+ * background/theme/meta/assets/brand/branding/slide/narrative and the top-level
  * `PptxIRSchema` are genuinely this file's own content, not aggregated from
  * elsewhere.
  */
@@ -187,13 +187,13 @@ export const StyleOverrideSchema = z
 export type StyleOverride = z.infer<typeof StyleOverrideSchema>
 
 /**
- * Brand (logical slide-master) config: brand-chrome behavior owned by a theme.
- * W1 scope was exactly the two flags migrated from the old manifest.chrome;
+ * Brand (logical slide-master) config: branding behavior owned by a theme.
+ * W1 scope was exactly the two flags migrated from the old theme-manifest footer flags;
  * the ink v3 redesign (2026-08-18) added a third, orthogonal one.
  * Single source of truth — the TS type is inferred, never hand-written.
  *
  * All three are independent switches, not a ladder: a theme may set any
- * combination, and each names exactly one piece of footer chrome. They are
+ * combination, and each names exactly one piece of brand footer. They are
  * deliberately not collapsed into one "footer style" enum — a theme that
  * draws its own divider is a different situation from one whose motif
  * already carries the org/date, and merging them would force one to imply
@@ -308,7 +308,7 @@ export const BrandSchema = z
   .strict()
 
 /**
- * Deck-level brand-chrome posture. Omitted equals `"cover-only"` (cover and
+ * Deck-level branding posture. Omitted equals `"cover-only"` (cover and
  * chapter keep the brand logo, content and ending drop the footer rule,
  * meta, and logo). The schema never bakes a default: writing `"cover-only"`
  * back into a parsed IR would rewrite every existing deck.
@@ -317,16 +317,16 @@ export const BrandSchema = z
  * rule, meta, and logo, and that paints confidentiality and date on cover
  * and ending meta rows. Other postures leave those two fields off the
  * canvas even when meta carries them. `"minimal"` drops the content-page
- * footer rule and meta but keeps the logo. Layout-declared `chrome: "none"`
+ * footer rule and meta but keeps the logo. Layout-declared `branding: "none"`
  * still wins. Theme motifs are not this field.
  *
  * Shared with `DeckSpecSchema` (`src/spec/index.ts`) so the spec and IR
  * cannot drift on the enum.
  */
-export const DECK_CHROME_VALUES = ["full", "cover-only", "minimal"] as const
-export type DeckChrome = (typeof DECK_CHROME_VALUES)[number]
-export const DeckChromeSchema = z.enum(DECK_CHROME_VALUES).describe(
-  'Where the brand footer and logo appear. Omitted equals "cover-only": cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. "full" is the explicit declaration that draws the content-page footer and logo, and that paints confidentiality and date on cover and ending meta rows. Other postures leave those two fields off the canvas even when meta carries them. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Write "full" only when every content page needs the brand footer.',
+export const DECK_BRANDING_VALUES = ["full", "cover-only", "minimal"] as const
+export type DeckBranding = (typeof DECK_BRANDING_VALUES)[number]
+export const DeckBrandingSchema = z.enum(DECK_BRANDING_VALUES).describe(
+  'Where the brand footer and logo appear. Omitted equals "cover-only": cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. "full" is the explicit declaration that draws the content-page footer and logo, and that paints confidentiality and date on cover and ending meta rows. Other postures leave those two fields off the canvas even when meta carries them. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout branding:"none" still wins. Theme motifs are unaffected. Write "full" only when every content page needs the brand footer.',
 )
 
 // ── Components（37 种）──
@@ -591,9 +591,9 @@ export const PptxIRSchema = z
      * deck that never mentions the field gets a clean content page. Write
      * `"full"` to draw the footer rule, meta, and logo on content pages,
      * and to paint confidentiality and date on cover and ending meta rows.
-     * See {@link DeckChromeSchema}.
+     * See {@link DeckBrandingSchema}.
      */
-    chrome: DeckChromeSchema.optional(),
+    branding: DeckBrandingSchema.optional(),
     // 修订稳定性 seed（W5 由 assemble 从 plan 注入，W4 消费做取样选型）。与
     // variety.ts 的内容哈希 deckSeed 正交、互不影响——缺省时 W4 前的选型/
     // 渲染行为不变。

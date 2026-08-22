@@ -222,8 +222,8 @@ describe("memo vs heritage vs vermilion（字族用法分家）", () => {
     expect(parts(draw("memo", chapterSlide).root).thickRule).toBeTruthy()
   })
 
-  it("chrome 仍归 deck 声明：主题定义不绑定 chrome", () => {
+  it("branding 仍归 deck 声明：主题定义不绑定 branding", () => {
     expect(THEME_DEFINITIONS.memo.brand).toEqual({})
-    expect(THEME_DEFINITIONS.memo).not.toHaveProperty("chrome")
+    expect(THEME_DEFINITIONS.memo).not.toHaveProperty("branding")
   })
 })

@@ -347,3 +347,25 @@ export function normalizeComponentAliases(input: unknown): NormalizeAliasesResul
 // `COMPONENT_FIELD_ALIASES` table is, just for a shape instead of a field
 // name — see that function's own doc comment for the full boundary against
 // this section's old-vocabulary rule.
+//
+// `chrome` → `branding` is a root-field alias (weak-model / old-key rescue
+// at validate time via {@link DECK_ROOT_ALIASES}), distinct from migrate's
+// hard dual-source error. Dual-source here leaves both keys for zod
+// `.strict()` to reject. It is not folded into `PptxIRSchema`: the schema
+// only has `branding`, so a direct `parsePptxIR` of `{ chrome: "full" }`
+// still fails.
+
+/** Root-level IR/spec field aliases applied by {@link normalizeDeckRootAliases}. */
+export const DECK_ROOT_ALIASES: FieldAliasMap = { chrome: "branding" }
+
+/**
+ * Rewrite deck-root `chrome` → `branding` when `branding` is absent.
+ * Dual-source leaves both keys (no rewrite). Does not mutate `input`.
+ * Non-object / null / array input is returned as-is.
+ */
+export function normalizeDeckRootAliases(input: unknown): NormalizeAliasesResult {
+  const normalized: string[] = []
+  if (!isPlainObject(input)) return { value: input, normalized }
+  const value = renameAliases(input, DECK_ROOT_ALIASES, "(root)", normalized)
+  return { value, normalized }
+}

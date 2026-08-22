@@ -59,9 +59,9 @@ const LABEL_MIN_FONT_SIZE = 10
 /**
  * Fraction `colors.surface` blends toward the theme's readable ink to derive
  * each cell's backing fill. This is `device_mockup`'s own
- * `mixHex(colors.surface, readableOn(bg), CHROME_BAR_MIX)` precedent (裁定 2
+ * `mixHex(colors.surface, readableOn(bg), FRAME_BAR_MIX)` precedent (裁定 2
  * — read that implementation and follow it), only with a larger fraction
- * because the goal here is stronger: not merely to separate a chrome bar from
+ * because the goal here is stronger: not merely to separate a frame bar from
  * the page (device_mockup's subtle 0.14 nudge), but to reach a *mid-neutral*
  * panel that keeps **both** ink polarities legible on the same board.
  *

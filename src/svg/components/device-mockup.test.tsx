@@ -29,7 +29,7 @@ function svg(node: React.ReactElement) {
 }
 
 describe("device_mockup component — browser", () => {
-  it("renders <image> cover-cropped below the chrome bar", () => {
+  it("renders <image> cover-cropped below the frame bar", () => {
     const component = { type: "device_mockup" as const, device: "browser" as const, asset_id: "dash" }
     const { container } = svg(deviceMockup.render(component, { x: 80, y: 100, w: 1120 }, ctx))
     const g = container.querySelector("g")
@@ -88,10 +88,10 @@ describe("device_mockup component — browser", () => {
     expect(placeholderRect).not.toBeUndefined()
   })
 
-  it("still paints the chrome frame (outer border + top bar) when the asset is missing", () => {
+  it("still paints the device frame (outer border + top bar) when the asset is missing", () => {
     const component = { type: "device_mockup" as const, device: "browser" as const, asset_id: "nonexistent" }
     const { container } = svg(deviceMockup.render(component, { x: 0, y: 0, w: 800 }, ctx))
-    expect(container.querySelector("path")).not.toBeNull() // rounded-top chrome bar
+    expect(container.querySelector("path")).not.toBeNull() // rounded-top window bar
     const outer = Array.from(container.querySelectorAll("rect")).find(
       (r) => r.getAttribute("stroke") === ctx.colors.border,
     )
@@ -186,7 +186,7 @@ describe("device_mockup component — phone", () => {
 })
 
 // Review fix round, Important-2: on a near-black theme (tech: bg #060A13 vs
-// surface #0A101C) the browser chrome bar/dots/url pill barely separated
+// surface #0A101C) the window bar/dots/url pill barely separated
 // from the page behind them or from each other — a plain `colors.surface`
 // fill has almost no luminance headroom against a `colors.bg` that close.
 // These two ctx fixtures reproduce the two real shapes that failure took
@@ -202,8 +202,8 @@ const flatLightCtx: ComponentCtx = {
   colors: { ...ctx.colors, bg: "#FFFFFF", surface: "#FFFFFF", muted: "#6B6B6B", border: "#D5D5CB" },
 }
 
-describe("device_mockup browser chrome color derivation (review fix round, Important-2)", () => {
-  it("derives a chrome-bar fill with guaranteed separation from the ambient background on a near-black theme", () => {
+describe("device_mockup frame color derivation (review fix round, Important-2)", () => {
+  it("derives a frame-bar fill with guaranteed separation from the ambient background on a near-black theme", () => {
     const component = {
       type: "device_mockup" as const,
       device: "browser" as const,
@@ -211,8 +211,8 @@ describe("device_mockup browser chrome color derivation (review fix round, Impor
       url: "app.example.com",
     }
     const { container } = svg(deviceMockup.render(component, { x: 0, y: 0, w: 1120 }, darkCtx))
-    const chromeBar = container.querySelector("path")!
-    const barFill = chromeBar.getAttribute("fill")!
+    const frameBar = container.querySelector("path")!
+    const barFill = frameBar.getAttribute("fill")!
     expect(barFill).not.toBe(darkCtx.colors.surface)
     expect(barFill).not.toBe(darkCtx.colors.bg)
     // The whole point: mixing surface toward the theme's own readable ink
@@ -224,7 +224,7 @@ describe("device_mockup browser chrome color derivation (review fix round, Impor
     )
   })
 
-  it("derives a guaranteed-separation chrome-bar fill even when surface and bg are the exact same hex (flat-white theme)", () => {
+  it("derives a guaranteed-separation frame-bar fill even when surface and bg are the exact same hex (flat-white theme)", () => {
     const component = { type: "device_mockup" as const, device: "browser" as const, asset_id: "dash" }
     const { container } = svg(deviceMockup.render(component, { x: 0, y: 0, w: 1120 }, flatLightCtx))
     const barFill = container.querySelector("path")!.getAttribute("fill")!
@@ -245,7 +245,7 @@ describe("device_mockup browser chrome color derivation (review fix round, Impor
     }
   })
 
-  it("derives a url-pill fill one step further than the chrome bar, so the pill reads as its own nested layer", () => {
+  it("derives a url-pill fill one step further than the frame bar, so the pill reads as its own nested layer", () => {
     const component = {
       type: "device_mockup" as const,
       device: "browser" as const,
@@ -253,13 +253,13 @@ describe("device_mockup browser chrome color derivation (review fix round, Impor
       url: "app.example.com/dispatch",
     }
     const { container } = svg(deviceMockup.render(component, { x: 0, y: 0, w: 1120 }, darkCtx))
-    const chromeBarFill = container.querySelector("path")!.getAttribute("fill")!
+    const frameBarFill = container.querySelector("path")!.getAttribute("fill")!
     const urlPill = Array.from(container.querySelectorAll("rect")).find(
       (r) => r.getAttribute("rx") && Number(r.getAttribute("rx")) > 5 && r.getAttribute("width") !== r.getAttribute("height"),
     )!
     const pillFill = urlPill.getAttribute("fill")!
-    expect(pillFill).not.toBe(chromeBarFill)
-    expect(contrastRatio(pillFill, darkCtx.colors.bg)).toBeGreaterThan(contrastRatio(chromeBarFill, darkCtx.colors.bg))
+    expect(pillFill).not.toBe(frameBarFill)
+    expect(contrastRatio(pillFill, darkCtx.colors.bg)).toBeGreaterThan(contrastRatio(frameBarFill, darkCtx.colors.bg))
     // The url text itself must still clear the meta-tier 3:1 floor against
     // its own (now-derived) pill fill, not the ambient page background.
     const urlText = Array.from(container.querySelectorAll("text")).find((t) => t.textContent?.includes("app.example.com"))!

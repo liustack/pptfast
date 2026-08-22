@@ -7,7 +7,7 @@ import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", components: [] } as Slide
-const ir = (theme: string, chrome?: PptxIR["chrome"]): PptxIR =>
+const ir = (theme: string, branding?: PptxIR["branding"]): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
@@ -15,7 +15,7 @@ const ir = (theme: string, chrome?: PptxIR["chrome"]): PptxIR =>
     meta: { organization: "测试部", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],
-    ...(chrome !== undefined ? { chrome } : {}),
+    ...(branding !== undefined ? { branding } : {}),
   }) as unknown as PptxIR
 
 // Captured verbatim from the legacy `MckinseyNavyCover` (templates/consulting.tsx)

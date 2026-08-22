@@ -22,7 +22,7 @@ import type { DecorProps } from "./types"
  * chapter 不再退让：v2 退让的理由是「org + 上下 divider + 巨号数字已满」，
  * 针对的是 v2 那枚画在版心顶部中央 (640,36-80) 的徽记。v3 的三件东西全部
  * 走页缘带（y<48 与 y620-664），与 luxe v2 的金框走的是同一条边缘轨道
- * ——那一轮已经实测过这条轨道离 chapter chrome 有余量。heritage 的
+ * ——那一轮已经实测过这条轨道离 chapter heading band 有余量。heritage 的
  * chapter 默认底色本来就是纸色（不像 terra/vermilion/ember 的 chapter 是
  * 整版 primary），纹饰压在纸上读得出来，没有「画了也看不见」的问题。
  *

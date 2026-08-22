@@ -46,7 +46,7 @@ import type { DecorProps } from "./types"
  * (96,200,1040×420)、页脚 meta 带 (48,664,1184×44)、右下 logo 盒
  * (1120,630,96×40)。
  *   - 点轨 y24-36，在标题区上沿 y48 之上；默认锚横向 x98-294（x96-296
- *     槽内居中）、cover 锚 x564-760，两档都够不到 `brand-chrome.tsx` 右上
+ *     槽内居中）、cover 锚 x564-760，两档都够不到 `branding.tsx` 右上
  *     logo 带（1120,48, 96×40）与右下 logo 盒的左沿 x1120。
  *   - 角标 x1200-1256、y20-30，同在标题区上沿之上、右上 logo 带上方。
  *   - 设计板坐标只改了点轨的 y 一处（见 `DOT_Y`）。件数不变。默认档 x
@@ -64,7 +64,7 @@ import type { DecorProps } from "./types"
 // ── 顶带五枚空心圆 ──────────────────────────────────────────────────────
 /**
  * 设计板给的是 y648（底带）。本仓库的 y648 正好是
- * `chrome-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`——「一条分隔线只配一个答案」
+ * `branding-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`——「一条分隔线只配一个答案」
  * 那次统一之后，每个 content 版式的脚注都画在这一根基线上。实测（全主题 ×
  * 全版式 × 满配 meta ＋长脚注的最坏情形扫描）：点轨压在 consulting 八个
  * content 版式的脚注下面，`deck-audit` 报 3.26:1 的 low-contrast。设计板的

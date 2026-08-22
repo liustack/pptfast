@@ -364,7 +364,7 @@ describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)
     expect(dirty).toContain('id="pf-side"')
   })
 
-  it("sizes the stage from the room it measures, not from a guess at the chrome", () => {
+  it("sizes the stage from the room it measures, not from a guess at the shell", () => {
     // The stage used to take its width from `100vh - 210px`, a guess at what
     // the header and filmstrip cost. Guess low and the box comes out wider
     // than 16:9 — `aspect-ratio` cannot pull it back once width and

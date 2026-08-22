@@ -12,7 +12,7 @@ import { sparseFace } from "./sparse/registry"
  * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * one-evidence 通用脸：整句断言 + 独占一张图或一个表。`pinOnly` +
- * `chrome: "none"`。容量 1，超过走既有 `pin_only_over_capacity`。品牌页脚 /
+ * `branding: "none"`。容量 1，超过走既有 `pin_only_over_capacity`。品牌页脚 /
  * logo 不画。motif 仍画。
  * 证据挑选复用 `pickEvidence`（和 `assertion_evidence` 同一份优先级），没有
  * 命中证据类型时退回唯一组件。等比缩小以适配剩余框，不放大。
@@ -104,13 +104,13 @@ export const layoutDef = {
   // content-one-evidence.tsx: a pinOnly assertion + single evidence page.
   // Heading is a full-sentence claim. Body capacity 1 is the evidence
   // (chart / table / image / whatever pickEvidence returns, else the sole
-  // component). chrome: "none" skips brand footer and logo. The theme motif
+  // component). branding: "none" skips brand footer and logo. The theme motif
   // still paints. The fifth-band decoration safe-zone does not apply — the
   // whole canvas is the layout's.
   id: "one-evidence",
   kind: "archetype",
   pinOnly: true,
-  chrome: "none",
+  branding: "none",
   slideTypes: ["content"],
   slots: [
     { name: "heading", accepts: [] },

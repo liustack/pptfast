@@ -33,6 +33,14 @@ describe("renameHintsFor", () => {
   it("handles multiple offending keys in one issue, hinting only the ones with a match", () => {
     expect(renameHintsFor(["blocks", "items"], "slides.1")).toEqual([' — "blocks" was renamed to "components" in IR v4'])
   })
+
+  it("hints chrome → branding at the IR root (empty path)", () => {
+    expect(renameHintsFor(["chrome"], "")).toEqual([' — "chrome" was renamed to "branding"'])
+  })
+
+  it("does not hint chrome at slide level", () => {
+    expect(renameHintsFor(["chrome"], "slides.0")).toEqual([])
+  })
 })
 
 describe("isSlideLevelPath / SLIDE_LEVEL_UNKNOWN_KEY_HINT", () => {

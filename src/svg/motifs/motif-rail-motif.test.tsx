@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import { footnoteBaselineFor, FOOTER_DIVIDER_Y } from "../chrome-geometry"
+import { footnoteBaselineFor, FOOTER_DIVIDER_Y } from "../branding-geometry"
 import { RailMotif } from "./motif-rail-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -18,7 +18,7 @@ const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
 /** 设计板上的四条红虚线禁区。 */
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
-/** 默认（`br`）品牌 logo 盒，`brand-chrome.tsx` 的 `logoBox`；右上带同宽同高。 */
+/** 默认（`br`）品牌 logo 盒，`branding.tsx` 的 `logoBox`；右上带同宽同高。 */
 const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
 const TR_LOGO_BAND = { x: 1120, y: 48, w: 96, h: 40 }
 /** `cover-left-anchor.tsx` 的 `COVER_BLOCK_W`：左侧通高 primary 色块。 */
@@ -173,7 +173,7 @@ describe("RailMotif（顶带点轨）", () => {
 
   /**
    * 设计板把点轨放在 y648，而底带那一行是本仓库所有脚注的共用基线
-   * （`chrome-geometry.ts` 的 `footnoteBaselineFor`）——实测把点轨压在
+   * （`branding-geometry.ts` 的 `footnoteBaselineFor`）——实测把点轨压在
    * consulting 八个 content 版式的脚注下面（3.26:1）。这一条锁住「点轨不回
    * 底带」：把 `DOT_Y` 改回 648 立刻红。基线不再是一个定值，最大字号的
    * 脚注坐得最高，所以用它当上界。

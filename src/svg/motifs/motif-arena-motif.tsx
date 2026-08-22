@@ -58,7 +58,7 @@ import type { DecorProps } from "./types"
  *     确定性红线），所以照 crayon「cover 撤底带」、terra「chapter 整页退让」
  *     的同一模式按页型处理：cover 一律撤能量条。四角 HUD 括弧与左右速度线
  *     不在这条带里，不动。
- *   - 图表来源注脚。基线由 `chrome-geometry.ts` 的 `footnoteBaselineFor`
+ *   - 图表来源注脚。基线由 `branding-geometry.ts` 的 `footnoteBaselineFor`
  *     从 `FOOTER_DIVIDER_Y = 664` 减净空得出：14px 在 645，20px 在 644，
  *     字身落到约 y630-650。绝大多数 layout 从 x96 起排（`banner-heading`
  *     的 `BANNER_X`、`narrow-column`、`bento-panel`），与能量条

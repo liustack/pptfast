@@ -11,7 +11,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * image-lead-split content layout (content-layout expansion wave, task

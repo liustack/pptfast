@@ -9,7 +9,7 @@ import {
   filterByNarrativesOnly,
   getLayout,
   LAYOUT_REGISTRY,
-  layoutOmitsChrome,
+  layoutOmitsBranding,
   layoutsForSlideType,
   type LayoutDefinition,
   type SlideType,
@@ -320,20 +320,20 @@ describe("excludePinOnly (quote-stage wave, task T1's pinOnly tier)", () => {
   })
 })
 
-describe("layout chrome declaration (editorial-verse wave)", () => {
-  it("layoutOmitsChrome is true only for chrome: none members", () => {
-    expect(layoutOmitsChrome("statement")).toBe(true)
-    expect(layoutOmitsChrome("pull-quote")).toBe(true)
-    expect(layoutOmitsChrome("verse-chapter")).toBe(true)
-    expect(layoutOmitsChrome("stat-hero")).toBe(true)
-    expect(layoutOmitsChrome("one-evidence")).toBe(true)
-    expect(layoutOmitsChrome("mono-bleed")).toBe(true)
-    expect(layoutOmitsChrome("quote-stage")).toBe(false)
-    expect(layoutOmitsChrome("two-column")).toBe(false)
-    expect(layoutOmitsChrome(undefined)).toBe(false)
+describe("layout branding declaration (editorial-verse wave)", () => {
+  it("layoutOmitsBranding is true only for branding: none members", () => {
+    expect(layoutOmitsBranding("statement")).toBe(true)
+    expect(layoutOmitsBranding("pull-quote")).toBe(true)
+    expect(layoutOmitsBranding("verse-chapter")).toBe(true)
+    expect(layoutOmitsBranding("stat-hero")).toBe(true)
+    expect(layoutOmitsBranding("one-evidence")).toBe(true)
+    expect(layoutOmitsBranding("mono-bleed")).toBe(true)
+    expect(layoutOmitsBranding("quote-stage")).toBe(false)
+    expect(layoutOmitsBranding("two-column")).toBe(false)
+    expect(layoutOmitsBranding(undefined)).toBe(false)
   })
 
-  it("chrome-free pinOnly members declare chrome: none", () => {
+  it("branding-free pinOnly members declare branding: none", () => {
     for (const id of [
       "statement",
       "pull-quote",
@@ -342,12 +342,12 @@ describe("layout chrome declaration (editorial-verse wave)", () => {
       "one-evidence",
       "mono-bleed",
     ] as const) {
-      expect(LAYOUT_REGISTRY[id].chrome, id).toBe("none")
+      expect(LAYOUT_REGISTRY[id].branding, id).toBe("none")
     }
   })
 
-  it("every other registry entry leaves chrome unset (ordinary brand chrome + motif)", () => {
-    const chromeNone = new Set([
+  it("every other registry entry leaves branding unset (ordinary branding + motif)", () => {
+    const brandingNone = new Set([
       "statement",
       "pull-quote",
       "verse-chapter",
@@ -356,8 +356,8 @@ describe("layout chrome declaration (editorial-verse wave)", () => {
       "mono-bleed",
     ])
     for (const def of Object.values(LAYOUT_REGISTRY)) {
-      if (chromeNone.has(def.id)) continue
-      expect(def.chrome, `"${def.id}" unexpectedly sets chrome`).toBeUndefined()
+      if (brandingNone.has(def.id)) continue
+      expect(def.branding, `"${def.id}" unexpectedly sets branding`).toBeUndefined()
     }
   })
 })

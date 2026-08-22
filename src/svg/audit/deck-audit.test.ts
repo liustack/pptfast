@@ -1749,7 +1749,7 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
   // `<rect>`) and `cover-split-diagonal.tsx`'s own `#F0559E` (`ctx.colors.
   // primary`) diagonal color panel (its accent bar is 72x5=360px², under
   // `MIN_BG_REGION_AREA`; its decorative circle isn't a rect/image/path at
-  // all — neither contributes a region). `BrandChrome` renders nothing for
+  // all — neither contributes a region). `Branding` renders nothing for
   // a cover slide with no `ir.brand` configured. If the decor exclusion
   // regressed, this count would jump well past 2.
   it("sees exactly the two legitimate background regions on a real campaign-theme cover, none from the motif", () => {
@@ -1822,7 +1822,7 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
     // *collision*, not the measurement: the seal moved to (1231, 614) inside
     // the motif's new right-edge colophon rail, whose whole design rule is
     // "every declared coordinate >= x1220", clearing both this date line
-    // (ends at x1216) and the BrandChrome logo box (right edge x1216). So
+    // (ends at x1216) and the Branding logo box (right edge x1216). So
     // the honest assertion here is now silence — and this stays a live
     // regression net, not a deleted test: a future motif edit that walks any
     // opaque decor shape back into the bottom-right slot re-lands a finding
@@ -2090,7 +2090,7 @@ describe("findOverlapIssues — synthetic markup", () => {
   // `data-audit-box` scope, not just a synthetic hypothetical.
   it("flags a declared-gap pair when box A's real text ink overruns into neighbor B (Q4 Case B false negative)", () => {
     const longText = "This label is deliberately far too long for its declared box width"
-    // Box A is hand-rolled (text-only, no card chrome — a bare label like
+    // Box A is hand-rolled (text-only, no card frame — a bare label like
     // matrix.tsx's x_title) rather than built from `box()` above, since the
     // point is a leaf whose *only* geometry is the text itself. Box B reuses
     // `box()` for its background rect so it registers at its declared

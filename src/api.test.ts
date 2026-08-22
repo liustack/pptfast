@@ -2034,10 +2034,10 @@ describe("generatePptx", () => {
     await expect(generatePptx({ nope: true })).rejects.toThrow(/invalid IR/)
   })
 
-  it("omitted chrome matches cover-only: content page drops the footer rule and org", () => {
+  it("omitted branding matches cover-only: content page drops the footer rule and org", () => {
     const omitted = {
       version: "4",
-      filename: "omit-chrome",
+      filename: "omit-branding",
       theme: { id: "consulting" },
       meta: { organization: "ACME", date: "2026" },
       slides: [
@@ -2048,7 +2048,7 @@ describe("generatePptx", () => {
     }
     const v = validateIr(omitted)
     expect(v.ok).toBe(true)
-    expect(v.ir?.chrome).toBeUndefined()
+    expect(v.ir?.branding).toBeUndefined()
     const contentSvg = renderSlideSvg(v.ir!, 1)
     expect(contentSvg).not.toContain('y1="664"')
     expect(contentSvg).not.toContain("ACME")
@@ -2056,7 +2056,7 @@ describe("generatePptx", () => {
     expect(coverSvg).toContain("Pitch")
   })
 
-  it("omitted chrome leaves confidentiality and date off the cover, chrome full paints them", () => {
+  it("omitted branding leaves confidentiality and date off the cover, branding full paints them", () => {
     const base = {
       version: "4",
       filename: "meta-hide",
@@ -2086,17 +2086,17 @@ describe("generatePptx", () => {
     expect(cover).not.toContain("Internal")
     expect(cover).not.toContain("2026-08-15")
 
-    for (const chrome of ["cover-only", "minimal"] as const) {
-      const v = validateIr({ ...base, chrome })
+    for (const branding of ["cover-only", "minimal"] as const) {
+      const v = validateIr({ ...base, branding })
       expect(v.ok).toBe(true)
       const svg = renderSlideSvg(v.ir!, 0)
-      expect(svg, chrome).not.toContain("Internal")
-      expect(svg, chrome).not.toContain("2026-08-15")
-      expect(svg, chrome).toContain("ACME")
-      expect(svg, chrome).toContain("Ada")
+      expect(svg, branding).not.toContain("Internal")
+      expect(svg, branding).not.toContain("2026-08-15")
+      expect(svg, branding).toContain("ACME")
+      expect(svg, branding).toContain("Ada")
     }
 
-    const full = validateIr({ ...base, chrome: "full" })
+    const full = validateIr({ ...base, branding: "full" })
     expect(full.ok).toBe(true)
     const fullCover = renderSlideSvg(full.ir!, 0)
     expect(fullCover).toContain("Internal")
@@ -2111,9 +2111,9 @@ describe("generatePptx", () => {
   it("validates and renders a cover-only deck to pptx", async () => {
     const talk = {
       version: "4",
-      filename: "talk-chrome",
+      filename: "talk-branding",
       theme: { id: "consulting" },
-      chrome: "cover-only",
+      branding: "cover-only",
       meta: { organization: "ACME", date: "2026" },
       slides: [
         { type: "cover", heading: "Pitch" },
@@ -2123,13 +2123,39 @@ describe("generatePptx", () => {
     }
     const v = validateIr(talk)
     expect(v.ok).toBe(true)
-    expect(v.ir?.chrome).toBe("cover-only")
+    expect(v.ir?.branding).toBe("cover-only")
     const contentSvg = renderSlideSvg(v.ir!, 1)
     expect(contentSvg).not.toContain('y1="664"')
     expect(contentSvg).not.toContain("ACME")
     const bytes = await generatePptx(talk)
     expect(bytes.length).toBeGreaterThan(10_000)
     expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
+  })
+})
+
+describe("validateIr deck branding alias", () => {
+  it("rewrites chrome to branding when branding is absent and records the note", () => {
+    const v = validateIr({ ...raw, chrome: "full" })
+    expect(v.ok).toBe(true)
+    expect(v.ir?.branding).toBe("full")
+    expect(v.ir).not.toHaveProperty("chrome")
+    expect(v.normalized).toEqual(["(root): chrome → branding"])
+  })
+
+  it("both chrome and branding present is left for zod strict to reject", () => {
+    const v = validateIr({ ...raw, chrome: "full", branding: "minimal" })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    const text = formatIssues(v.errors)
+    expect(text).toMatch(/chrome/)
+    expect(text).toMatch(/branding/)
+  })
+
+  it("canonical branding succeeds with no rewrite note for this pair", () => {
+    const v = validateIr({ ...raw, branding: "full" })
+    expect(v.ok).toBe(true)
+    expect(v.ir?.branding).toBe("full")
+    expect(v.normalized?.some((n) => n.includes("chrome") && n.includes("branding"))).toBeFalsy()
   })
 })
 
@@ -2433,7 +2459,7 @@ describe("irJsonSchema", () => {
   it("surfaces device_mockup's device/url field-level guidance", () => {
     const json = JSON.stringify(irJsonSchema())
     expect(json).toContain("Frame shape to draw")
-    expect(json).toContain("Address-bar text shown in the browser chrome bar")
+    expect(json).toContain("Address-bar text shown in the browser window bar")
   })
 
   // cycle wave (`.issues/2026-08-05-component-waves/plan-cycle.md`, 裁定 3):
@@ -2530,8 +2556,10 @@ describe("irJsonSchema", () => {
     expect(json).toContain("Not a sentence and not a described item")
   })
 
-  it("surfaces the deck chrome enum (full / cover-only / minimal)", () => {
-    const json = JSON.stringify(irJsonSchema())
+  it("surfaces the deck branding enum (full / cover-only / minimal)", () => {
+    const schema = irJsonSchema() as { properties?: Record<string, unknown> }
+    expect(schema.properties).toHaveProperty("branding")
+    const json = JSON.stringify(schema)
     expect(json).toContain("cover-only")
     expect(json).toContain("minimal")
     expect(json).toContain('Omitted equals \\"cover-only\\"')

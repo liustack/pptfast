@@ -13,7 +13,7 @@
  */
 
 /** Blend hex `a` toward hex `b` by t∈[0,1] → solid #RRGGBB (no alpha, exports
- * cleanly + Chrome 103 safe). */
+ * cleanly + Chromium 103 safe). */
 export function mixHex(a: string, b: string, t: number): string {
   const pa = parseHex(a)
   const pb = parseHex(b)

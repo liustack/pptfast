@@ -71,7 +71,7 @@ land as custGeom or native shapes — never a picture.
 **Invariant: the only rasterization exit in the export chain is `<image>`
 backed by a real, resolved asset.** Every `<image>`-emitting call site — the
 `image`/`image_grid`/`image_compare` components, `Background`'s asset
-background, `BrandChrome`'s logo, and the 4 `image-*` takeover layouts
+background, `Branding`'s logo, and the 4 `image-*` takeover layouts
 (`image-pages.tsx`) — resolves a real asset first. When one is missing it
 degrades to a placeholder (a `<rect>` for a content image slot, or the logo
 simply omitting itself) and never degrades to an `<image>`. Separately,
@@ -106,7 +106,7 @@ own `?? globalThis.DOMParser` fallback already uses — not through
 "`src/index.ts`'s closure is browser-safe" and "the published package loads
 in a browser" are two different claims — the P2 browser-distribution wave
 closed the gap between them. The seam above has always been true (verified
-against a real Chrome tab, not just jsdom), but the default build
+against a real Chromium tab, not just jsdom), but the default build
 (`tsup.config.ts`'s `index`/`node`/`cli` entries) externalizes every
 `dependencies` entry (`react`, `react-dom`, `zod`, `jszip`, `dagre`,
 `pptxgenjs`) as bare ESM specifiers — correct for a bundler consumer
@@ -125,7 +125,7 @@ relative-chunk fetches and zero bare specifiers left to resolve):
   raw / ~455 KB gzip). `platform: "browser"` makes esbuild honor each
   dependency's own package.json `browser` field (pptxgenjs and jszip both
   ship one, remapping their Node-only `fs`/`https` code paths away) instead
-  of resolving their Node/CJS main — real-Chrome-verified against
+  of resolving their Node/CJS main — real-Chromium-verified against
   `dist/index.js`'s underlying render/export/audit chain in an earlier
   investigation (`generatePptx`, `auditDeck`, `auditDeck({ pixels: true })`
   all functionally correct, byte-identical output to the Node CLI).
@@ -247,7 +247,7 @@ and tokens in `CANONICAL_THEME_IDS` / `THEME_STYLES` (`src/themes/index.ts`)
 and its id in `BUILTIN_THEME_IDS` (`src/ir/index.ts`). `THEME_DEFINITIONS`
 (`src/themes/definitions.ts`) derives the theme entry from those
 automatically — add a `BRANDS` entry there only if the theme needs
-non-default brand chrome. A new theme also needs a `layouts` entry in
+non-default brand frame. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
 `CanonicalThemeId`, so a missing entry fails to compile. Each of the four
 page types defaults to `FULL_LAYOUTS.<type>` (every registered layout for

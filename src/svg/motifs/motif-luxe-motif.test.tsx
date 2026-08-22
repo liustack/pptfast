@@ -13,7 +13,7 @@ const contentSlide: Slide = { type: "content", heading: "内容", components: []
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
 const ALL_SLIDES = [coverSlide, chapterSlide, contentSlide, endingSlide]
 
-/** BrandChrome 的四个 logo 盒（brand-chrome.tsx 的 logoBox）。 */
+/** Branding 的四个 logo 盒（branding.tsx 的 logoBox）。 */
 const LOGO_BANDS = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },

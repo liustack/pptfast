@@ -8,7 +8,7 @@ import { FullSlideSvg } from "./full-slide-svg"
 import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 import { validateIr } from "../api"
-import { FOOTER_DIVIDER_Y } from "./chrome-geometry"
+import { FOOTER_DIVIDER_Y } from "./branding-geometry"
 import { __fullLayoutSet, __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 
 /** Full auto-pick pools. academic.layouts.cover is now a singleton lock. */
@@ -1146,9 +1146,9 @@ describe("render parity with FullSlideSvg", () => {
     })
   }
 
-  it("crayon + statement + chrome full paints brand chrome on the fallback content layout", () => {
+  it("crayon + statement + branding full paints brand frame on the fallback content layout", () => {
     const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
-    const ir: PptxIR = { ...makeIR([slide], "crayon"), chrome: "full", meta: { organization: "ACME" } }
+    const ir: PptxIR = { ...makeIR([slide], "crayon"), branding: "full", meta: { organization: "ACME" } }
     const { container } = render(createElement(FullSlideSvg, { ir, slide, index: 0 }))
     const archetype = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
     expect(archetype).not.toBe("statement")

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { migrateIrV3ToV4 } from "./migrate"
-import { PptxIRV3Schema } from "./legacy-v3"
+import { PptfastError } from "../errors"
+import { migrateChromeToBranding, migrateIrV3ToV4 } from "./migrate"
+import { PptxIRV3Schema, type PptxIRV3 } from "./legacy-v3"
 import { STRATEGY_VALUES, PACING_VALUES, AUDIENCE_VALUES } from "./narrative-values"
 
 /**
@@ -212,5 +213,59 @@ describe("migrateIrV3ToV4", () => {
     expect(STRATEGY_VALUES).toContain("storytelling")
     expect(PACING_VALUES).toEqual(["dense", "balanced", "spacious"])
     expect(AUDIENCE_VALUES).toEqual(["executive", "technical", "customer", "public"])
+  })
+
+  it("rewrites chrome to branding so a v3 object that carried chrome does not drop it", () => {
+    const v3 = { ...baseV3({ scenario: "boardroom-report" }), chrome: "minimal" } as PptxIRV3
+    const v4 = migrateIrV3ToV4(v3)
+    expect(v4.version).toBe("4")
+    expect(v4.narrative).toBe("boardroom-report")
+    expect(v4.branding).toBe("minimal")
+    expect("chrome" in v4).toBe(false)
+  })
+})
+
+describe("migrateChromeToBranding", () => {
+  it.each(["full", "cover-only", "minimal"] as const)("rewrites chrome %s to branding, dropping the chrome key", (value) => {
+    const result = migrateChromeToBranding({ chrome: value, filename: "x" }) as Record<string, unknown>
+    expect(result).toEqual({ branding: value, filename: "x" })
+    expect("chrome" in result).toBe(false)
+  })
+
+  it("neither key is identity: no branding default is materialized", () => {
+    const result = migrateChromeToBranding({ filename: "x" }) as Record<string, unknown>
+    expect("chrome" in result).toBe(false)
+    expect("branding" in result).toBe(false)
+    expect(result.filename).toBe("x")
+  })
+
+  it("only branding is identity", () => {
+    const result = migrateChromeToBranding({ branding: "cover-only", filename: "x" }) as Record<string, unknown>
+    expect(result).toEqual({ branding: "cover-only", filename: "x" })
+    expect("chrome" in result).toBe(false)
+  })
+
+  it("both keys is a hard error naming chrome and branding", () => {
+    const input = { chrome: "full", branding: "minimal" }
+    expect(() => migrateChromeToBranding(input)).toThrow(PptfastError)
+    expect(() => migrateChromeToBranding(input)).toThrow(/chrome/)
+    expect(() => migrateChromeToBranding(input)).toThrow(/branding/)
+  })
+
+  it("non-object input passes through unchanged", () => {
+    expect(migrateChromeToBranding(null)).toBeNull()
+    expect(migrateChromeToBranding("not-an-object")).toBe("not-an-object")
+    expect(migrateChromeToBranding(42)).toBe(42)
+    const arr = [{ chrome: "full" }]
+    expect(migrateChromeToBranding(arr)).toBe(arr)
+  })
+
+  it("does not mutate the input", () => {
+    const input = { chrome: "full", meta: { organization: "ACME" } }
+    const snapshot = JSON.parse(JSON.stringify(input))
+    const result = migrateChromeToBranding(input)
+    expect(input).toEqual(snapshot)
+    expect(result).not.toBe(input)
+    expect(result).toEqual({ branding: "full", meta: { organization: "ACME" } })
   })
 })

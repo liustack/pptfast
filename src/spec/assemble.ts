@@ -218,16 +218,16 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    vocabulary (vocabulary-v4 rename, task 1 — `spec/index.ts`'s own
  *    `resolveNarrative` call already validates it against that vocabulary
  *    before this function ever runs).
- *    `theme`/`filename`/`brand`/`chrome`/`meta`/`seed` (step 7) carry over from the spec when
+ *    `theme`/`filename`/`brand`/`branding`/`meta`/`seed` (step 7) carry over from the spec when
  *    present. When absent, this function omits the field from the raw
  *    object it hands to {@link PptxIRSchema} rather than re-deriving IR's
  *    own default value a second time — one default source of truth, the
  *    schema itself (e.g. `theme` omitted here becomes `{ id: "consulting" }`,
  *    exactly like a bare hand-authored IR that never mentions theme at all —
- *    not a value this function needs to know). `chrome` is the same omit
+ *    not a value this function needs to know). `branding` is the same omit
  *    posture: a spec that never sets it produces an IR that never sets it,
  *    and the renderer treats that as `"cover-only"`. This function must not
- *    infer chrome from narrative.
+ *    infer branding from narrative.
  * 7. Seed: `spec.seed` present → passed through, `generatedSeed` stays
  *    `undefined` on the result. Absent → {@link generateSeed} derives one
  *    from `filename` + the spec's own ordered page-id list (never page
@@ -290,7 +290,7 @@ export function assembleDeck(spec: unknown, pages: Record<string, PageContent>):
     ...(deckSpec.theme !== undefined ? { theme: { id: deckSpec.theme } } : {}),
     ...(deckSpec.filename !== undefined ? { filename: deckSpec.filename } : {}),
     ...(deckSpec.brand !== undefined ? { brand: deckSpec.brand } : {}),
-    ...(deckSpec.chrome !== undefined ? { chrome: deckSpec.chrome } : {}),
+    ...(deckSpec.branding !== undefined ? { branding: deckSpec.branding } : {}),
     meta: deckSpec.meta,
     seed,
     slides,
@@ -339,7 +339,7 @@ export function assembleDeck(spec: unknown, pages: Record<string, PageContent>):
  *   untouched" true by construction, not by coincidence of what the resolver
  *   happens to do with it.
  * - The resolver returns `null` — the image-cover takeover
- *   (`ImageCoverPage`'s bespoke chrome, no `LAYOUT_REGISTRY` id to name, see
+ *   (`ImageCoverPage`'s bespoke frame, no `LAYOUT_REGISTRY` id to name, see
  *   `resolveEffectiveLayoutId`'s own doc comment). `null` has no home in
  *   `layout`'s `string | undefined` shape, and this function's job is to
  *   materialize *exactly* what the resolver already means by its return
@@ -454,7 +454,7 @@ const UNTITLED_HEADING = "Untitled"
  *   string (`DeckSpecSchema.theme` has no shape for either) — only `theme.id`
  *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
  *   — `suppressFooterOnCardContent`/`suppressFooterRule`/`suppressFooterMeta`,
- *   footer-chrome flags owned by the *theme*) — not to be confused with the deck-level
+ *   brand-footer flags owned by the *theme*) — not to be confused with the deck-level
  *   `brand` field below, a different, unrelated schema despite the shared
  *   name.
  * - `ir.assets.images` is not part of this function's return value at all —
@@ -475,11 +475,11 @@ const UNTITLED_HEADING = "Untitled"
  *
  * Round-trip-safe despite the above, worth calling out because of that name
  * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /
- * `position`, the deck logo/position `BrandChrome` reads,
- * `src/svg/brand-chrome.tsx`) is a plain passthrough on both sides
+ * `position`, the deck logo/position `Branding` reads,
+ * `src/svg/branding.tsx`) is a plain passthrough on both sides
  * ({@link assembleDeck} step 6 reads `spec.brand` into `ir.brand` — this
  * function reads `ir.brand` back into `spec.brand` below) — carried through
- * unmodified, same as `narrative`/`filename`/`seed`/`chrome`, never
+ * unmodified, same as `narrative`/`filename`/`seed`/`branding`, never
  * synthesized or dropped.
  *
  * `layout` deserves a different kind of callout: it round-trips as plain
@@ -555,7 +555,7 @@ export function disassembleDeck(ir: PptxIR): { spec: DeckSpec; pages: Record<str
     filename: ir.filename,
     ...(ir.seed !== undefined ? { seed: ir.seed } : {}),
     ...(ir.brand !== undefined ? { brand: ir.brand } : {}),
-    ...(ir.chrome !== undefined ? { chrome: ir.chrome } : {}),
+    ...(ir.branding !== undefined ? { branding: ir.branding } : {}),
     meta: ir.meta,
     pages: pageSpecs,
   }

@@ -44,7 +44,7 @@ describe("FullSlideSvg", () => {
     expect(container.textContent).toContain("年度战略回顾")
   })
 
-  it("renders content components for a content slide (omitted chrome draws no footer)", () => {
+  it("renders content components for a content slide (omitted branding draws no footer)", () => {
     const doc = ir([contentSlide])
     const { container } = render(
       <FullSlideSvg ir={doc} slide={contentSlide} index={0} />,
@@ -887,7 +887,7 @@ describe("layouts that paint their own full-bleed field (LayoutDefinition.paints
   })
 })
 
-describe("deck chrome posture vs theme motif", () => {
+describe("deck branding posture vs theme motif", () => {
   const pinnedContent: Slide = {
     type: "content",
     layout: "quiet-frame",
@@ -895,24 +895,24 @@ describe("deck chrome posture vs theme motif", () => {
     components: [{ type: "paragraph", text: "我们围绕三个方向推进。" }],
   }
 
-  it("cover-only leaves the theme motif on a content page (motif is not brand chrome)", () => {
-    const doc: PptxIR = { ...ir([pinnedContent]), chrome: "cover-only" }
+  it("cover-only leaves the theme motif on a content page (motif is not brand frame)", () => {
+    const doc: PptxIR = { ...ir([pinnedContent]), branding: "cover-only" }
     const { container } = render(<FullSlideSvg ir={doc} slide={pinnedContent} index={0} />)
     expect(container.querySelector("[data-decor]")).not.toBeNull()
     expect(container.textContent).toContain("三大支柱")
     expect(container.querySelector('line[y1="664"]')).toBeNull()
   })
 
-  it("omitted chrome and explicit cover-only serialize to the same content-page SVG", () => {
+  it("omitted branding and explicit cover-only serialize to the same content-page SVG", () => {
     const omitted = ir([pinnedContent])
-    const coverOnly: PptxIR = { ...omitted, chrome: "cover-only" }
+    const coverOnly: PptxIR = { ...omitted, branding: "cover-only" }
     const a = renderSvgMarkup(<FullSlideSvg ir={omitted} slide={pinnedContent} index={0} />)
     const b = renderSvgMarkup(<FullSlideSvg ir={coverOnly} slide={pinnedContent} index={0} />)
     expect(a).toBe(b)
   })
 
-  it("explicit chrome full still draws the content-page footer rule", () => {
-    const full: PptxIR = { ...ir([pinnedContent]), chrome: "full" }
+  it("explicit branding full still draws the content-page footer rule", () => {
+    const full: PptxIR = { ...ir([pinnedContent]), branding: "full" }
     const markup = renderSvgMarkup(<FullSlideSvg ir={full} slide={pinnedContent} index={0} />)
     expect(markup).toContain('y1="664"')
     expect(markup).toContain("ACME")

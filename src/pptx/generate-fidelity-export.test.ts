@@ -14,10 +14,10 @@ import { COMPONENT_TYPES, type Component, type PptxIR, type Slide } from "@/ir"
  * lucide icon primitive in `src/svg/icons.tsx` — lands as a native shape,
  * connector, custGeom, or text run, never a picture. Every `<image>`-
  * emitting call site (`image.tsx`, `image-grid.tsx`, `image-compare.tsx`,
- * `background.tsx`'s asset background, `brand-chrome.tsx`'s logo, and
+ * `background.tsx`'s asset background, `branding.tsx`'s logo, and
  * `image-pages.tsx`'s 4 `image-*` takeover layouts) resolves a real asset
  * first and falls back to a placeholder — a `<rect>` for content image
- * slots, or simply omits itself for the optional brand-chrome logo — when
+ * slots, or simply omits itself for the optional branding logo — when
  * one is missing, never to `<image>`. Until this file, that invariant had
  * no regression coverage: nothing would fail if a future change made some
  * decorative motif or a "screenshot fallback" start emitting a raster
@@ -148,7 +148,7 @@ const imageCompareDangling: Component = {
   left: { asset_id: "does-not-exist-left", label: "Before" },
   right: { asset_id: "does-not-exist-right", label: "After" },
 }
-/** device_mockup shares the same "asset missing → placeholder, chrome frame
+/** device_mockup shares the same "asset missing → placeholder, device frame
  *  still renders" contract (device_mockup wave) — same dangling-id pattern. */
 const deviceMockupDangling: Component = {
   type: "device_mockup",

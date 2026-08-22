@@ -4,7 +4,7 @@ import type { ContentRect } from "../layout"
 import { SvgContent } from "../svg-content"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../branding-geometry"
 
 /**
  * quote-stage content layout（quote-stage 波，Task T2 ——
@@ -68,7 +68,7 @@ const LATIN_DESCENT_RATIO = 0.22
 const CITATION_BOTTOM_LIMIT = 608
 const HEADING_BAR_AIR = 24
 
-// Above the brand chrome's footer divider (`brand-chrome.tsx`, y=664), not
+// Above the brand frame's footer divider (`branding.tsx`, y=664), not
 // below it. At the previous 676 this baseline put the footnote's ascenders
 // straight through that rule and into the footer's own text row — the
 // visual review caught it in Chinese and mixed-script, where the taller ink

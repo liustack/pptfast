@@ -20,7 +20,7 @@ import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { decodeDataUriBytes, dataUriMime, FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "./ir/asset-sniff"
-import { normalizeComponentAliases } from "./ir/field-aliases"
+import { normalizeComponentAliases, normalizeDeckRootAliases } from "./ir/field-aliases"
 import { isSlideLevelPath, renameHintsFor, SLIDE_LEVEL_UNKNOWN_KEY_HINT } from "./ir/rename-hints"
 import { normalizeNarrativeShape, resolveNarrative, type NarrativeProfile } from "./narrative"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -732,10 +732,11 @@ export function validateIr(input: unknown): ValidateResult {
     }
   }
 
-  const componentAliasPass = normalizeComponentAliases(input)
+  const rootAliasPass = normalizeDeckRootAliases(input)
+  const componentAliasPass = normalizeComponentAliases(rootAliasPass.value)
   const narrativeShapePass = normalizeNarrativeShape(componentAliasPass.value)
   const normalizedInput = narrativeShapePass.value
-  const normalized = [...componentAliasPass.normalized, ...narrativeShapePass.normalized]
+  const normalized = [...rootAliasPass.normalized, ...componentAliasPass.normalized, ...narrativeShapePass.normalized]
   const withNormalized = (result: ValidateResult): ValidateResult =>
     normalized.length > 0 ? { ...result, normalized } : result
 

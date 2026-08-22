@@ -157,7 +157,7 @@ describe("content layout skeleton diversity (content-layout expansion wave, T3 a
     // Non-vacuity: prove some layouts really do still legitimately share
     // a class (e.g. `narrow-column`/`side-highlight` are both a lone
     // (x=96, w=880) column under this fixture — `side-highlight`'s own
-    // accent rail is decorative chrome, not itself an audited region) — so
+    // accent rail is decorative frame, not itself an audited region) — so
     // this isn't merely counting 12 trivially-all-different single-member
     // buckets.
     expect(classes.size).toBeLessThan(ALL_CONTENT_IDS.length)

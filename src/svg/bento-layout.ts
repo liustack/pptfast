@@ -203,7 +203,7 @@ export function layoutBento(
  * `kpi-item` are *tied* at the top (the brief's "chart ≥ kpi-item" — both
  * are hero-worthy; when a slide has both, original IR order breaks the tie,
  * not a hard chart-over-kpi rule). `icon-card-item` ranks next, a
- * self-visual component (already carries its own chrome/tone — see
+ * self-visual component (already carries its own frame/tone — see
  * `SELF_VISUAL_TYPES`) above a plain component, which ranks lowest.
  */
 const HERO_WEIGHT = {

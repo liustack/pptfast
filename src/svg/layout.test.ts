@@ -584,7 +584,7 @@ describe("settleToGolden top-air cap (上不空优先)", () => {
     const fitRect: ContentRect = { x: 0, y: 192, w: 400, h: 428 }
     const next = settleToGolden(placed, fitRect, ctx)
     // leftover = 428 - 120 = 308. Uncapped 38% is 117, the island the
-    // 2026-08-21 share opened between heading chrome and a lone short
+    // 2026-08-21 share opened between heading band and a lone short
     // block. One designed block-gap is the heading-to-body beat.
     const cap = BLOCK_GAP
     expect(next[0].box.y - fitRect.y).toBe(cap)

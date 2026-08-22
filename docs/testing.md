@@ -82,7 +82,7 @@ identity rule, and the canonical value is printed for the browser leg.
 On macOS this distinction is observable because `/tmp/...` normally resolves
 to `/private/tmp/...`. Add the workspace through DSH's own directory picker
 when testing by hand. The picker crosses the host API and preserves the
-registry invariant. Chrome automation cannot drive the native directory
+registry invariant. Chromium automation cannot drive the native directory
 picker. If a browser fixture must be seeded outside the UI, store the exact
 `canonical workspace` value printed by the preflight. Do not write the
 unresolved `/tmp` spelling into the storage fixture. A fresh session records
@@ -90,7 +90,7 @@ its canonical cwd, and DSH rejects attachment when that value differs from a
 fixture path by strict string comparison.
 
 Start the web profile from the same canonical workspace, then open its URL in
-Chrome:
+Chromium:
 
 ```bash
 cd /private/tmp/pptfast-dsh-e2e
@@ -230,7 +230,7 @@ It needs Playwright, which this repo deliberately does **not** depend on —
 `pnpm check` runs the same matrix on every commit and must never pull a
 browser. Install it into the checkout (`pnpm add -D playwright && pnpm exec
 playwright install chromium`) or point `PPTFAST_PLAYWRIGHT` at an existing
-install; a machine with Google Chrome needs no download at all. Results are
+install; a machine that already has Chromium installed needs no download at all. Results are
 written to `.gallery/bbox.json` and depend on the fonts installed on the
 machine, the same caveat the PowerPoint output carries.
 

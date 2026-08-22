@@ -259,8 +259,8 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh).toMatch(/不是新的 `pacing`/)
     expect(en).toContain("slide.notes")
     expect(zh).toContain("slide.notes")
-    expect(en).toContain('chrome: "full"')
-    expect(zh).toContain('chrome: "full"')
+    expect(en).toContain('branding: "full"')
+    expect(zh).toContain('branding: "full"')
   })
 
   it("both files ask the narrative interview with the same closed option ids, the same ★ defaults, and the same gate block", () => {
@@ -367,8 +367,8 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh).toContain("动手问人之前，先扫工作区")
     expect(en).toContain("Do not invent a `typeScale` field on the spec")
     expect(zh).toContain("不要在 spec 上发明 `typeScale` 字段")
-    expect(en).toContain("Write the confirmed `narrative`, `theme`, and `chrome`")
-    expect(zh).toContain("立刻把确认下来的 `narrative`、`theme`、`chrome` 写进")
+    expect(en).toContain("Write the confirmed `narrative`, `theme`, and `branding`")
+    expect(zh).toContain("立刻把确认下来的 `narrative`、`theme`、`branding` 写进")
     expect(en, "the skill must not name shaping").not.toMatch(/shaping/i)
     expect(zh, "the skill must not name shaping").not.toMatch(/shaping/i)
   })

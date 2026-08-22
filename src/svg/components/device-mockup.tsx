@@ -10,15 +10,15 @@ type DeviceMockupComponent = Extract<Component, { type: "device_mockup" }>
  * Height cap (px), same derivation and same number as `image.tsx`'s
  * `MAX_IMAGE_H` — both components occupy one visual-primary slot in the
  * same content-rect budget (smallest theme content-rect height ~380px minus
- * a caption/chrome allowance), so they share the same ceiling rather than
+ * a caption/frame allowance), so they share the same ceiling rather than
  * inventing a second number for what is the same geometric constraint.
  */
 const MAX_DEVICE_H = 340
 
-// ── browser chrome geometry ────────────────────────────────────────────
-/** Top chrome bar height — enough for 3 traffic-light dots + a url pill at
+// ── window bar geometry ────────────────────────────────────────────
+/** Top window bar height — enough for 3 traffic-light dots + a url pill at
  * a legible size, same order of magnitude as `image.tsx`'s 32px caption band. */
-const CHROME_H = 32
+const FRAME_BAR_H = 32
 const DOT_R = 4
 const DOT_GAP = 8
 const DOT_START_X = 16
@@ -29,10 +29,10 @@ const BROWSER_RADIUS = 8
 
 /**
  * Fixed fraction `colors.surface` blends toward `readableOn(bg)` ink to
- * derive the chrome bar's own fill (review fix round, Important-2). On a
+ * derive the frame bar's own fill (review fix round, Important-2). On a
  * near-black theme (tech: bg #060A13 vs surface #0A101C) plain `colors
  * .surface` reads as indistinguishable from the page behind it, so the
- * browser chrome — the component's whole "this is really running" signal —
+ * window bar — the component's whole "this is really running" signal —
  * disappeared into the background. `mixHex` (`./color-mix.ts`, the same
  * "blend a token toward another token" primitive `pest.tsx`/`bmc.tsx` already
  * use at this exact 0.14 fraction for their own tinted panels) pushes the
@@ -40,16 +40,16 @@ const BROWSER_RADIUS = 8
  * `readableOn` already picked as maximally distinct from `bg` — guaranteed
  * separation on any theme where surface≈bg, imperceptible-to-harmless on
  * themes where they already differ (light themes with pure-white surface
- * read as a faint grey toolbar instead, matching a real OS browser chrome).
+ * read as a faint grey toolbar instead, matching a real OS browser window bar).
  * No baked hex, no per-theme branch — purely token-derived.
  */
-const CHROME_BAR_MIX = 0.14
+const FRAME_BAR_MIX = 0.14
 /** The url pill is a second, further step past the bar it's inset into —
  * same primitive, doubled fraction — so it reads as its own nested layer
  * instead of matching the bar it sits on. */
-const URL_PILL_MIX = CHROME_BAR_MIX * 2
+const URL_PILL_MIX = FRAME_BAR_MIX * 2
 
-/** Browser frame's own aspect ratio (裁定 3: "~16:10 含 chrome" — a
+/** Browser frame's own aspect ratio (裁定 3: "~16:10 含 window bar" — a
  * shallow, landscape "browser window" proportion), capped at `MAX_DEVICE_H`. */
 function browserFrameH(w: number): number {
   return Math.min(Math.round(w / 1.6), MAX_DEVICE_H)
@@ -60,7 +60,7 @@ function browserFrameH(w: number): number {
  * `roadmap.tsx`/`insight-panel.tsx`'s own `roundedTopBarPath` — svg2pptx's
  * arc-segment support already handles this shape; duplicated per-component
  * rather than shared, matching those two files' own precedent) — the top
- * chrome bar's corners follow the outer frame's own radius so the bar never
+ * frame bar's corners follow the outer frame's own radius so the bar never
  * overhangs the frame's rounded top corners, while its bottom edge stays
  * square where it meets the screen.
  */
@@ -76,7 +76,7 @@ function roundedTopBarPath(x: number, y: number, w: number, h: number, r: number
   )
 }
 
-// ── phone chrome geometry ───────────────────────────────────────────────
+// ── device frame geometry ───────────────────────────────────────────────
 /** Portrait height:width ratio (裁定 3: "~9:19 竖构图") — a modern
  * edge-to-edge phone silhouette, not the wider iPhone-classic 9:16. */
 const PHONE_ASPECT = 19 / 9
@@ -129,7 +129,7 @@ function ScreenPlaceholder({ w, h, ctx }: { w: number; h: number; ctx: Component
 /** Caption band — verbatim style copy of `image.tsx`'s bottom color band
  * (primary bg 88% opacity + centered white text), rendered inside the
  * screen's own local coordinate space so it never collides with either
- * device's own chrome (browser's top bar, phone's bezel/home-indicator). */
+ * device's own frame (browser's top bar, phone's bezel/home-indicator). */
 function CaptionBand({
   caption,
   w,
@@ -174,7 +174,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
 
     if (component.device === "browser") {
       const frameH = browserFrameH(box.w)
-      const screenH = frameH - CHROME_H
+      const screenH = frameH - FRAME_BAR_H
       const dotsRightEdge = DOT_START_X + 2 * (DOT_R * 2 + DOT_GAP) + DOT_R
       const urlBarX = dotsRightEdge + URLBAR_GAP
       const urlBarW = box.w - urlBarX - DOT_START_X
@@ -186,18 +186,18 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
       // other layout call sites (e.g. chapter-rail-chapter.tsx): the
       // device sits directly on whatever the slide actually paints behind
       // it, not always the theme's bare `colors.bg`.
-      const chromeInk = readableOn(ctx.defaultBg ?? ctx.colors.bg)
-      const chromeBarFill = mixHex(ctx.colors.surface, chromeInk, CHROME_BAR_MIX)
-      const urlPillFill = mixHex(ctx.colors.surface, chromeInk, URL_PILL_MIX)
+      const frameInk = readableOn(ctx.defaultBg ?? ctx.colors.bg)
+      const frameBarFill = mixHex(ctx.colors.surface, frameInk, FRAME_BAR_MIX)
+      const urlPillFill = mixHex(ctx.colors.surface, frameInk, URL_PILL_MIX)
 
       return (
         <g transform={`translate(${box.x},${box.y})`}>
-          <path d={roundedTopBarPath(0, 0, box.w, CHROME_H, BROWSER_RADIUS)} fill={chromeBarFill} />
+          <path d={roundedTopBarPath(0, 0, box.w, FRAME_BAR_H, BROWSER_RADIUS)} fill={frameBarFill} />
           {[0, 1, 2].map((i) => (
             <circle
               key={i}
               cx={DOT_START_X + i * (DOT_R * 2 + DOT_GAP)}
-              cy={CHROME_H / 2}
+              cy={FRAME_BAR_H / 2}
               r={DOT_R}
               fill={ctx.colors.muted}
             />
@@ -206,7 +206,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
             <>
               <rect
                 x={urlBarX}
-                y={(CHROME_H - URLBAR_H) / 2}
+                y={(FRAME_BAR_H - URLBAR_H) / 2}
                 width={urlBarW}
                 height={URLBAR_H}
                 rx={URLBAR_H / 2}
@@ -218,7 +218,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
                 // three-tier policy): a browser address bar is real
                 // information (it's the whole "this is really running"
                 // signal p09's evidence names) but deliberately understated
-                // chrome text, not page content — same tier as a copyright
+                // window-bar text, not page content. Same tier as a copyright
                 // line or page number, not tier A body copy. `metaInk`
                 // blends `colors.muted` toward `readableOn` only as far as
                 // the tier's 3:1 hard floor requires against the url pill's
@@ -233,7 +233,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
                 // `deck-audit.ts`'s `META_CONTRAST_TIER`).
                 data-contrast-tier="meta"
                 x={urlBarX + URLBAR_PAD_X}
-                y={CHROME_H / 2 + 4}
+                y={FRAME_BAR_H / 2 + 4}
                 fontSize={fittedUrl.fontSize}
                 fill={metaInk(ctx.colors.muted, urlPillFill)}
                 fontFamily={ctx.fonts.body}
@@ -243,7 +243,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
               </text>
             </>
           )}
-          <g transform={`translate(0,${CHROME_H})`}>
+          <g transform={`translate(0,${FRAME_BAR_H})`}>
             {src ? (
               <image
                 href={src}

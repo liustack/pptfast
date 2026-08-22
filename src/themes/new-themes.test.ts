@@ -540,7 +540,7 @@ describe("memo tokens", () => {
     expect(MEMO_TOKENS.colors.accent).not.toBe(VERMILION_TOKENS.colors.primary)
   })
 
-  it("does not bind chrome on the theme — pairing with chrome:full is a docs note, not an engine lock", () => {
+  it("does not bind branding on the theme — pairing with branding:full is a docs note, not an engine lock", () => {
     expect(THEME_DEFINITIONS.memo.brand).toEqual({})
   })
 })

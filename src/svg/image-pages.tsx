@@ -16,7 +16,7 @@ import { showsDocumentMeta } from "./document-meta"
  * 压图页与出血 split 页（图片排版 polish，2026-07-09 用户反馈驱动）。
  *
  * 模板文字色是各主题 baked 常量、无法反色，因此压图场景不走模板 Body，
- * 由这里的 bespoke 全页版式接管（BrandChrome/Decor 照常）——参考 ppt-master
+ * 由这里的 bespoke 全页版式接管（Branding/Decor 照常）——参考 ppt-master
  * 的压图页版式本就趋同：暗遮罩 + 白字大标题，主题个性保留在 accent 细节。
  *
  * **四处标题墨改走 `accessibleInk`（2026-08-20 柔和组皮肤重设计）**：本文件
@@ -79,7 +79,7 @@ export function ImageCoverPage({
     maxLines: 2,
     lineHeightRatio: 1.25,
   })
-  // 左下构图：从底部往上倒推（页脚区 ~88px 留给 BrandChrome）
+  // 左下构图：从底部往上倒推（页脚区 ~88px 留给 Branding）
   const subH = sub.lines.length ? sub.lines.length * sub.lineHeight + 18 : 0
   const titleH = title.lines.length * title.lineHeight
   const baseY = H - 118 - subH
@@ -171,7 +171,7 @@ export function ImageCoverPage({
 const SPLIT_IMG_W = 540
 const SPLIT_TEXT_X = 620
 const SPLIT_TEXT_W = W - SPLIT_TEXT_X - 96
-/** 图列垂直通栏（2026-07-09 用户裁决）：BrandChrome 对 image_split 页
+/** 图列垂直通栏（2026-07-09 用户裁决）：Branding 对 image_split 页
  * 已整页抑制页脚，无压图问题。 */
 const SPLIT_IMG_H = H
 
@@ -744,13 +744,13 @@ export function ImageBottomPage({
     lineHeightRatio: 1.3,
   })
   // 底图垂直通栏到页缘（2026-07-09 用户裁决：绝不拉伸，slice 裁剪出血）。
-  // meta 页脚由 BrandChrome 以遮罩浮层压图渲染，caption 条相应上移让位。
-  // 让位条件必须与 BrandChrome 的实际绘制一致：内容页脚只在 chrome:"full"
+  // meta 页脚由 Branding 以遮罩浮层压图渲染，caption 条相应上移让位。
+  // 让位条件必须与 Branding 的实际绘制一致：内容页脚只在 branding:"full"
   // 时画（cover-only 默认与 minimal 都不画 meta 行），只看 meta 字段会为
   // 不存在的页脚悬空 40px。
   const meta = ir.meta
   const hasMetaFooter =
-    ir.chrome === "full" &&
+    ir.branding === "full" &&
     Boolean(meta.confidentiality || meta.organization || meta.version || meta.date)
   const captionBottom = hasMetaFooter ? H - 40 : H
   let cursor = 96

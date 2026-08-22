@@ -46,7 +46,7 @@ Never write IR or a spec from memory of a previous session or from this file —
 
 Also scan the workspace before asking anyone anything. Facts the files can answer are not questions:
 
-- An existing confirmed `deck.spec.json` already locks narrative, theme, and chrome. Do not re-interview. Route follow-ups through phase 6.
+- An existing confirmed `deck.spec.json` already locks narrative, theme, and branding. Do not re-interview. Route follow-ups through phase 6.
 - A `theme.json`, a pinned `pptfast.config.json` theme, a user-named theme id, or a supplied `.thmx` / `.potx` / branded `.pptx` is a brand signal. Extract or honor it. Do not ask whether a template exists.
 - Request text that already names the audience, argument style, or density has derived that axis. Do not re-ask it.
 
@@ -75,11 +75,11 @@ A brand signal answers what the deck should look like, never how it should argue
 
 Propose and confirm before writing any page content.
 
-- Lock a narrative package first: named preset (or explicit axes), theme id, chrome posture, and a type-scale band (how large cover / chapter / speech headings render: `regular` omit/1, `display` 1.3, `hero` 1.5). This is a decision layer above theme, not a visual choice. Use the Narrative interview below when any axis is still unknown and a user is present. Do not silently pick a preset in that case.
+- Lock a narrative package first: named preset (or explicit axes), theme id, branding posture, and a type-scale band (how large cover / chapter / speech headings render: `regular` omit/1, `display` 1.3, `hero` 1.5). This is a decision layer above theme, not a visual choice. Use the Narrative interview below when any axis is still unknown and a user is present. Do not silently pick a preset in that case.
 - Density (leave air vs pack the page) is decided in that interview (or derived). Follow the Sparse-page contract below when you pin climax, quote, and evidence layouts and write `notes`. `pacing` does not grow a fourth value for this.
 - Theme id comes from the chosen narrative's `themeRecommendations` in `narratives --json` (or from `themes` output if none fit — a recommendation, never a constraint). If the interview's brand question returned a template, extract it first — see Brand themes below.
-- Write the confirmed `narrative`, `theme`, and `chrome` into `deck.spec.json` as soon as the user agrees, before drafting any page. Do not hold them in the conversation and reconstruct them once pages exist.
-- Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`. Write `narrative` as a preset id string when the three axes match a preset exactly, otherwise as `{strategy, pacing, audience}`. Never write `{id, pacing}` mixed shapes. Omit `chrome` by default. Write `chrome: "full"` only when every content page needs the brand footer (and whenever `meta.confidentiality` is `confidential` or `restricted`). Do not invent a `typeScale` field on the spec — it does not exist. The band is a recommendation. Only a bare IR (spec skipped) may put `theme.style.shape.typeScale` on the IR itself.
+- Write the confirmed `narrative`, `theme`, and `branding` into `deck.spec.json` as soon as the user agrees, before drafting any page. Do not hold them in the conversation and reconstruct them once pages exist.
+- Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`. Write `narrative` as a preset id string when the three axes match a preset exactly, otherwise as `{strategy, pacing, audience}`. Never write `{id, pacing}` mixed shapes. Omit `branding` by default. Write `branding: "full"` only when every content page needs the brand footer (and whenever `meta.confidentiality` is `confidential` or `restricted`). Do not invent a `typeScale` field on the spec — it does not exist. The band is a recommendation. Only a bare IR (spec skipped) may put `theme.style.shape.typeScale` on the IR itself.
 - Run `pptfast spec validate deck.spec.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, beat rotation, page count vs. pacing) all fire here, before a single page is written
 - Once `spec validate` prints `OK`, set a `seed` (any integer) in `deck.spec.json` for revision stability — write one now, or run `pptfast assemble` once in phase 3 and copy the `generated seed …` value it prints into the spec. Without a persisted seed, editing one page's heading later can reshuffle every other page's auto-picked layout
 
@@ -123,7 +123,7 @@ The block is the gate, not your self-discipline: while any line still reads `?`,
 
 After the reply, emit one package and one backup, one sentence of reason, one clause for what would change it, then wait for confirmation:
 
-`recommend: <preset-or-axes> × <theme> × chrome omit|full × typeScale regular|display|hero`
+`recommend: <preset-or-axes> × <theme> × branding omit|full × typeScale regular|display|hero`
 `what would change it: <one clause>` — most often: this will be forwarded without a speaker, so put the extra words in notes, or recommend a PDF instead of packing the slide.
 
 Lookup (theme = first `themeRecommendations` entry from `narratives --json` for that preset, or for the nearest preset when writing axes). Omit the field by default. Write `"full"` when `meta.confidentiality` is `confidential` or `restricted`, or every content page needs the brand footer. `customer` + `talk-pyramid` + `spacious` → `pitch` / omit / display. `executive` + `talk-pyramid` + `spacious` → `boardroom-report` / omit / display. `customer` + `talk-showcase` + `spacious` → `product-launch` / omit / display. `technical` + `teach` + `balanced` → `training` / omit / regular. `technical` + `read-brief` + `dense` → `weekly-brief` / omit / regular. `executive` + `read-brief` + `dense` → axes `{pyramid, dense, executive}` / omit / regular, theme from `boardroom-report`. `public` + storytelling + `balanced` → `annual-review` / omit / regular. Else write the axes object and take the nearest preset's theme list: `pyramid`+`executive` → `boardroom-report`, `pyramid`+`customer` → `pitch`, `showcase` → `product-launch`, `instructional` → `training`, `briefing`+`dense` → `weekly-brief`, `storytelling` → `annual-review`, else `general`.
@@ -134,7 +134,7 @@ The second candidate ships with the package, prepared in advance, and it has to 
 
 This interview settles the three narrative axes, not whether the request should be a deck at all. If that larger question is open, say so plainly and let the user answer it before you spec.
 
-A very small deck may still skip the spec file and write a single IR. It may not skip this interview when axes are unknown. Write the same decisions onto the IR's `narrative` / `theme` / `chrome`.
+A very small deck may still skip the spec file and write a single IR. It may not skip this interview when axes are unknown. Write the same decisions onto the IR's `narrative` / `theme` / `branding`.
 
 ### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
@@ -272,9 +272,9 @@ Fields: `items` (3-8 entries, each a required `label` and an optional `descripti
 
 ### Device mockups vs. plain images
 
-`device_mockup` frames an asset inside a themed browser-window or phone chrome instead of a bare bordered rect — it exists for exactly one job: a screenshot that has to be read as "a real product, actually running", not "a picture on a slide". Reach for it when the content is a screenshot of software/an app/a dashboard and the page's own point is that this product is real and working today. Keep plain `image` for everything else — ordinary photos, diagrams, illustrations, or a screenshot used only to illustrate a point in passing, not to assert "this is live". Overusing `device_mockup` on content that isn't actually a product screenshot reads as a strange decorative border, not evidence.
+`device_mockup` frames an asset inside a themed browser-window or device frame instead of a bare bordered rect — it exists for exactly one job: a screenshot that has to be read as "a real product, actually running", not "a picture on a slide". Reach for it when the content is a screenshot of software/an app/a dashboard and the page's own point is that this product is real and working today. Keep plain `image` for everything else — ordinary photos, diagrams, illustrations, or a screenshot used only to illustrate a point in passing, not to assert "this is live". Overusing `device_mockup` on content that isn't actually a product screenshot reads as a strange decorative border, not evidence.
 
-Fields: `device` (`"browser"` or `"phone"`, required — pptfast doesn't guess), `asset_id` (same semantics as `image`), an optional `caption`, and — `browser` only — an optional `url` that renders as the address-bar text (the single strongest "this is really running in a browser" signal available; a `phone` mockup has no address bar, so `validate` hard-rejects `url` set on one). The screen always crops to fill the frame (cover) — there's no `fit` choice, unlike `image`: a real device's screen fills edge to edge. No other decoration options exist on purpose — no tilt/perspective, no dark-chrome toggle, no side-by-side multi-device layout; the theme's own tokens pick the chrome colors.
+Fields: `device` (`"browser"` or `"phone"`, required — pptfast doesn't guess), `asset_id` (same semantics as `image`), an optional `caption`, and — `browser` only — an optional `url` that renders as the address-bar text (the single strongest "this is really running in a browser" signal available; a `phone` mockup has no address bar, so `validate` hard-rejects `url` set on one). The screen always crops to fill the frame (cover) — there's no `fit` choice, unlike `image`: a real device's screen fills edge to edge. No other decoration options exist on purpose — no tilt/perspective, no dark-frame toggle, no side-by-side multi-device layout; the theme's own tokens pick the frame colors.
 
 ### People rosters vs. row/icon cards
 
@@ -349,7 +349,7 @@ These layouts never appear through auto-selection. Set `layout` explicitly every
 
 A deck is for speaking. Extra words that will not fit on the slide go in `slide.notes`. If the file must stand alone as a document, recommend a PDF rather than packing the canvas.
 
-This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts, `notes`, and deck `chrome`.
+This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts, `notes`, and deck `branding`.
 
 Climax, quote, and evidence pages pin a sparse pin-only layout when the theme offers it. Name it: `statement`, `pull-quote`, `verse-chapter`, `stat-hero`, `one-evidence`, `mono-bleed`. Do not leave those pages to auto-selection. A page that truly is one sentence still gets this pin even when pacing is `dense`. crayon, classroom (including bloom), enterprise, pulse, runway, and ember do not offer these layouts. If `validate` warns that the pin is not a sparse page this theme offers, drop the pin and write a regular content page.
 
@@ -359,7 +359,7 @@ When `balanced` or `dense`: write to the pacing budget. Still pin a sparse layou
 
 The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
 
-Leave `chrome` off the spec and the IR unless every content page needs the brand footer. Write `chrome: "full"` whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon. Confidentiality and date then appear on the cover. They stay off every other posture.
+Leave `branding` off the spec and the IR unless every content page needs the brand footer. Write `branding: "full"` whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon. Confidentiality and date then appear on the cover. They stay off every other posture.
 
 ### Capacity
 

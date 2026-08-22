@@ -138,17 +138,31 @@ describe("DeckSpecSchema / validateSpec structural pass", () => {
     expect(r.ok).toBe(false)
   })
 
-  it("accepts deck chrome full / cover-only / minimal, and omits the field when unset", () => {
-    expect(expectOk(minimalValidPlan()).chrome).toBeUndefined()
-    expect(expectOk(minimalValidPlan({ chrome: "full" })).chrome).toBe("full")
-    expect(expectOk(minimalValidPlan({ chrome: "cover-only" })).chrome).toBe("cover-only")
-    expect(expectOk(minimalValidPlan({ chrome: "minimal" })).chrome).toBe("minimal")
+  it("accepts deck branding full / cover-only / minimal, and omits the field when unset", () => {
+    expect(expectOk(minimalValidPlan()).branding).toBeUndefined()
+    expect(expectOk(minimalValidPlan({ branding: "full" })).branding).toBe("full")
+    expect(expectOk(minimalValidPlan({ branding: "cover-only" })).branding).toBe("cover-only")
+    expect(expectOk(minimalValidPlan({ branding: "minimal" })).branding).toBe("minimal")
   })
 
-  it("rejects an unknown chrome value", () => {
-    const r = validateSpec(minimalValidPlan({ chrome: "none" }))
+  it("rejects an unknown branding value", () => {
+    const r = validateSpec(minimalValidPlan({ branding: "none" }))
     expect(r.ok).toBe(false)
-    expect(formatSpecIssues(r.errors)).toMatch(/chrome/)
+    expect(formatSpecIssues(r.errors)).toMatch(/branding/)
+  })
+
+  it("validateSpec rewrites chrome → branding when branding is absent and records the note", () => {
+    const input = minimalValidPlan({ chrome: "full" })
+    const r = validateSpec(input)
+    expect(r.ok).toBe(true)
+    expect(r.spec?.branding).toBe("full")
+    expect(r.spec).not.toHaveProperty("chrome")
+    expect(r.normalized).toEqual(["(root): chrome → branding"])
+  })
+
+  it("both chrome and branding present is a zod reject", () => {
+    const r = validateSpec(minimalValidPlan({ chrome: "full", branding: "minimal" }))
+    expect(r.ok).toBe(false)
   })
 
   it("rejects unknown page-level keys (strict)", () => {
@@ -658,7 +672,7 @@ describe("specJsonSchema", () => {
     expect(schema).toHaveProperty("$schema")
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties)).toEqual(
-      expect.arrayContaining(["version", "narrative", "theme", "filename", "seed", "meta", "brand", "chrome", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "filename", "seed", "meta", "brand", "branding", "pages"]),
     )
   })
 

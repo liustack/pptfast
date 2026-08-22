@@ -26,7 +26,7 @@ const BOARD_ZONES = {
   brLogo: { x: 1120, y: 630, w: 96, h: 40 },
 } as const
 
-/** `brand-chrome.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
+/** `branding.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
 const LOGO_BOXES = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },
@@ -46,7 +46,7 @@ const TEXT_ENVELOPE = { top: 40, bottom: 709.5 } as const
  * 期号那一件是唯一落在页脚带里的装饰，走的是另一条实测依据。
  *
  * 板上的 `footerMeta` 禁区画成通栏一条（48,664,1184×44），但页脚的**真实
- * 墨迹**不是一条带：`brand-chrome.tsx` 只在 x56（左组）与 x1224 右对齐
+ * 墨迹**不是一条带：`branding.tsx` 只在 x56（左组）与 x1224 右对齐
  * （右组）各写一行，中间整段是空的。四家消费者 × 全版式 + 十页 deck 实测，
  * 这个中间窗口一条文字都没有——连放宽到 160×28 都是 0 碰撞：
  *   tsx .issues/2026-08-18-theme-redesign/skins/tools/text-margin-sweep.mts \
@@ -255,7 +255,7 @@ describe("CornerOrnamentMotif（报头双线）", () => {
     expect(contains(issue, FOOTER_MIDDLE_WINDOW), `issue leaves the measured footer window: ${JSON.stringify(issue)}`).toBe(true)
   })
 
-  it("安全区：四件装饰都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
+  it("安全区：四件装饰都不进 branding 的四个 logo 位（tl/tr/bl/br）", () => {
     const { root } = draw("journal", coverSlide, "2026 年 7 月")
     for (const { label, box } of inkBoxes(root)) {
       for (const zone of LOGO_BOXES) {

@@ -48,7 +48,7 @@ pptfast themes --json      # built-in themes (id + label)
 
 动手问人之前，先扫工作区。文件能回答的事实不要问人：
 
-- 已有确认过的 `deck.spec.json` 已经锁死 narrative、theme、chrome。不要重做访谈。后续请求走阶段六
+- 已有确认过的 `deck.spec.json` 已经锁死 narrative、theme、品牌框。不要重做访谈。后续请求走阶段六
 - 已有 `theme.json`、项目 `pptfast.config.json` 钉死的 theme、用户点名的 theme id、或用户递来的 `.thmx` / `.potx` / 带品牌 `.pptx`，都是品牌信号。抽取或沿用。不要再问有没有模板
 - 请求原文已经点名受众、论证方式或疏密，这一轴就算推导出来了。不要再问
 
@@ -77,11 +77,11 @@ pptfast themes --json      # built-in themes (id + label)
 
 写任何页面内容之前，先提议并确认。
 
-- 先锁定叙事包：具名预设（或显式三轴）、theme id、chrome 姿态、以及 typeScale 档（封面 / 章 / 演讲页标题有多大：`regular` 省略/1，`display` 1.3，`hero` 1.5）。这是位于 theme 之上的一层决策，不是视觉选择。任一轴仍未知且用户在场时，走下方「叙事访谈」。这种情况下不要自己静默挑一个预设
+- 先锁定叙事包：具名预设（或显式三轴）、theme id、品牌框姿态、以及 typeScale 档（封面 / 章 / 演讲页标题有多大：`regular` 省略/1，`display` 1.3，`hero` 1.5）。这是位于 theme 之上的一层决策，不是视觉选择。任一轴仍未知且用户在场时，走下方「叙事访谈」。这种情况下不要自己静默挑一个预设
 - 疏密（留白还是铺满）在访谈里判定（或从请求推导）。钉高潮页、金句页、证据页版式和写 `notes` 时走下方「稀排页合同」。`pacing` 不会为此多出第四档
 - 再定 theme id：从 `narratives --json` 里该预设的 `themeRecommendations` 取（如果都不合适，就从 `themes` 输出里挑一个贴合这份 deck 调性的。这只是推荐，从不构成约束）。访谈的品牌问如果返回了模板，先抽成自定义 theme，见下方「品牌主题」
-- 用户一点头，立刻把确认下来的 `narrative`、`theme`、`chrome` 写进 `deck.spec.json`，再起草任何一页。不要把答案留在对话里，等页面写完再凭记忆补
-- 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`。三轴与某个预设完全相等时，`narrative` 写预设 id 字符串，否则写 `{strategy, pacing, audience}`。不要写 `{id, pacing}` 这种混形。默认省略 `chrome`。只有每一页内容页都需要品牌页脚时才写 `chrome: "full"`（`meta.confidentiality` 为 `confidential` 或 `restricted` 时同样写 `"full"`）。不要在 spec 上发明 `typeScale` 字段，那个字段不存在。档是推荐。只有跳过 spec、直接写 IR 时，才允许把 `theme.style.shape.typeScale` 写进 IR
+- 用户一点头，立刻把确认下来的 `narrative`、`theme`、`branding` 写进 `deck.spec.json`，再起草任何一页。不要把答案留在对话里，等页面写完再凭记忆补
+- 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`。三轴与某个预设完全相等时，`narrative` 写预设 id 字符串，否则写 `{strategy, pacing, audience}`。不要写 `{id, pacing}` 这种混形。默认省略 `branding`。只有每一页内容页都需要品牌页脚时才写 `branding: "full"`（`meta.confidentiality` 为 `confidential` 或 `restricted` 时同样写 `"full"`）。不要在 spec 上发明 `typeScale` 字段，那个字段不存在。档是推荐。只有跳过 spec、直接写 IR 时，才允许把 `theme.style.shape.typeScale` 写进 IR
 - 跑 `pptfast spec validate deck.spec.json`，把它报出的问题都修掉，直到打印 `OK`——边界页、标题长度、beat 轮换、页数是否匹配 pacing 这些硬门都在这一步触发，早于任何一页正文的写作
 - `spec validate` 打印 `OK` 之后，在 `deck.spec.json` 里设一个 `seed`（任意整数）以保证修订稳定——现在就写一个，或者在阶段三跑一次 `pptfast assemble`，把它打印出的 `generated seed …` 值抄进 spec。没有固化的 seed，之后改一页的标题就可能打乱其余每一页自动选出的 layout
 
@@ -125,7 +125,7 @@ brand: ?
 
 用户回复之后，立刻给一个推荐包和一个第二候选，一句理由，一句改口条件，然后等确认：
 
-`推荐：<预设或三轴> × <theme> × chrome 省略|full × typeScale regular|display|hero`
+`推荐：<预设或三轴> × <theme> × branding 省略|full × typeScale regular|display|hero`
 `改口条件：<一句>`。最常见的一条：这份会在没有主讲人的情况下被转发，把多出来的字写进 notes，或者建议改用 PDF，不要把幻灯片塞满。
 
 查表（theme = `narratives --json` 里该预设 `themeRecommendations` 的第一项。写三轴对象时改取最靠近预设的名单）。默认省略该字段。`meta.confidentiality` 为 `confidential` 或 `restricted`，或每一页内容页都需要品牌页脚时，才写 `"full"`。`customer` + `talk-pyramid` + `spacious` → `pitch` / 省略 / display。`executive` + `talk-pyramid` + `spacious` → `boardroom-report` / 省略 / display。`customer` + `talk-showcase` + `spacious` → `product-launch` / 省略 / display。`technical` + `teach` + `balanced` → `training` / 省略 / regular。`technical` + `read-brief` + `dense` → `weekly-brief` / 省略 / regular。`executive` + `read-brief` + `dense` → 三轴 `{pyramid, dense, executive}` / 省略 / regular，theme 取 `boardroom-report`。`public` + storytelling + `balanced` → `annual-review` / 省略 / regular。其余写三轴对象，最靠近预设：`pyramid`+`executive` → `boardroom-report`，`pyramid`+`customer` → `pitch`，`showcase` → `product-launch`，`instructional` → `training`，`briefing`+`dense` → `weekly-brief`，`storytelling` → `annual-review`，否则 `general`。
@@ -136,7 +136,7 @@ typeScale 档：`dense` 或 `balanced` 用 `regular`。`spacious` 用 `display`�
 
 这一轮只定三根叙事轴，不负责判断这件事该不该做成 deck。那个更大的问题还开着，就直说，让用户先答，再定 spec。
 
-很小的 deck 仍可跳过 spec 文件、直接写一份 IR。轴未知时不可跳过这场访谈。把同样的决策写到 IR 的 `narrative` / `theme` / `chrome` 上。
+很小的 deck 仍可跳过 spec 文件、直接写一份 IR。轴未知时不可跳过这场访谈。把同样的决策写到 IR 的 `narrative` / `theme` / `branding` 上。
 
 ### Phase 3 — 分批填页面（每批至多 4 页），随填随 validate
 
@@ -276,7 +276,7 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 `device_mockup` 把一份资产框进一个主题化的浏览器窗口或手机机身，而不是一个普通带边框的矩形——它只为一件事存在：一张截图需要被读成「一个真实的产品，正在运行」，而不是「slide 上的一张图」。内容是软件/App/仪表盘的截图，且这一页的论点就是「这个产品是真的、正在正常工作」时用它。除此之外——普通照片、示意图、插画,或者只是顺带用截图说明一个观点而不是断言「这在真实运行」——都用 `image`。把不是产品截图的内容硬套 `device_mockup`，读出来只是个奇怪的装饰边框，不是证据。
 
-字段：`device`（`"browser"` 或 `"phone"`，必填，pptfast 不猜）、`asset_id`（语义同 `image`）、可选 `caption`，以及——仅 `browser` 款——可选的 `url`，渲染为地址栏文字（这是「这是真的在浏览器里跑」这件事上最强的信号）。`phone` 款没有地址栏，`validate` 会硬拒绝在 `phone` 上设置 `url`。屏幕内容永远铺满裁切（cover）——不像 `image` 那样有 `fit` 可选：真实设备的屏幕就是边到边铺满的。故意不提供其它装饰选项——没有倾斜/透视、没有暗色 chrome 开关、没有多设备并排——chrome 配色完全由主题 token 决定。
+字段：`device`（`"browser"` 或 `"phone"`，必填，pptfast 不猜）、`asset_id`（语义同 `image`）、可选 `caption`，以及——仅 `browser` 款——可选的 `url`，渲染为地址栏文字（这是「这是真的在浏览器里跑」这件事上最强的信号）。`phone` 款没有地址栏，`validate` 会硬拒绝在 `phone` 上设置 `url`。屏幕内容永远铺满裁切（cover）——不像 `image` 那样有 `fit` 可选：真实设备的屏幕就是边到边铺满的。故意不提供其它装饰选项——没有倾斜/透视、没有暗色窗框开关、没有多设备并排——窗框配色完全由主题 token 决定。
 
 ### 人员卡片 vs. row/icon cards
 
@@ -351,7 +351,7 @@ pptfast config set images.generators.antigravity.enabled true
 
 一份 deck 是拿来讲的。幻灯片装不下的字写进 `slide.notes`。如果文件必须作为文档独立站住，建议用 PDF，不要把画布塞满。
 
-这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `chrome` 实现。
+这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `branding` 实现。
 
 高潮页、金句页、证据页，在主题提供这些版式时显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`、`stat-hero`、`one-evidence`、`mono-bleed`。不要把这些页交给自动选型。某一页真的只剩一句话时，即使 pacing 是 `dense` 也仍然钉。crayon、classroom（含 bloom）、enterprise、pulse、runway、ember 不提供这些版式。如果 `validate` 警告这个钉子不是该主题提供的稀排页，就去掉钉子，改写普通内容页。
 
@@ -361,7 +361,7 @@ pptfast config set images.generators.antigravity.enabled true
 
 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
 
-spec 和 IR 不要写 `chrome`，除非每一页内容页都需要品牌页脚。`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，写 `chrome: "full"`。密级和日期随后出现在封面。其余姿态不出现。
+spec 和 IR 不要写 `branding`，除非每一页内容页都需要品牌页脚。`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，写 `branding: "full"`。密级和日期随后出现在封面。其余姿态不出现。
 
 ### 容量
 

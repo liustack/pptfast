@@ -36,7 +36,7 @@ import type { DecorProps } from "./types"
  * (96,200,1040×420)、页脚 meta 带 (48,664,1184×44)、右下 logo 盒
  * (1120,630,96×40)。
  *   - 刻度尺整组 y30-42，在标题区上沿 y48 之上；横向止于 x1120，正好让开
- *     `brand-chrome.tsx` 右上 logo 带（1120,48,96×40）的左沿。
+ *     `branding.tsx` 右上 logo 带（1120,48,96×40）的左沿。
  *   - 方块阶 x1150-1232、y12-40，在标题区右沿 x1136 之外、上沿 y48 之上。
  *   - accent 方块 x60-76、y626-642，在正文区左沿 x96 之外、下沿 y620 之下，
  *     页脚 meta 带上沿 y664 之上，离右下 logo 盒一整页宽。
@@ -60,7 +60,7 @@ import type { DecorProps } from "./types"
 // ── 顶缘刻度尺 ──────────────────────────────────────────────────────────
 const RULE_Y = 36
 const RULE_X1 = 48
-/** 止于右上 logo 带（brand-chrome.tsx 的 `logoBox`）的左沿。 */
+/** 止于右上 logo 带（branding.tsx 的 `logoBox`）的左沿。 */
 const RULE_X2 = 1120
 /** 六枚齿：两端长齿（y30-42），中间四枚短齿（y32-40），等距 214。 */
 const TICKS: readonly { x: number; y1: number; y2: number }[] = [

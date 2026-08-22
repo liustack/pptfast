@@ -7,7 +7,7 @@
  * 1. The reviewer's time is the scarce resource. Four hundred pages is a
  *    long sitting, so the page optimizes for keeping a rhythm — keyboard
  *    verdicts, no dialogs, no confirmations, no page reloads.
- * 2. The chrome must not compete with the slide. Themes are judged on
+ * 2. The shell must not compete with the slide. Themes are judged on
  *    color and weight, so the surround is neutral and switchable between
  *    light and dark rather than opinionated.
  * 3. Verdicts must survive. They are written to localStorage on every

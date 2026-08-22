@@ -30,10 +30,10 @@ import type { DecorProps } from "./types"
  *    accent（陶土红/bloom 的绿）因此退出本 motif，全件只剩铅笔灰一色。
  * 2. **铅笔虚线只在无页脚的页上画**。用户原话：「底部那个虚线是干什么用
  *    的，放这里太拥挤了，空的页面放放还差不多，这个有 footer 的页面还放，
- *    太拥挤不好看了。」页脚 meta 行的基线在 y700（`brand-chrome.tsx`），
+ *    太拥挤不好看了。」页脚 meta 行的基线在 y700（`branding.tsx`），
  *    虚线在 y712，两者只隔七八个 px——有页脚的页上它就是贴着字排的第二条
  *    横线。本轮按 `slide.type` 分档：只有 cover / ending 画（chapter 本来
- *    就整档退让）。`brand-chrome.tsx` 的 `showFooter` 是
+ *    就整档退让）。`branding.tsx` 的 `showFooter` 是
  *    `slide.type === "content"` 再减去几种整页抑制页脚的通栏图版式，所以
  *    「非 content」是「无页脚」的一个保守子集——被减掉的那几种恰好是底部
  *    铺满图的页，虚线画上去只会更糟。这是页型分档，不是内容感知：同一
@@ -56,10 +56,10 @@ import type { DecorProps } from "./types"
  * 线宽得多——页面真正空着的四条边是 **y<34 / y>708.6 / x<56 / x>1224**：
  *   - 最高的一行字顶在 y34（poster-chapter/roman-chapter 的右上引首）
  *   - 最低的一行字底在 y708.6（image-bottom 的遮罩页脚）
- *   - 最左 x56、最右 x1224（fashion 家族的 meta 行与 `brand-chrome.tsx`
+ *   - 最左 x56、最右 x1224（fashion 家族的 meta 行与 `branding.tsx`
  *     自己的页脚两行）
  * 于是板上三件东西里有两件要挪，逐条记（第 2 条随回形针一并作废，留档）：
- *   1. **铅笔虚线 y640 → y712**。板上那条线正落在页脚注的行高里：`chrome-
+ *   1. **铅笔虚线 y640 → y712**。板上那条线正落在页脚注的行高里：`branding-
  *      geometry.ts` 的 `FOOTNOTE_BASELINE_Y = 648`，实测 13 个版式的脚注墨迹
  *      盒（y628-664 一带）与它相交，等于拿铅笔把脚注划掉。x96-420 一处未改，
  *      整条搬到 y712（墨迹 y711.25-712.75），在最低一行字之下、页缘之上——
@@ -70,7 +70,7 @@ import type { DecorProps } from "./types"
  *      （x1092-1224、y34-60）重叠 44px 宽的一块。
  *   3. 装订孔排一处未改：墨迹 y17.4-30.6（含 0.6 半线宽）、x111.4-1180.6，
  *      实测零碰撞。
- * 两件东西对板上四条红虚线与 `brand-chrome.tsx` **四个** logo 位
+ * 两件东西对板上四条红虚线与 `branding.tsx` **四个** logo 位
  * （tl/tr/bl/br，各 96×40）也全部清空，`motif-classroom-motif.test.tsx`
  * 逐件量。
  *

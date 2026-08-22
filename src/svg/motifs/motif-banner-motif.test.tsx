@@ -26,7 +26,7 @@ const BOARD_ZONES = {
   brLogo: { x: 1120, y: 630, w: 96, h: 40 },
 } as const
 
-/** `brand-chrome.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
+/** `branding.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
 const LOGO_BOXES = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },
@@ -183,7 +183,7 @@ describe("BannerMotif（批注线）", () => {
     }
   })
 
-  it("安全区：两段线都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
+  it("安全区：两段线都不进 branding 的四个 logo 位（tl/tr/bl/br）", () => {
     const { root } = draw("consulting", coverSlide)
     for (const { label, box } of inkBoxes(root)) {
       for (const zone of LOGO_BOXES) {

@@ -148,7 +148,7 @@ describe("SELF_VISUAL_TYPES equivalence (was bento-layout.ts:210-216, plus R1's 
     //
     // device_mockup wave (`.issues/2026-08-05-component-waves/
     // plan-device-mockup.md`): device_mockup also declares selfVisual: true
-    // — the device chrome (browser window bar, phone bezel/notch) *is* its
+    // — the device frame (browser window bar, phone bezel/notch) *is* its
     // own frame, same "already carded" reasoning as every member above.
     const current = [...preRefactor, "data_table", "device_mockup"]
     expect(new Set(SELF_VISUAL_TYPES)).toEqual(new Set(current))
@@ -180,13 +180,13 @@ describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-1
     const preRefactor = ["steps", "flowchart", "architecture", "timeline", "paragraph", "quote"]
     // R1 evidence wave, Task T3 (plan's explicit traits contract): data_table
     // declares passthroughShell: true too — same reasoning as
-    // flowchart/architecture/timeline above (draws its own internal chrome,
+    // flowchart/architecture/timeline above (draws its own internal frame,
     // no enclosing card), so the bento shell paint should be skipped for it
     // as well. A real, intentional addition, not drift — the pre-refactor
     // array above stays as the historical baseline this lock originally
     // pinned.
     // cycle wave (`.issues/2026-08-05-component-waves/plan-cycle.md`):
-    // cycle.tsx is the same "diagram made of self-chromed nodes" family as
+    // cycle.tsx is the same "diagram made of self-framed nodes" family as
     // flowchart/architecture — a bento outline shell underneath its ring
     // would be a redundant second shell, so it declares passthroughShell:
     // true too.

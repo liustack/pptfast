@@ -8,7 +8,7 @@ import { resolveFontStack } from "./fonts"
 import type { ComponentCtx } from "./components/types"
 import type { SvgTemplateProps } from "./layouts/types"
 import { Background } from "./background"
-import { BrandChrome } from "./brand-chrome"
+import { Branding } from "./branding"
 import { SlideDecor } from "./slide-decor"
 import {
   ImageAnnotatePage,
@@ -19,7 +19,7 @@ import {
 } from "./image-pages"
 import { findImageComponent } from "./layouts/find-image"
 import { gradientBands } from "./gradient-bands"
-import { getLayout, layoutOmitsChrome } from "./layouts/registry"
+import { getLayout, layoutOmitsBranding } from "./layouts/registry"
 import { effectiveRequestedLayout, getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { COVER_LAYOUTS } from "./layouts/index-cover"
 import { CHAPTER_LAYOUTS } from "./layouts/index-chapter"
@@ -266,7 +266,7 @@ function resolvePageLayout(
 
 /**
  * The single source of a slide's visuals: one flat `<svg viewBox="0 0 1280 720">`
- * = background + theme body + footer chrome. The preview mounts it directly; the
+ * = background + theme body + brand footer. The preview mounts it directly; the
  * exporter serializes it and feeds svg2pptx. Same component → identical output.
  */
 export function FullSlideSvg({
@@ -417,14 +417,14 @@ export function FullSlideSvg({
   // `LayoutDefinition.paintsOwnBackground` (`./layouts/registry.ts`).
   const layoutPaintsBackground = pageLayout ? getLayout(pageLayout.id)?.paintsOwnBackground === true : false
   const motifOverLayout = pageLayout ? getLayout(pageLayout.id)?.motifOverLayout === true : false
-  // Layout-declared chrome:none (editorial-verse pinOnly members) skips
-  // BrandChrome as a whole (footer rule/meta, logo). The theme motif still
+  // Layout-declared branding:none (editorial-verse pinOnly members) skips
+  // Branding as a whole (footer rule/meta, logo). The theme motif still
   // paints. slide.decor, when the author sets it, still draws. Resolved
   // layout id wins. The *offered* pin is the other source, so a pinOnly
   // page whose resolvePageLayout somehow missed still honors the
   // declaration — but an unoffered sparse pin has already been stripped,
-  // and the fallback regular layout keeps ordinary chrome.
-  const skipChrome = layoutOmitsChrome(pageLayout?.id) || layoutOmitsChrome(requestedLayout)
+  // and the fallback regular layout keeps ordinary branding.
+  const skipBranding = layoutOmitsBranding(pageLayout?.id) || layoutOmitsBranding(requestedLayout)
 
   return (
     <svg
@@ -472,7 +472,7 @@ export function FullSlideSvg({
           <Decor ir={ir} slide={slide} ctx={ctx} />
         </g>
       )}
-      {!skipChrome && <BrandChrome ir={ir} slide={slide} ctx={ctx} />}
+      {!skipBranding && <Branding ir={ir} slide={slide} ctx={ctx} />}
     </svg>
   )
 }

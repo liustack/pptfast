@@ -31,7 +31,7 @@ function ir(themeId: string): PptxIR {
     version: "4",
     filename: "w2-cover.pptx",
     theme: { id: themeId },
-    chrome: "full",
+    branding: "full",
     meta: {
       organization: "岭原智能 · 战略与运营部",
       authors: [{ name: "陈砚清", role: "首席技术官" }],

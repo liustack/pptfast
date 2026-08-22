@@ -20,7 +20,7 @@
     },
     "layout--asymmetric-triptych--en": {
       "verdict": "rework",
-      "note": "Five equal dots sit in the top chrome, one filled and four hollow, which the taboo rule treats as a slide progress indicator.",
+      "note": "Five equal dots sit in the top frame, one filled and four hollow, which the taboo rule treats as a slide progress indicator.",
       "findings": [
         "taboo"
       ]
@@ -137,7 +137,7 @@
     },
     "layout--quote-stage--zh": {
       "verdict": "rework",
-      "note": "Top-left chrome is five equal dots with one filled and four hollow, the forbidden progress motif.",
+      "note": "Top-left frame is five equal dots with one filled and four hollow, the forbidden progress motif.",
       "findings": [
         "taboo"
       ]
@@ -209,7 +209,7 @@
     },
     "component--five-forces--zh": {
       "verdict": "rework",
-      "note": "Header chrome uses five equal dots with exactly one filled and four hollow, the banned one-solid-four-empty progress motif.",
+      "note": "Header frame uses five equal dots with exactly one filled and four hollow, the banned one-solid-four-empty progress motif.",
       "findings": [
         "taboo"
       ]

@@ -32,7 +32,7 @@ export const schema = z
     url: z
       .string()
       .optional()
-      .describe('Address-bar text shown in the browser chrome bar. Only valid when device is "browser".'),
+      .describe('Address-bar text shown in the browser window bar. Only valid when device is "browser".'),
   })
   .strict()
   // Schema guidance (review fix round, Important-1 — this is the first
@@ -60,7 +60,7 @@ export const schema = z
 
 export const aliases = {} satisfies ComponentAliasSpec
 
-// selfVisual (not scalable, unlike `image`): the device chrome *is* the
+// selfVisual (not scalable, unlike `image`): the device frame *is* the
 // component's own card/frame — stacking bento's outline shell underneath
 // it, or content-stacked-poster.tsx's scale-to-fill-slot treatment (which
 // would stretch the device frame's carefully-derived aspect ratio out of

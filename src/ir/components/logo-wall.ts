@@ -92,7 +92,7 @@ export const aliases = {} satisfies ComponentAliasSpec
 // logo wall is a plain grid of images, not a density-stretch card family
 // (stretchable), a self-carded diagram (selfVisual), a uniformly scalable
 // single graphic (scalable — the wall is many cells, not one image), a
-// self-chromed node set (passthroughShell), a whole-slide canvas (fullBody),
+// self-framed node set (passthroughShell), a whole-slide canvas (fullBody),
 // or an enlargeable evidence graphic (evidence — a wall of third-party marks
 // is social proof, not a reviewable data artifact the way chart/data_table/
 // device_mockup are).

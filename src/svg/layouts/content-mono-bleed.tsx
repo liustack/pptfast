@@ -8,7 +8,7 @@ import { sparseFace } from "./sparse/registry"
 /**
  * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
- * mono-bleed 通用脸：满版品牌色，字当图。`pinOnly` + `chrome: "none"` +
+ * mono-bleed 通用脸：满版品牌色，字当图。`pinOnly` + `branding: "none"` +
  * `paintsOwnBackground`。整页 fill 是 `colors.primary`，字色走 `readableOn`。
  * 需要字就写 heading，容量 0。品牌页脚 / logo 不画。motif 仍画。
  *
@@ -96,14 +96,14 @@ function GenericMonoBleedContent({ slide, ctx }: SvgTemplateProps) {
 export const layoutDef = {
   // content-mono-bleed.tsx: a pinOnly full-bleed primary field with inverted
   // type. Capacity 0 (write the words in heading). paintsOwnBackground so
-  // FullSlideSvg does not paint the theme bg underneath. chrome: "none"
+  // FullSlideSvg does not paint the theme bg underneath. branding: "none"
   // skips brand footer and logo. The theme motif still paints. The
   // fifth-band decoration safe-zone does not apply — the whole canvas is
   // the layout's.
   id: "mono-bleed",
   kind: "archetype",
   pinOnly: true,
-  chrome: "none",
+  branding: "none",
   paintsOwnBackground: true,
   slideTypes: ["content"],
   slots: [

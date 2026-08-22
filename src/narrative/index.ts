@@ -139,7 +139,7 @@ export interface StrategyDefinition {
    * field's argument-style axis doesn't ask.
    *
    * **`split-band` (same wave, same task) does NOT join this field** — it
-   * was originally proposed here on the same "chrome, not argument" theory
+   * was originally proposed here on the same "frame, not argument" theory
    * above, but the wave's final review refuted that specific claim with
    * in-file evidence: `split-band`'s defining feature, a full-bleed
    * (x=0, w=1280) `colors.primary` header band, is a strictly stronger
@@ -148,7 +148,7 @@ export interface StrategyDefinition {
    * entry's own comment below), and showcase's identity picks
    * (`fashion-masthead`/`fashion-chapter`/`fashion-ending`) are themselves
    * built from full-bleed color blocks — visual weight *is* showcase's
-   * rhetorical register, not a register-neutral chrome choice. `split-band`
+   * rhetorical register, not a register-neutral frame choice. `split-band`
    * is listed in `showcase.layoutTendencies` below instead of here.
    *
    * **Historical note (corrected P1 variety wave, task 3):** this field's

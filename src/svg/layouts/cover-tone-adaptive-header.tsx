@@ -88,7 +88,7 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
     : null
   const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const version = ir.meta.version
-  // 右侧 meta 单元格：date 现在只在 chrome:"full" 下有值。省略 chrome 且
+  // 右侧 meta 单元格：date 现在只在 branding:"full" 下有值。省略 branding 且
   // 没有 version 时这格会空掉。空 `<text>` 在 svg2pptx 里照样变成一只空文本框
   // （`textToOp` 对空 runs 不返回 null），所以这里按 authorText 的写法同样
   // 守空。
@@ -269,9 +269,9 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// COVER_LAYOUT_DEFS["tone-adaptive-header"] entry. `CHROME` (registry.ts's
-// private `readonly string[] = []` alias, "not fed by an authored
-// component") is inlined here to the literal `[]` it always held, to avoid a
+// COVER_LAYOUT_DEFS["tone-adaptive-header"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a
 // value-import cycle with the registry aggregator (which value-imports this
 // export) — see registry.ts's slot-`accepts` convention doc for what `[]`
 // means.

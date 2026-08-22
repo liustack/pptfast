@@ -1368,12 +1368,12 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
 
   // device_mockup (device_mockup wave, `.issues/2026-08-05-component-waves/
   // plan-device-mockup.md`, Global Constraint 2): missing asset (never
-  // fake screen content — the chrome/bezel still renders, only the screen
+  // fake screen content — the frame/bezel still renders, only the screen
   // area degrades to the shared `image.tsx`-style placeholder), an extreme
   // CJK caption, and — browser only — an extreme mixed CJK/Latin url that
   // must fit inside the address-bar pill without ever overhanging the
-  // chrome bar. Two pages (one per device shape) since the two shapes'
-  // chrome geometry is entirely disjoint code paths.
+  // frame bar. Two pages (one per device shape) since the two shapes'
+  // frame geometry is entirely disjoint code paths.
   device_mockup: deck([
     {
       type: "content",

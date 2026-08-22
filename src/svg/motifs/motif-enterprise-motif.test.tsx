@@ -18,7 +18,7 @@ const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
 const FOOTER_ZONE = { x: 48, y: 664, w: 1184, h: 44 }
-/** 默认（`br`）品牌 logo 盒，`brand-chrome.tsx` 的 `logoBox`；右上带同宽同高。 */
+/** 默认（`br`）品牌 logo 盒，`branding.tsx` 的 `logoBox`；右上带同宽同高。 */
 const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
 const TR_LOGO_BAND = { x: 1120, y: 48, w: 96, h: 40 }
 

@@ -129,10 +129,10 @@ genuinely rendered ink, not of insufficient calibration:
     scratchpad, not shipped in this repo) found the codebase's largest
     concentration of unprotected, user-content-level `<text>` sits *outside*
     that scope entirely, by the same construction that already excludes
-    decoration/motif layers from this walk: `brand-chrome.tsx`'s footer
+    decoration/motif layers from this walk: `branding.tsx`'s footer
     (org/date/version), 18 cover/chapter/ending layouts' own org label,
     `image-pages.tsx`'s raw org/date lines, and three layouts' raw
-    `slide.footnote` all render as page-level chrome — siblings of, never
+    `slide.footnote` all render as page-level frame — siblings of, never
     nested inside, any `data-audit-box`. None of that surface is touched by
     this fix. Being inside a tracked box is also arrangement-dependent, not
     a component-type property: `big_number`/`assertion_evidence` render

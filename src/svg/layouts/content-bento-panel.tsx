@@ -183,7 +183,7 @@ const BENTO_KPI_DELTA_SIZE = 16
 const BENTO_KPI_VALUE_LABEL_GAP = 22
 // Task 2 "发光点缀": a solid dot + two concentric stroked rings anchored just
 // past the value (+unit) text's estimated right edge, simulating a glow
-// without an actual SVG filter (Chrome 103 / the controlled subset has
+// without an actual SVG filter (Chromium 103 / the controlled subset has
 // none) — see renderKpiCardBody's glowCx/glowCy math. Radii/opacities are
 // brief-literal values, not derived from anything else.
 const BENTO_KPI_GLOW_DOT_R = 3
@@ -689,7 +689,7 @@ function renderCell(
       ? budgetH / measured
       : 1
   // steps/flowchart/architecture/timeline already draw their own internal
-  // chrome (numbered-badge cards, bordered nodes, filled layer bands,
+  // frame (numbered-badge cards, bordered nodes, filled layer bands,
   // axis/dots) — painting bento's own shell underneath would be a redundant
   // second shell around an already-carded diagram. The cell's box/padding/
   // audit annotations are otherwise identical to any other ordinary component.
@@ -947,9 +947,9 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 }
 
 // T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
-// CONTENT_LAYOUT_DEFS["bento-panel"] entry. `CHROME` (registry.ts's private
-// `readonly string[] = []` alias, "not fed by an authored component") is
-// inlined here to the literal `[]` it always held, to avoid a value-import
+// CONTENT_LAYOUT_DEFS["bento-panel"] entry. Slot `accepts: []` means the slot is not fed by an authored
+// component. That empty array used to live as a private alias in registry.ts
+// and is inlined here as the literal `[]` it always held, to avoid a value-import
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means. The body
 // slot's capacity comment is reworded from "see file header derivation" to

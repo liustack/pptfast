@@ -5,9 +5,9 @@
 // the wave's own mutation checks, each one written so that undoing the
 // corresponding design rule in `motif-ink-motif.tsx` turns it red:
 //   1. the colophon rail crossing back over x1220
-//   2. the rail overlapping BrandChrome's bottom-right logo box
+//   2. the rail overlapping Branding's bottom-right logo box
 //   3. the remnant mountain appearing on a content page
-//   4. (in `../brand-chrome.test.tsx`) the footer meta row printing a second
+//   4. (in `../branding.test.tsx`) the footer meta row printing a second
 //      copy of the org/date the rail already carries
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
@@ -43,7 +43,7 @@ function render(type: Slide["type"], meta?: PptxIR["meta"]) {
   return { markup, root: parseSvgRoot(markup) }
 }
 
-/** BrandChrome's bottom-right logo box (`brand-chrome.tsx`'s `logoBox`), the
+/** Branding's bottom-right logo box (`branding.tsx`'s `logoBox`), the
  *  boundary the rail exists to stay clear of. Right edge = 1120 + 96 = 1216. */
 const BR_LOGO = { x: 1120, y: 630, w: 96, h: 40 }
 const RAIL_X = 1220

@@ -18,7 +18,7 @@ const BODY_SLIDES = [contentSlide, endingSlide]
 /** 设计板上的四条红虚线禁区。 */
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
-/** `brand-chrome.tsx` 的右上 logo 带。 */
+/** `branding.tsx` 的右上 logo 带。 */
 const TR_LOGO_BAND = { x: 1120, y: 48, w: 96, h: 40 }
 
 const ir = (theme: string): PptxIR =>

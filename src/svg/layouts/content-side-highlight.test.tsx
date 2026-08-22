@@ -40,7 +40,7 @@ function render(deck: PptxIR, slide: Slide, index: number): string {
 }
 
 describe("SideHighlightContent", () => {
-  it("panel renders unconditionally even with zero components (chrome, not a component-fed slot)", () => {
+  it("panel renders unconditionally even with zero components (frame, not a component-fed slot)", () => {
     const deck = ir([chapter1, zeroComponents])
     const markup = render(deck, zeroComponents, 1)
     // The panel's own fill rect (colors.primary) and its badge/watermark

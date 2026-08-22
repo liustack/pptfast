@@ -165,7 +165,7 @@ export type SlotName =
   | "meta"
   | "decor"
   // P1 variety wave, task 4 (content-pool expansion): side-highlight's
-  // persistent chrome panel, asymmetric-triptych's three body regions.
+  // persistent frame panel, asymmetric-triptych's three body regions.
   | "panel"
   | "lead"
   | "top"
@@ -192,7 +192,7 @@ export interface LayoutSlot {
   accepts: readonly string[] | "any"
   /** declarative editorial capacity — how many components this slot holds. W3's
    *  min(pacing editorial budget, layout capacity) gate is the consumer —
-   *  absent = chrome slot, not subject to counting. */
+   *  absent = frame slot, not subject to counting. */
   capacity?: number
   /** for image slots: today's two coexisting conventions (inventory §variant 速查) */
   selection?: "first" | "all"
@@ -287,7 +287,7 @@ export interface LayoutDefinition {
    * `ink`'s cover in the 2026-08-20 review. Painting only the field the
    * reader actually sees removes the colour that was leaking. See
    * `../../lib/slide-edge.ts` for the other half of the same defect, on the
-   * chrome side of the SVG.
+   * frame side of the SVG.
    *
    * `undefined` (every layout but the three `fashion-*` members and
    * `mono-bleed`) means the ordinary arrangement: `Background` paints, the
@@ -342,19 +342,19 @@ export interface LayoutDefinition {
     lineHeightRatio?: number
   }
   /**
-   * Brand-chrome posture this layout declares (editorial-verse wave).
+   * Branding posture this layout declares (editorial-verse wave).
    *
-   * `"none"`: `FullSlideSvg` skips `BrandChrome` entirely (footer rule,
+   * `"none"`: `FullSlideSvg` skips `Branding` entirely (footer rule,
    * footer meta, logo — page numbers were already removed globally). The
    * theme motif still paints. `slide.decor`, when the author sets it
    * explicitly, still draws. The fifth-band decoration safe-zone in
    * `docs/designing-themes.md` does not apply: the whole 1280×720 canvas
    * is the layout's, there is no reserved footer strip to keep clear of.
    *
-   * `undefined` (every layout except the chrome-free pinOnly members
+   * `undefined` (every layout except the branding-free pinOnly members
    * `statement` / `pull-quote` / `verse-chapter` / `stat-hero` /
-   * `one-evidence` / `mono-bleed`) means ordinary chrome:
-   * `BrandChrome` and the theme motif paint as they do today. `"default"`
+   * `one-evidence` / `mono-bleed`) means ordinary branding:
+   * `Branding` and the theme motif paint as they do today. `"default"`
    * is accepted as an explicit spelling of that same ordinary path.
    *
    * This is a layout-level declaration, not a slide-level IR field. A
@@ -362,15 +362,15 @@ export interface LayoutDefinition {
    * editorial-verse set all set `"none"`). Existing decks that never pin
    * those ids are byte-identical.
    */
-  chrome?: "default" | "none"
+  branding?: "default" | "none"
 }
 
 /**
- * True when the named layout declares `chrome: "none"`. `undefined` id or
+ * True when the named layout declares `branding: "none"`. `undefined` id or
  * a layout that omits the field (the ordinary path) returns false.
  */
-export function layoutOmitsChrome(id: string | undefined): boolean {
-  return id !== undefined && getLayout(id)?.chrome === "none"
+export function layoutOmitsBranding(id: string | undefined): boolean {
+  return id !== undefined && getLayout(id)?.branding === "none"
 }
 
 /**
@@ -494,7 +494,7 @@ const ENDING_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
 // task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
 // c-diversity.md) — the only family that reads `slide.components`, so
-// every entry carries a `body` slot plus its own header chrome, and declares
+// every entry carries a `body` slot plus its own heading band, and declares
 // `arrangements` (inventory decision #2: layouts that don't obey the
 // author's arrangement still truthfully declare which arrangement(s) they
 // honor, behavior unchanged).
@@ -554,7 +554,7 @@ const ENDING_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
 //   - split-band (task T2): body 4 too — its 400px (380px with a footnote)
 //     body height is *shorter* than every other layout's own body
 //     region (the pool's previous floor was width, not height; this is the
-//     first layout whose header chrome eats vertical rather than
+//     first layout whose heading band eats vertical rather than
 //     horizontal budget), which is exactly why this task's own capacity
 //     measurement (see the file's own composition-sketch header) tested
 //     candidate ratios against realistic per-tier content *before* fixing

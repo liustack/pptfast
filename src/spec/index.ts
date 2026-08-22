@@ -29,7 +29,8 @@
  */
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, DeckChromeSchema, MetaSchema, NarrativeProfileInputSchema } from "../ir"
+import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, DeckBrandingSchema, MetaSchema, NarrativeProfileInputSchema } from "../ir"
+import { normalizeDeckRootAliases } from "../ir/field-aliases"
 import {
   normalizeNarrativeShape,
   resolveNarrative,
@@ -140,20 +141,20 @@ export const DeckSpecSchema = z
      *  shape, same pattern as `meta` just above. Unlike `meta`, no
      *  `.default({})`: IR's own `brand` field is a bare `.optional()` with no
      *  default either (`undefined` means "no brand", not "an empty brand
-     *  object") — consumed by `BrandChrome` (`src/svg/brand-chrome.tsx`) for
+     *  object") — consumed by `Branding` (`src/svg/branding.tsx`) for
      *  the deck's logo image and corner position. */
     brand: BrandSchema.optional(),
     /**
      * Where the brand footer and logo appear — reused verbatim from the IR's
-     * own `chrome` field (`DeckChromeSchema`, `../ir`) so the spec and IR
+     * own `branding` field (`DeckBrandingSchema`, `../ir`) so the spec and IR
      * cannot drift. Optional, no default: omitted stays unset and assemble
      * does not write `"cover-only"` into the IR. The renderer treats that
      * as `"cover-only"`. Omitted by default. Write `"full"` only when every
      * content page needs the brand footer. `"full"` also paints confidentiality
-     * and date on cover and ending meta rows. Layout `chrome: "none"` still
+     * and date on cover and ending meta rows. Layout `branding: "none"` still
      * wins at render.
      */
-    chrome: DeckChromeSchema.optional(),
+    branding: DeckBrandingSchema.optional(),
     pages: z.array(PageSpecSchema),
   })
   .strict()
@@ -185,10 +186,11 @@ export interface SpecValidateResult {
    * Same shape and channel as `ValidateResult.normalized` (`../validate-core.ts`)
    * — human-readable `path: alias → canonical`-style rewrite entries for every
    * deterministic pre-parse rewrite `validateSpec` applied before parsing.
-   * Today the only source is `normalizeNarrativeShape` (`../narrative`, T0b
-   * fix 2 scope extension): a top-level `narrative: {id: "<preset>"}` shape
-   * rewritten to the bare preset string. Present only when at least one
-   * rewrite happened; informational, never gates `ok` on its own.
+   * Sources: `normalizeDeckRootAliases` (`chrome` → `branding`) and
+   * `normalizeNarrativeShape` (`../narrative`, T0b fix 2): a top-level
+   * `narrative: {id: "<preset>"}` shape rewritten to the bare preset string.
+   * Present only when at least one rewrite happened; informational, never
+   * gates `ok` on its own.
    * `cli/commands.ts`'s `runSpecValidate` prints this through the same
    * `normalizedNote` helper `runValidate`/`runRender` already use for the
    * bare-IR path's own component field-alias notes.
@@ -681,7 +683,10 @@ function pageIdFromRawInput(input: unknown, index: number): string | undefined {
  * has.
  */
 export function validateSpec(input: unknown): SpecValidateResult {
-  const { value: normalizedInput, normalized } = normalizeNarrativeShape(input)
+  const rootAliasPass = normalizeDeckRootAliases(input)
+  const narrativeShapePass = normalizeNarrativeShape(rootAliasPass.value)
+  const normalizedInput = narrativeShapePass.value
+  const normalized = [...rootAliasPass.normalized, ...narrativeShapePass.normalized]
   const withNormalized = (result: SpecValidateResult): SpecValidateResult =>
     normalized.length > 0 ? { ...result, normalized } : result
 
