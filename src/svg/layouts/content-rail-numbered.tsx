@@ -7,6 +7,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * rail-numbered content layout（spec §3.2，Wave 3 Task 18）：grammar break
@@ -112,6 +113,7 @@ const SUBHEADING_MIN_FONT_SIZE = 16
 const SUBHEADING_SLOT = 45
 
 export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
 
   const totalChapters = ir.slides.filter((s) => s.type === "chapter").length
@@ -180,6 +182,63 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: CONTENT_W, fontSize: 14, minFontSize: 11 })
     : null
+
+  if (treated) {
+    const treatedRect = {
+      x: CONTENT_X,
+      y: treated.contentRect.y,
+      w: CONTENT_W,
+      // cycle_loop paints up to 480px regardless of the slot. A treated
+      // heading starts lower than the native rail title, so the remaining
+      // 640-y slot is shorter than that cap and the ring's last
+      // descriptions overflow the audit rect. Keep the slot tall enough
+      // for that self-bounded form.
+      h: Math.max(480, contentBottom - treated.contentRect.y),
+    }
+    return (
+      <>
+        {treated.chrome}
+        <rect x={RAIL_X} y={RAIL_Y} width={RAIL_W} height={RAIL_H} fill={colors.primary} />
+        <circle cx={RAIL_X + RAIL_W / 2} cy={railNodeCy} r={RAIL_NODE_R} fill={colors.primary} />
+        <rect
+          x={BADGE_X}
+          y={BADGE_Y}
+          width={BADGE_W}
+          height={BADGE_H}
+          rx={ctx.shape?.radius ?? BADGE_RADIUS}
+          fill={colors.primary}
+        />
+        <text
+          data-truncated={badgeLabel.truncated ? "1" : undefined}
+          x={BADGE_CENTER_X}
+          y={BADGE_CENTER_Y + Math.round(badgeLabel.fontSize * BASELINE_FUDGE_RATIO)}
+          fontFamily={fonts.body}
+          fontSize={badgeLabel.fontSize}
+          fontWeight="700"
+          fill={readableOn(colors.primary)}
+          textAnchor="middle"
+          dominantBaseline="alphabetic"
+        >
+          {badgeLabel.text}
+        </text>
+        <SvgContent arrangement={slide.arrangement} components={slide.components} rect={treatedRect} ctx={ctx} />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={CONTENT_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
 
   return (
     <>

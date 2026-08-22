@@ -547,12 +547,12 @@ describe("ToneAdaptiveContent", () => {
     })
 
     it("no-bg branch: the rendered kicker's ink now clears the required ratio (accessibleInk-guarded, not raw colors.accent)", () => {
-      const tokens = resolveStyle("consulting")
+      const tokens = resolveStyle("classroom")
       const ctx = buildCtx(tokens, {})
       const deck: PptxIR = {
         version: "3",
         filename: "x.pptx",
-        theme: { id: "consulting" },
+        theme: { id: "classroom" },
         meta: {},
         assets: { images: {} },
         slides: [chapterFirst, withSection],

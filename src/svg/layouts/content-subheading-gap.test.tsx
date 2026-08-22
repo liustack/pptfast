@@ -141,7 +141,7 @@ interface ThemeCase {
 
 const CJK_THEME_CASES: ThemeCase[] = [
   {
-    id: "academic",
+    id: "classroom",
     layoutId: "rail-numbered",
     isTitleLine: (el) => el.getAttribute("font-weight") === "600",
     renderContent: (contentLayout, ctx, heading) => {
@@ -151,11 +151,11 @@ const CJK_THEME_CASES: ThemeCase[] = [
         subheading: SUBHEADING,
         components: [{ type: "paragraph", text: "核心概要。" }],
       }
-      return render(contentLayout({ ir: ir("academic", [slide]), slide, index: 0, ctx }))
+      return render(contentLayout({ ir: ir("classroom", [slide]), slide, index: 0, ctx }))
     },
   },
   {
-    id: "tech",
+    id: "crayon",
     layoutId: "bento-panel",
     isTitleLine: (el) => el.getAttribute("font-weight") === "700",
     renderContent: (contentLayout, ctx, heading) => {
@@ -165,14 +165,14 @@ const CJK_THEME_CASES: ThemeCase[] = [
         subheading: SUBHEADING,
         components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
-      return render(contentLayout({ ir: ir("tech", [slide]), slide, index: 0, ctx }))
+      return render(contentLayout({ ir: ir("crayon", [slide]), slide, index: 0, ctx }))
     },
   },
   {
     // tone-adaptive-content 已不被 canonical 主题引用（custom→gallery→avant→enterprise
     // 换成高色彩版式），但 layout 保留在库中，S3b 的 gap 保证仍需覆盖——
     // 忽略 harness 传入的 contentLayout 参数，直接取注册表渲染。
-    id: "enterprise",
+    id: "swiss",
     layoutId: "tone-adaptive-content",
     isTitleLine: (el) => el.getAttribute("font-weight") === "700",
     renderContent: (_contentLayout, ctx, heading) => {
@@ -184,11 +184,11 @@ const CJK_THEME_CASES: ThemeCase[] = [
         components: [{ type: "paragraph", text: "围绕三个方向推进。" }],
       }
       const tone = CONTENT_LAYOUTS["tone-adaptive-content"]
-      return render(tone({ ir: ir("enterprise", [slide]), slide, index: 0, ctx }))
+      return render(tone({ ir: ir("swiss", [slide]), slide, index: 0, ctx }))
     },
   },
   {
-    id: "insight",
+    id: "stage",
     layoutId: "stacked-poster",
     isTitleLine: (el) => el.getAttribute("font-weight") === "500",
     renderContent: (contentLayout, ctx, heading) => {
@@ -205,11 +205,11 @@ const CJK_THEME_CASES: ThemeCase[] = [
           { type: "paragraph", text: "第三段。" },
         ],
       }
-      return render(contentLayout({ ir: ir("insight", [slide]), slide, index: 0, ctx }))
+      return render(contentLayout({ ir: ir("stage", [slide]), slide, index: 0, ctx }))
     },
   },
   {
-    id: "journal",
+    id: "memo",
     layoutId: "narrow-column",
     isTitleLine: (el) => el.getAttribute("font-weight") === "600",
     renderContent: (contentLayout, ctx, heading) => {
@@ -219,7 +219,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
         subheading: SUBHEADING,
         components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
-      return render(contentLayout({ ir: ir("journal", [slide]), slide, index: 0, ctx }))
+      return render(contentLayout({ ir: ir("memo", [slide]), slide, index: 0, ctx }))
     },
   },
 ]
@@ -243,14 +243,16 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
     })
   })
 
-  // consulting: banner-anchored, not title-glyph-anchored (see file header).
-  describe("consulting: subheading clears the assertion banner's bottom edge (banner has no glyph descent, so this is a flat +4 bump, not the title-glyph formula)", () => {
+  // classroom: banner-anchored, not title-glyph-anchored (see file header).
+  // consulting is assigned GhostIndex, so the native banner formula is
+  // pinned on an unassigned theme that still uses banner-heading.
+  describe("classroom: subheading clears the assertion banner's bottom edge (banner has no glyph descent, so this is a flat +4 bump, not the title-glyph formula)", () => {
     it.each([
       ["1-line heading (88px banner)", HEADING_ONE_LINE],
       ["2-line heading, real fitHeadingLines wrap (132px banner)", HEADING_TWO_LINE],
     ])("%s", (_label, heading) => {
       const contentLayout = contentLayoutFor("banner-heading")
-      const tokens = resolveStyle("consulting")
+      const tokens = resolveStyle("classroom")
       const ctx = buildCtx(tokens, {})
       const slide: Slide = {
         type: "content",
@@ -258,7 +260,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
         subheading: SUBHEADING,
         components: [{ type: "paragraph", text: "支撑论据。" }],
       }
-      const root = render(contentLayout({ ir: ir("consulting", [slide]), slide, index: 0, ctx }))
+      const root = render(contentLayout({ ir: ir("classroom", [slide]), slide, index: 0, ctx }))
 
       const banner = Array.from(root.querySelectorAll("rect")).find(
         (r) => r.getAttribute("x") === "96" && Number(r.getAttribute("width")) === 1088,

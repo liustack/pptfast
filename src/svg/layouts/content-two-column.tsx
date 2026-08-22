@@ -5,6 +5,7 @@ import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * two-column content layout（P3 Item ②，spec §3.2/§3.4）：跨主题通用的
@@ -26,6 +27,26 @@ import { accessibleInk } from "../ink"
  * fontSize)`——通过校验的主题原样返回、逐字节不变。
  */
 export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
+  if (treated) {
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent
+          arrangement="two_column"
+          components={slide.components}
+          rect={{
+            x: treated.contentRect.x,
+            y: treated.contentRect.y,
+            w: treated.contentRect.w,
+            h: Math.max(120, treated.contentRect.h),
+          }}
+          ctx={ctx}
+        />
+      </>
+    )
+  }
+
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
   const kicker = section

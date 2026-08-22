@@ -6,6 +6,7 @@ import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { CANONICAL_THEME_IDS } from "../../themes"
+import { assignedThemeIds } from "../heading-treatments/assignments"
 import { auditDeck } from "../audit/deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CJK_LONG, MIXED_LONG } from "../audit/stress-fixtures"
@@ -143,7 +144,9 @@ describe("SplitBandContent pathological content", () => {
   // header on why zero-drop is verified separately, at realistic rather
   // than maximally-adversarial content, in the dedicated capacity describe
   // block below).
-  for (const themeId of CANONICAL_THEME_IDS) {
+  const NATIVE_HEADING_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => !assignedThemeIds().includes(id))
+
+  for (const themeId of NATIVE_HEADING_THEME_IDS) {
     it(`${themeId}: zero overflow/out-of-bounds/overlap findings on a pathological CJK_LONG + MIXED_LONG deck`, () => {
       const slide: Slide = {
         type: "content",

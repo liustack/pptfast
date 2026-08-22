@@ -96,18 +96,18 @@ const ir = (theme: string): PptxIR =>
 //   - `EXPECTED_CONTENT_1B`/`2A`/`BARE`: the lone block 193 -> 177
 //     (rect.y 161 + 16).
 const EXPECTED_CONTENT_1A =
-  '<rect x="48" y="96" width="4" height="544" fill="#0E6245"></rect><circle cx="50" cy="96" r="7" fill="#0E6245"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#0E6245"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#23251F" dominant-baseline="alphabetic">编号导轨：从章节到小节</text><text x="180" y="166" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#0E6245" dominant-baseline="alphabetic"><tspan fill="#23251F" font-weight="700">核心结论</tspan><tspan fill="#0E6245">：证据链完整</tspan></text><g data-audit-rect="96,206,1088,414"><g data-audit-box="96,222,1088"><g transform="translate(96,222)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">本节梳理研究背景与既有文献。</text></g></g><g data-audit-box="96,280,1088"><g transform="translate(96,280)"><circle cx="5" cy="18.8" r="3" fill="#0E6245"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">假设一成立</text><circle cx="5" cy="60.8" r="3" fill="#0E6245"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">假设二部分成立</text><circle cx="5" cy="102.8" r="3" fill="#0E6245"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">假设三待验证</text></g></g></g><text x="96" y="645" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" fill="#62655B" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  "<rect x=\"48\" y=\"96\" width=\"4\" height=\"544\" fill=\"#4A6B8A\"></rect><circle cx=\"50\" cy=\"96\" r=\"7\" fill=\"#4A6B8A\"></circle><rect x=\"96\" y=\"96\" width=\"64\" height=\"32\" rx=\"6\" fill=\"#4A6B8A\"></rect><text x=\"128\" y=\"116\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"alphabetic\">1.1</text><text x=\"180\" y=\"125\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"40\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">编号导轨：从章节到小节</text><text x=\"180\" y=\"166\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"22\" fill=\"#4A6B8A\" dominant-baseline=\"alphabetic\"><tspan fill=\"#23282E\" font-weight=\"700\">核心结论</tspan><tspan fill=\"#4A6B8A\">：证据链完整</tspan></text><g data-audit-rect=\"96,206,1088,414\"><g data-audit-box=\"96,222,1088\"><g transform=\"translate(96,222)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">本节梳理研究背景与既有文献。</text></g></g><g data-audit-box=\"96,280,1088\"><g transform=\"translate(96,280)\"><circle cx=\"5\" cy=\"18.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"26\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">假设一成立</text><circle cx=\"5\" cy=\"60.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"68\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">假设二部分成立</text><circle cx=\"5\" cy=\"102.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"110\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">假设三待验证</text></g></g></g><text x=\"96\" y=\"645\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" fill=\"#5A6470\" font-style=\"italic\" dominant-baseline=\"alphabetic\">数据来源：内部埋点，2026Q2</text>"
 const EXPECTED_CONTENT_1B =
-  '<rect x="48" y="96" width="4" height="544" fill="#0E6245"></rect><circle cx="50" cy="96" r="7" fill="#0E6245"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#0E6245"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.2</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#23251F" dominant-baseline="alphabetic">同一章节的第二小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,177,1088"><g transform="translate(96,177)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">承接上一小节继续展开。</text></g></g></g>'
+  "<rect x=\"48\" y=\"96\" width=\"4\" height=\"544\" fill=\"#4A6B8A\"></rect><circle cx=\"50\" cy=\"96\" r=\"7\" fill=\"#4A6B8A\"></circle><rect x=\"96\" y=\"96\" width=\"64\" height=\"32\" rx=\"6\" fill=\"#4A6B8A\"></rect><text x=\"128\" y=\"116\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"alphabetic\">1.2</text><text x=\"180\" y=\"125\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"40\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">同一章节的第二小节</text><g data-audit-rect=\"96,161,1088,479\"><g data-audit-box=\"96,177,1088\"><g transform=\"translate(96,177)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">承接上一小节继续展开。</text></g></g></g>"
 const EXPECTED_CONTENT_2A =
-  '<rect x="48" y="96" width="4" height="544" fill="#0E6245"></rect><circle cx="50" cy="640" r="7" fill="#0E6245"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#0E6245"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">2.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#23251F" dominant-baseline="alphabetic">第二章节的首个小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,177,1088"><g transform="translate(96,177)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">方法论概述。</text></g></g></g>'
+  "<rect x=\"48\" y=\"96\" width=\"4\" height=\"544\" fill=\"#4A6B8A\"></rect><circle cx=\"50\" cy=\"640\" r=\"7\" fill=\"#4A6B8A\"></circle><rect x=\"96\" y=\"96\" width=\"64\" height=\"32\" rx=\"6\" fill=\"#4A6B8A\"></rect><text x=\"128\" y=\"116\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"alphabetic\">2.1</text><text x=\"180\" y=\"125\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"40\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">第二章节的首个小节</text><g data-audit-rect=\"96,161,1088,479\"><g data-audit-box=\"96,177,1088\"><g transform=\"translate(96,177)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">方法论概述。</text></g></g></g>"
 const EXPECTED_CONTENT_BARE =
-  '<rect x="48" y="96" width="4" height="544" fill="#0E6245"></rect><circle cx="50" cy="96" r="7" fill="#0E6245"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#0E6245"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#23251F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,177,1088"><g transform="translate(96,177)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#23251F" dominant-baseline="alphabetic">一</text></g></g></g>'
+  "<rect x=\"48\" y=\"96\" width=\"4\" height=\"544\" fill=\"#4A6B8A\"></rect><circle cx=\"50\" cy=\"96\" r=\"7\" fill=\"#4A6B8A\"></circle><rect x=\"96\" y=\"96\" width=\"64\" height=\"32\" rx=\"6\" fill=\"#4A6B8A\"></rect><text x=\"128\" y=\"116\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"alphabetic\">1.1</text><text x=\"180\" y=\"125\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"40\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">简报</text><g data-audit-rect=\"96,161,1088,479\"><g data-audit-box=\"96,177,1088\"><g transform=\"translate(96,177)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">一</text></g></g></g>"
 
 describe("RailNumberedContent", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldContent 逐字节一致（档位一，含跨章节编号 + 多 component/subheading/footnote）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
-    const deck = ir("academic")
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
+    const deck = ir("classroom")
 
     const next1a = renderSvgMarkup(<RailNumberedContent ir={deck} slide={content1a} index={1} ctx={ctx} />)
     expect(next1a).toBe(EXPECTED_CONTENT_1A)
@@ -129,13 +129,13 @@ describe("RailNumberedContent", () => {
   })
 
   it("单块 slide（无 subheading/footnote，单章节 deck）同样逐字节一致", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const bare: Slide = { type: "content", heading: "简报", components: [{ type: "paragraph", text: "一" }] } as Slide
     const soloChapter: Slide = { type: "chapter", heading: "唯一章节", components: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      theme: { id: "classroom" },
       meta: {},
       assets: { images: {} },
       slides: [soloChapter, bare],
@@ -147,8 +147,8 @@ describe("RailNumberedContent", () => {
   })
 
   it("renders the left rail track, a progress node, the number badge (clear of all four logo bands) and no foreignObject（迁移自 academic.test.tsx 的 numbered-rail grammar 断言）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
-    const deck = ir("academic")
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
+    const deck = ir("classroom")
     const markup = renderSvgMarkup(<RailNumberedContent ir={deck} slide={content1a} index={1} ctx={ctx} />)
     const root = parseSvgRoot(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${markup}</svg>`,
@@ -191,7 +191,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("shrinks the number badge label through fitSvgLine instead of overflowing the 64px-wide badge（迁移自 academic.test.tsx，12/10 常规场景 + 100/1000 极端收缩场景）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
 
     // Common two-digit-on-both-sides shape ("12.10") still renders at the
     // nominal 14px size — the fit fallback is a safety net, not a change to
@@ -206,7 +206,7 @@ describe("RailNumberedContent", () => {
       heading: `内容${i + 1}`,
       components: [],
     }))
-    const doc12 = ir("academic")
+    const doc12 = ir("classroom")
     doc12.slides = [...manyChapters12, ...tenContent]
     const lastContent = tenContent[9]
     const lastIndex = manyChapters12.length + tenContent.length - 1
@@ -232,7 +232,7 @@ describe("RailNumberedContent", () => {
       heading: `内容${i + 1}`,
       components: [],
     }))
-    const doc100 = ir("academic")
+    const doc100 = ir("classroom")
     doc100.slides = [...manyChapters100, ...thousandContent]
     const bigContent = thousandContent[999]
     const bigIndex = manyChapters100.length + thousandContent.length - 1
@@ -276,7 +276,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("Content body passes subset validation（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "验证子集",
@@ -288,7 +288,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      theme: { id: "classroom" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -301,7 +301,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("超长标题（40+ 字）经 fitHeadingLines 收缩/换行渲染，不整段输出原文，通过 subset validation（补齐迁移前遗漏的长标题边缘场景）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const slide: Slide = {
@@ -312,7 +312,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      theme: { id: "classroom" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -341,7 +341,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("overly long subheading shrinks to 16px then truncates with an ellipsis（迁移自 academic.test.tsx 的 Content subheading Task 5 分支）", () => {
-    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const slide: Slide = {
@@ -353,7 +353,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      theme: { id: "classroom" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
