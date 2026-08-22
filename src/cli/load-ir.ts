@@ -34,12 +34,6 @@ export const EXT_BY_MIME: Record<string, string> = {
   "image/webp": ".webp",
 }
 
-/** Read and JSON-parse a file with readable failure messages. `kind` names
- *  what the file is expected to hold (e.g. "spec") for both failure
- *  messages — defaults to "IR" for this function's original, still most
- *  common caller (`runRender`/`runValidate`/`runPreview`, `./commands.ts`);
- *  `runSpecValidate` passes "spec" so its own errors read correctly instead
- *  of borrowing IR's wording for a file that was never one. */
 /** Decode a `file:` asset src with `fileURLToPath` (or the Windows mapping
  *  when `platform` is injected so Darwin tests can pin a drive letter). */
 export function unwrapFileSrc(src: string, platform: NodeJS.Platform = process.platform): string {
@@ -55,6 +49,12 @@ export function unwrapFileSrc(src: string, platform: NodeJS.Platform = process.p
   return fileURLToPath(src)
 }
 
+/** Read and JSON-parse a file with readable failure messages. `kind` names
+ *  what the file is expected to hold (e.g. "spec") for both failure
+ *  messages — defaults to "IR" for this function's original, still most
+ *  common caller (`runRender`/`runValidate`/`runPreview`, `./commands.ts`);
+ *  `runSpecValidate` passes "spec" so its own errors read correctly instead
+ *  of borrowing IR's wording for a file that was never one. */
 export async function loadIrFile(irPath: string, kind = "IR"): Promise<unknown> {
   let text: string
   try {
