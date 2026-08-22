@@ -12,9 +12,10 @@ type KpiItem = KpiComponent["items"][number]
 const PAD = 10
 const GAP = 14
 const R_MIN = FORM_BUBBLE_R_MIN
-const R_MAX = 110
+const R_MAX = 72
 const BASELINE_FUDGE = 0.35
-const UNDER_LABEL = 28
+const LABEL_GAP = 40
+const UNDER_LABEL = 56
 const SOURCE_BAND = 22
 
 interface Ranked {
@@ -68,7 +69,12 @@ function placeRow(radii: number[]): { xs: number[]; left: number; right: number 
       right = xs[rank]! + r
     }
   }
-  return { xs, left, right }
+  const mid = (left + right) / 2
+  return {
+    xs: xs.map((x) => x - mid),
+    left: left - mid,
+    right: right - mid,
+  }
 }
 
 function paint(
@@ -221,7 +227,7 @@ export function renderBubbleRow(
             <text
               data-truncated={label.truncated ? "1" : undefined}
               x={cx}
-              y={cy + L.maxR + 16}
+              y={cy + L.maxR + LABEL_GAP}
               textAnchor="middle"
               fontSize={label.fontSize}
               fill={labelInk}
@@ -234,7 +240,7 @@ export function renderBubbleRow(
               <text
                 data-truncated={source.truncated ? "1" : undefined}
                 x={cx}
-                y={cy + L.maxR + 34}
+                y={cy + L.maxR + LABEL_GAP + 18}
                 textAnchor="middle"
                 fontSize={source.fontSize}
                 fill={accessibleInk(ctx.colors.muted, pageBg, source.fontSize)}

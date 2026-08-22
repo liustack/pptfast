@@ -166,10 +166,15 @@ describe("SCALABLE_TYPES duplication verdict (content-bento-panel.tsx:105 vs con
     expect(new Set(bentoPanelPreRefactor)).toEqual(new Set(stackedPosterPreRefactor))
   })
 
-  it("the unified export matches both pre-refactor definitions", () => {
-    expect(new Set(SCALABLE_TYPES)).toEqual(new Set(bentoPanelPreRefactor))
-    expect(new Set(SCALABLE_TYPES)).toEqual(new Set(stackedPosterPreRefactor))
-    expect(SCALABLE_TYPES.size).toBe(2)
+  it("the unified export matches both pre-refactor definitions plus flowchart", () => {
+    // Gallery r2 leftover (ember p05): a lone flowchart is a rendered
+    // graphic, safe to skip capTopAir so it can sit in leftover body
+    // height instead of welding under the heading. Same membership
+    // pattern as people_cards on STRETCHABLE_TYPES.
+    const current = [...bentoPanelPreRefactor, "flowchart"]
+    expect(new Set(SCALABLE_TYPES)).toEqual(new Set(current))
+    expect(new Set(SCALABLE_TYPES)).toEqual(new Set([...stackedPosterPreRefactor, "flowchart"]))
+    expect(SCALABLE_TYPES.size).toBe(current.length)
   })
 })
 

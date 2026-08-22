@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { assertSubset } from "../subset-validate"
 import { parseSvgRoot } from "../serialize"
 import { cycle } from "./cycle"
+import { FORM_BODY_FLOOR, FORM_BODY_TITLE_CAP, capFormBody } from "./forms/legibility"
 import { mixHex } from "./color-mix"
 import { accessibleInk, readableOn } from "../ink"
 import { buildCtx } from "../full-slide-svg"
@@ -198,13 +199,67 @@ describe("cycle forms: CycleLoop", () => {
     expect(joined).toContain("行")
     expect(joined).not.toMatch(/试…/)
     for (const t of runHits) {
-      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(20)
+      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
     }
     const descHits = Array.from(container.querySelectorAll("text")).filter((t) =>
       (t.textContent ?? "").includes("小流量"),
     )
     for (const t of descHits) {
-      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(15)
+      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
+    }
+  })
+
+  it("museum loop scales into a 640×392 slot, stays centered, and caps in-circle type", () => {
+    const ctx = themed("museum")
+    const ir = {
+      type: "cycle" as const,
+      title: "产品进展",
+      items: [
+        { label: "需求确认", description: "对齐范围与验收口径" },
+        { label: "现场勘测", description: "核对安装点位" },
+        { label: "设备接入", description: "完成现场接线" },
+        { label: "模型调优", description: "压低误报占比" },
+        { label: "试运行", description: "小流量观察误报" },
+      ],
+    }
+    const box = { x: 96, y: 186, w: 640, h: 392 }
+    const { container } = svg(cycle.render(ir, box, ctx))
+    const root = container.querySelector("svg") ?? container
+    const g = root.querySelector("g")!
+    const { dx, dy } = parseTranslate(g)
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles.length).toBe(5)
+    const nodes = circles.map((c) => ({
+      cx: dx + Number(c.getAttribute("cx")),
+      cy: dy + Number(c.getAttribute("cy")),
+      r: Number(c.getAttribute("r")),
+    }))
+    const minX = Math.min(...nodes.map((n) => n.cx - n.r))
+    const maxX = Math.max(...nodes.map((n) => n.cx + n.r))
+    const minY = Math.min(...nodes.map((n) => n.cy - n.r))
+    const maxY = Math.max(...nodes.map((n) => n.cy + n.r))
+    expect(minX).toBeGreaterThanOrEqual(box.x - 2)
+    expect(maxX).toBeLessThanOrEqual(box.x + box.w + 2)
+    expect(minY).toBeGreaterThanOrEqual(box.y - 2)
+    expect(maxY).toBeLessThanOrEqual(box.y + box.h + 2)
+    expect(Math.abs((minX + maxX) / 2 - (box.x + box.w / 2))).toBeLessThanOrEqual(8)
+    const nodeTexts = Array.from(container.querySelectorAll("[data-audit-box] text"))
+    expect(nodeTexts.length).toBeGreaterThan(0)
+    for (const t of nodeTexts) {
+      const fs = Number(t.getAttribute("font-size"))
+      expect(fs).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
+      const boxAttr = t.closest("[data-audit-box]")?.getAttribute("data-audit-box") ?? ""
+      const r = Number(boxAttr.split(",")[2] ?? 0) / 2
+      expect(fs).toBeLessThanOrEqual(Math.max(FORM_BODY_FLOOR, r * 0.55) + 0.5)
+    }
+    const titleFs = Math.max(...nodeTexts.map((t) => Number(t.getAttribute("font-size"))))
+    const descHits = Array.from(container.querySelectorAll("text")).filter((t) =>
+      (t.textContent ?? "").includes("小流量"),
+    )
+    for (const t of descHits) {
+      const fs = Number(t.getAttribute("font-size"))
+      expect(fs).toBeLessThanOrEqual(capFormBody(titleFs, 99) + 0.05)
+      expect(fs).toBeLessThanOrEqual(titleFs * FORM_BODY_TITLE_CAP + FORM_BODY_FLOOR)
     }
   })
 
@@ -300,6 +355,57 @@ describe("cycle forms: HubSpoke", () => {
     expect(filledPetals.length).toBe(0)
     const badges = Array.from(container.querySelectorAll("circle")).slice(1)
     expect(badges.some((c) => c.getAttribute("fill") === ctx.colors.accent)).toBe(true)
+  })
+
+  function cycleN(n: number) {
+    return {
+      type: "cycle" as const,
+      title: "闭环",
+      items: Array.from({ length: n }, (_, i) => ({
+        label: `Item ${i + 1}`,
+        description: `Note ${i + 1}`,
+      })),
+    }
+  }
+
+  function hubCapsules(n: number, theme = "campaign") {
+    const ctx = themed(theme)
+    const box = { x: 80, y: 80, w: 1088 }
+    const { container } = svg(cycle.render(cycleN(n), box, ctx))
+    const root = container.querySelector("svg") ?? container
+    const { dx, dy } = parseTranslate(root.querySelector("g")!)
+    const caps = Array.from(container.querySelectorAll("rect")).map((r) => ({
+      x: dx + Number(r.getAttribute("x")),
+      y: dy + Number(r.getAttribute("y")),
+      w: Number(r.getAttribute("width")),
+      h: Number(r.getAttribute("height")),
+    }))
+    return { box, caps }
+  }
+
+  it("n=3,5,7 capsule group bbox midpoint matches the box midline", () => {
+    for (const n of [3, 5, 7]) {
+      const { box, caps } = hubCapsules(n)
+      expect(caps, `n=${n}`).toHaveLength(n)
+      const minX = Math.min(...caps.map((c) => c.x))
+      const maxX = Math.max(...caps.map((c) => c.x + c.w))
+      const mid = (minX + maxX) / 2
+      expect(Math.abs(mid - (box.x + box.w / 2)), `n=${n} mid ${mid}`).toBeLessThanOrEqual(2)
+    }
+  })
+
+  it("n=5 and n=7 leftover is on the midline and side capsules share a column x", () => {
+    for (const n of [5, 7]) {
+      const { box, caps } = hubCapsules(n)
+      const boxMid = box.x + box.w / 2
+      const top = caps.reduce((a, b) => (a.y < b.y ? a : b))
+      expect(Math.abs(top.x + top.w / 2 - boxMid), `n=${n} leftover`).toBeLessThanOrEqual(2)
+      const sides = caps.filter((c) => Math.abs(c.y - top.y) > 2)
+      const leftX = [...new Set(sides.filter((c) => c.x + c.w / 2 < boxMid).map((c) => Math.round(c.x)))]
+      const rightX = [...new Set(sides.filter((c) => c.x + c.w / 2 > boxMid).map((c) => Math.round(c.x)))]
+      expect(leftX, `n=${n} left column`).toHaveLength(1)
+      expect(rightX, `n=${n} right column`).toHaveLength(1)
+    }
   })
 })
 

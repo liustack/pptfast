@@ -10,7 +10,18 @@ import { resolveStyle } from "../../../themes"
 import { buildCtx } from "../../full-slide-svg"
 import type { ComponentCtx } from "../types"
 import { measureTextUnits } from "../../../lib/svg-text-layout"
-import { formGridCols, formIconColumnCols, FORM_BODY_FLOOR, FORM_TITLE_FLOOR } from "./legibility"
+import {
+  boardTypeScale,
+  capFormBody,
+  fillCardType,
+  formGridCols,
+  formIconColumnCols,
+  layoutFormBody,
+  BOARD_CARD_W,
+  FORM_BODY_FLOOR,
+  FORM_BODY_TITLE_CAP,
+  FORM_TITLE_FLOOR,
+} from "./legibility"
 
 function themeCtx(id: string): ComponentCtx {
   return buildCtx(resolveStyle(id), {})
@@ -455,6 +466,77 @@ describe("petal_wheel legibility", () => {
     expect(hits.length).toBeGreaterThan(0)
     for (const t of hits) {
       expect(fontSizeOf(t), `"${t.textContent}"`).toBeGreaterThanOrEqual(FORM_TITLE_FLOOR)
+    }
+  })
+})
+
+describe("form body title cap", () => {
+  it("exports a 0.6 body-to-title ceiling", () => {
+    expect(FORM_BODY_TITLE_CAP).toBeCloseTo(0.6)
+  })
+
+  it("boardTypeScale caps body at 0.6 of title on a wide card", () => {
+    const wide = boardTypeScale(600)
+    expect(wide.title).toBeGreaterThan(FORM_TITLE_FLOOR)
+    expect(wide.body).toBeLessThanOrEqual(wide.title * FORM_BODY_TITLE_CAP + 1e-6)
+    expect(wide.body).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
+  })
+
+  it("boardTypeScale at board width keeps the body floor when 0.6×title is below it", () => {
+    const board = boardTypeScale(BOARD_CARD_W)
+    expect(board.title).toBeCloseTo(23)
+    expect(board.body).toBe(FORM_BODY_FLOOR)
+    expect(board.body).toBeGreaterThan(board.title * FORM_BODY_TITLE_CAP)
+  })
+
+  it("layoutFormBody honors titleSize via the 0.6 cap", () => {
+    const laid = layoutFormBody("副文本在卡片里应该明显小于标题", {
+      maxWidth: 400,
+      fontSize: 40,
+      titleSize: 40,
+    })
+    expect(laid.fontSize).toBeLessThanOrEqual(40 * FORM_BODY_TITLE_CAP + 1e-6)
+    expect(laid.fontSize).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
+  })
+
+  it("fillCardType upscale keeps body at or under 0.6 of title", () => {
+    const filled = fillCardType({
+      innerH: 400,
+      contentW: 300,
+      titleSize: 23,
+      bodySize: 16.5,
+      gap: 8,
+      longestBody: "自建算力替换公有云推理，单台设备的月度成本下降三成一。",
+      titles: ["自建算力替换"],
+    })
+    expect(filled.titleSize).toBeGreaterThan(FORM_TITLE_FLOOR)
+    expect(filled.bodySize).toBeLessThanOrEqual(filled.titleSize * FORM_BODY_TITLE_CAP + 1e-6)
+    expect(filled.bodySize).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
+  })
+
+  it("capFormBody never drops below the body floor", () => {
+    expect(capFormBody(20, 18)).toBe(FORM_BODY_FLOOR)
+    expect(capFormBody(40, 30)).toBeCloseTo(24)
+  })
+
+  it("academic outline_grid on a tall slot keeps body ≤ 0.6 title", () => {
+    const ctx = themeCtx("academic")
+    const box = { x: 0, y: 0, w: 1088, h: 520 }
+    const { container } = svg(iconCards.render(GALLERY_THREE, box, ctx))
+    const item = GALLERY_THREE.items[0]!
+    const titles = titleNodes(container, item.title)
+    const bodies = Array.from(container.querySelectorAll("text")).filter((el) => {
+      const s = el.textContent ?? ""
+      return s.includes("公有云") || s.includes("月度成本")
+    })
+    expect(titles.length).toBeGreaterThan(0)
+    expect(bodies.length).toBeGreaterThan(0)
+    const titleFs = Math.max(...titles.map(fontSizeOf))
+    const cap = Math.max(FORM_BODY_FLOOR, titleFs * FORM_BODY_TITLE_CAP)
+    expect(titleFs).toBeGreaterThan(FORM_TITLE_FLOOR)
+    for (const t of bodies) {
+      expect(fontSizeOf(t), `body "${t.textContent}" vs title ${titleFs}`).toBeLessThanOrEqual(cap + 0.05)
+      expect(fontSizeOf(t)).toBeGreaterThanOrEqual(FORM_BODY_FLOOR)
     }
   })
 })

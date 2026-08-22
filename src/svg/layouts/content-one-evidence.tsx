@@ -47,11 +47,14 @@ function GenericOneEvidenceContent({ slide, ctx }: SvgTemplateProps) {
   })
 
   const evidence = pickEvidence(slide.components) ?? slide.components[0]
+  const headingBottom =
+    HEADING_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight + heading.fontSize * 0.25
+  const evidenceY = Math.max(EVIDENCE_TOP, Math.ceil(headingBottom + 16))
   const evidenceRect: ContentRect = {
     x: EVIDENCE_X,
-    y: EVIDENCE_TOP,
+    y: evidenceY,
     w: EVIDENCE_W,
-    h: EVIDENCE_BOTTOM - EVIDENCE_TOP,
+    h: EVIDENCE_BOTTOM - evidenceY,
   }
 
   const footnoteSource = slide.footnote?.trim()
@@ -65,21 +68,25 @@ function GenericOneEvidenceContent({ slide, ctx }: SvgTemplateProps) {
 
   return (
     <>
-      {heading.lines.map((line, i) => (
-        <text
-          key={i}
-          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
-          x={HEADING_X}
-          y={HEADING_Y + i * heading.lineHeight}
-          fontFamily={fonts.heading}
-          fontSize={heading.fontSize}
-          fontWeight="600"
-          fill={accessibleInk(colors.text, defaultBg, heading.fontSize)}
-          dominantBaseline="alphabetic"
-        >
-          {line}
-        </text>
-      ))}
+      <g
+        data-text-rect={`${HEADING_X},${HEADING_Y - heading.fontSize},${HEADING_MAX_W},${headingBottom - (HEADING_Y - heading.fontSize)}`}
+      >
+        {heading.lines.map((line, i) => (
+          <text
+            key={i}
+            data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
+            x={HEADING_X}
+            y={HEADING_Y + i * heading.lineHeight}
+            fontFamily={fonts.heading}
+            fontSize={heading.fontSize}
+            fontWeight="600"
+            fill={accessibleInk(colors.text, defaultBg, heading.fontSize)}
+            dominantBaseline="alphabetic"
+          >
+            {line}
+          </text>
+        ))}
+      </g>
 
       {evidence && renderFittedEvidence(evidence, evidenceRect, ctx)}
 

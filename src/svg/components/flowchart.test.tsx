@@ -26,6 +26,25 @@ function svg(node: React.ReactElement) {
   return render(<svg>{node}</svg>)
 }
 
+function nodeGeom(g: Element): { x: number; y: number; w: number } {
+  const rect = g.querySelector(":scope > rect")
+  if (rect) {
+    return {
+      x: Number(rect.getAttribute("x")),
+      y: Number(rect.getAttribute("y")),
+      w: Number(rect.getAttribute("width")),
+    }
+  }
+  const pts = (g.querySelector(":scope > polygon")?.getAttribute("points") ?? "")
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number)
+  const xs = pts.filter((_, i) => i % 2 === 0)
+  const ys = pts.filter((_, i) => i % 2 === 1)
+  const x = Math.min(...xs)
+  return { x, y: Math.min(...ys), w: Math.max(...xs) - x }
+}
+
 const component = {
   type: "flowchart" as const,
   nodes: [
@@ -192,7 +211,7 @@ describe("flowchart label fitting and orientation", () => {
     // carries `data-audit-box` (on its `<rect>`, see flowchart.tsx), which
     // the generic attribute selector would double-count against this
     // node-only assertion.
-    const boxes = container.querySelectorAll("g[data-audit-box]")
+    const boxes = container.querySelectorAll("g[data-flow-node]")
     expect(boxes.length).toBe(longChain.nodes.length)
   })
 
@@ -200,8 +219,9 @@ describe("flowchart label fitting and orientation", () => {
     const { container } = svg(
       flowchart.render(longChain, { x: 0, y: 0, w: 1088 }, ctx),
     )
-    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
-      const [bx, , bw] = (g.getAttribute("data-audit-box") ?? "").split(",").map(Number)
+    for (const g of Array.from(container.querySelectorAll("g[data-flow-node]"))) {
+      const shape = g.querySelector("rect, polygon")
+      if (!shape) continue
       const text = g.querySelector("text")
       if (!text) continue
       const fontSize = Number(text.getAttribute("font-size"))
@@ -209,6 +229,8 @@ describe("flowchart label fitting and orientation", () => {
       const cx = Number(text.getAttribute("x"))
       const left = cx - (units * fontSize) / 2
       const right = cx + (units * fontSize) / 2
+      const bx = Number(shape.getAttribute("x") ?? cx - 40)
+      const bw = Number(shape.getAttribute("width") ?? 80)
       expect(left).toBeGreaterThanOrEqual(bx - 6)
       expect(right).toBeLessThanOrEqual(bx + bw + 6)
     }
@@ -224,10 +246,10 @@ describe("flowchart label fitting and orientation", () => {
     // is measuring.
     const xs: number[] = []
     const ys: number[] = []
-    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
-      const [bx, by] = (g.getAttribute("data-audit-box") ?? "").split(",").map(Number)
-      xs.push(bx)
-      ys.push(by)
+    for (const g of Array.from(container.querySelectorAll("g[data-flow-node]"))) {
+      const { x, y } = nodeGeom(g)
+      xs.push(x)
+      ys.push(y)
     }
     const spanX = Math.max(...xs) - Math.min(...xs)
     const spanY = Math.max(...ys) - Math.min(...ys)
@@ -240,10 +262,10 @@ describe("flowchart label fitting and orientation", () => {
     )
     const xs: number[] = []
     const ys: number[] = []
-    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
-      const [bx, by] = (g.getAttribute("data-audit-box") ?? "").split(",").map(Number)
-      xs.push(bx)
-      ys.push(by)
+    for (const g of Array.from(container.querySelectorAll("g[data-flow-node]"))) {
+      const { x, y } = nodeGeom(g)
+      xs.push(x)
+      ys.push(y)
     }
     expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(
       Math.max(...xs) - Math.min(...xs),
@@ -256,10 +278,12 @@ describe("flowchart label fitting and orientation", () => {
     )
     // Scoped to `g` — `component`'s "next"-labeled edge also renders a chip
     // `<rect data-audit-box>`; this assertion is about node centering only.
+    const outer = container.querySelector("g")?.getAttribute("transform") ?? ""
+    const dx = Number(/translate\(([^,]+)/.exec(outer)?.[1] ?? 0)
     const xs: number[] = []
-    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
-      const parts = (g.getAttribute("data-audit-box") ?? "").split(",").map(Number)
-      xs.push(parts[0], parts[0] + parts[2])
+    for (const g of Array.from(container.querySelectorAll("g[data-flow-node]"))) {
+      const { x, w } = nodeGeom(g)
+      xs.push(x + dx, x + dx + w)
     }
     const left = Math.min(...xs)
     const right = Math.max(...xs)
@@ -307,7 +331,7 @@ describe("flowchart edge label clearance (layer order + fit + backing chip)", ()
     // by tag so this stays a node-only DOM-order check.
     const nodeGroupIdxs = children
       .map((el, i) =>
-        el.tagName.toLowerCase() === "g" && el.hasAttribute("data-audit-box")
+        el.tagName.toLowerCase() === "g" && el.hasAttribute("data-flow-node")
           ? i
           : -1,
       )
@@ -332,9 +356,9 @@ describe("flowchart edge label clearance (layer order + fit + backing chip)", ()
     // Scoped to `g` — the label chip's own `data-audit-box` (a `<rect>`)
     // describes the gap it sits in, not a third node; this assertion wants
     // just the two flanking node boxes.
-    const boxes = Array.from(container.querySelectorAll("g[data-audit-box]"))
+    const boxes = Array.from(container.querySelectorAll("g[data-flow-node]"))
       .map((g) => {
-        const [x, , w] = (g.getAttribute("data-audit-box") ?? "").split(",").map(Number)
+        const { x, w } = nodeGeom(g)
         return { x, w }
       })
       .sort((p, q) => p.x - q.x)
@@ -638,5 +662,144 @@ describe("flowchart node label lines and breathing room", () => {
     // 至少 rectW 的 8%（16/最大局部盒宽 260 ≈ 6.2%，留 8% 校验呼吸感下限，
     // 因为该节点盒宽必然 < 260——12px 预算字号下 19 字 ≈ 234+32 > 260 截到 260）
     expect(textW).toBeLessThanOrEqual(rectW - 2 * rectW * 0.08)
+  })
+})
+
+// Gallery r2 leftover (ember p05): the decision diamond is sized like a
+// rectangle, then render subtracts another 40% + padding from the usable
+// chord, so 「设备接入」 shrinks to 9px and truncates to 「设…」. Edge labels
+// on the in/out connectors sit on that diamond. Do not "fix" either by
+// shrinking type further.
+describe("flowchart diamond label and edge-label clearance (ember p05 leftover)", () => {
+  const emberZh = {
+    type: "flowchart" as const,
+    direction: "LR" as const,
+    nodes: [
+      { id: "a", label: "需求确认", kind: "round" as const },
+      { id: "b", label: "现场勘测" },
+      { id: "c", label: "设备接入", kind: "diamond" as const },
+      { id: "d", label: "模型调优" },
+      { id: "e", label: "验收交付", kind: "round" as const },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+      { from: "c", to: "d", label: "设备接入" },
+      { from: "c", to: "b", label: "数据采集" },
+      { from: "d", to: "e" },
+    ],
+  }
+
+  const emberEn = {
+    type: "flowchart" as const,
+    direction: "LR" as const,
+    nodes: [
+      { id: "a", label: "Scoping", kind: "round" as const },
+      { id: "b", label: "Site survey" },
+      { id: "c", label: "Onboarding", kind: "diamond" as const },
+      { id: "d", label: "Model tuning" },
+      { id: "e", label: "Acceptance", kind: "round" as const },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+      { from: "c", to: "d", label: "Onboarding" },
+      { from: "c", to: "b", label: "Collection" },
+      { from: "d", to: "e" },
+    ],
+  }
+
+  function polygonBox(polygon: Element) {
+    const nums = (polygon.getAttribute("points") ?? "")
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+    const xs = nums.filter((_, i) => i % 2 === 0)
+    const ys = nums.filter((_, i) => i % 2 === 1)
+    return {
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      w: Math.max(...xs) - Math.min(...xs),
+      h: Math.max(...ys) - Math.min(...ys),
+    }
+  }
+
+  function rectBox(el: Element) {
+    return {
+      x: Number(el.getAttribute("x")),
+      y: Number(el.getAttribute("y")),
+      w: Number(el.getAttribute("width")),
+      h: Number(el.getAttribute("height")),
+    }
+  }
+
+  function intersects(
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  }
+
+  function diamondGroup(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("g[data-flow-node]")).find((g) =>
+      g.querySelector("polygon"),
+    )
+  }
+
+  it("keeps diamond text 设备接入 complete at a readable size (no ellipsis, fontSize >= 12)", () => {
+    const { container } = svg(flowchart.render(emberZh, { x: 96, y: 228, w: 1088 }, ctx))
+    const group = diamondGroup(container)
+    expect(group).toBeTruthy()
+    const texts = Array.from(group!.querySelectorAll("text"))
+    expect(texts.length).toBeGreaterThanOrEqual(1)
+    const joined = texts.map((t) => t.textContent ?? "").join("")
+    expect(joined.replace(/\s/g, "")).toBe("设备接入")
+    expect(joined).not.toContain("…")
+    for (const t of texts) {
+      expect(t.getAttribute("data-truncated")).not.toBe("1")
+      expect(Number(t.getAttribute("font-size"))).toBeGreaterThanOrEqual(12)
+    }
+  })
+
+  it("keeps diamond text Onboarding complete at a readable size (no ellipsis, fontSize >= 12)", () => {
+    const { container } = svg(flowchart.render(emberEn, { x: 96, y: 228, w: 1088 }, ctx))
+    const group = diamondGroup(container)
+    expect(group).toBeTruthy()
+    const texts = Array.from(group!.querySelectorAll("text"))
+    const joined = texts.map((t) => t.textContent ?? "").join("")
+    expect(joined.replace(/\s/g, "")).toBe("Onboarding")
+    expect(joined).not.toContain("…")
+    for (const t of texts) {
+      expect(t.getAttribute("data-truncated")).not.toBe("1")
+      expect(Number(t.getAttribute("font-size"))).toBeGreaterThanOrEqual(12)
+    }
+  })
+
+  it("parks 数据采集 / 设备接入 edge-label chips off the diamond bbox", () => {
+    const { container } = svg(flowchart.render(emberZh, { x: 96, y: 228, w: 1088 }, ctx))
+    const diamond = Array.from(container.querySelectorAll("polygon")).find(
+      (p) => p.getAttribute("fill") === ctx.colors.surface,
+    )
+    expect(diamond).toBeTruthy()
+    const dBox = polygonBox(diamond!)
+
+    const edgeLabels = Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("fill") === ctx.colors.muted,
+    )
+    const contents = edgeLabels.map((t) => t.textContent ?? "")
+    expect(contents).toEqual(expect.arrayContaining(["数据采集", "设备接入"]))
+
+    for (const t of edgeLabels) {
+      const chip = t.previousElementSibling
+      expect(chip?.tagName.toLowerCase()).toBe("rect")
+      const chipBox = rectBox(chip!)
+      expect(intersects(chipBox, dBox)).toBe(false)
+      // Parked above/below the diamond, not in the same band as the vertices
+      // where the truncated 「设…」 used to sit under the edge chips.
+      const fullyAbove = chipBox.y + chipBox.h <= dBox.y
+      const fullyBelow = chipBox.y >= dBox.y + dBox.h
+      expect(fullyAbove || fullyBelow).toBe(true)
+    }
   })
 })

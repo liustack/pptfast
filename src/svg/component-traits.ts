@@ -203,8 +203,9 @@ export const SELF_VISUAL_TYPES: ReadonlySet<ComponentType> = typesWith("selfVisu
  * `content-stacked-poster.tsx` also scales *up* to fill a hero/strip slot
  * (capped at that file's own `HERO_SCALE_MAX`) since a poster hero is meant
  * to read as a dominant image. Declared per-component via `traits.scalable`,
- * aggregated here — `component-traits.test.ts` still pins the exact
- * `{"chart", "image"}` membership.
+ * aggregated here — `component-traits.test.ts` pins `{"chart", "image",
+ * "flowchart"}` (flowchart added so a lone diagram can use leftover body
+ * height: `svg-content.tsx` skips `capTopAir` for scalable types).
  */
 export const SCALABLE_TYPES: ReadonlySet<ComponentType> = typesWith("scalable")
 

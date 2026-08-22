@@ -788,7 +788,7 @@ describe("bubble_row", () => {
     ],
   }
 
-  it("insight: champion is the largest circle at center, 2nd left, 3rd right, no baseline", () => {
+  it("insight: champion is the largest circle, 2nd left, 3rd right, group centered, no baseline", () => {
     const insight = themeCtx("insight")
     const w = 1120
     const { container } = svg(kpi.render(bubbles, { x: 0, y: 0, w }, insight))
@@ -797,7 +797,9 @@ describe("bubble_row", () => {
     )
     expect(circles.length).toBe(5)
     const champ = circles[0]!
-    expect(Number(champ.getAttribute("cx"))).toBeCloseTo(w / 2, 0)
+    const minX = Math.min(...circles.map((c) => Number(c.getAttribute("cx")) - Number(c.getAttribute("r"))))
+    const maxX = Math.max(...circles.map((c) => Number(c.getAttribute("cx")) + Number(c.getAttribute("r"))))
+    expect((minX + maxX) / 2).toBeCloseTo(w / 2, 0)
     expect(champ.getAttribute("fill")).toBe(insight.colors.accent)
     expect(Number(circles[1]!.getAttribute("cx"))).toBeLessThan(Number(champ.getAttribute("cx")))
     expect(Number(circles[2]!.getAttribute("cx"))).toBeGreaterThan(Number(champ.getAttribute("cx")))
@@ -809,6 +811,33 @@ describe("bubble_row", () => {
       <svg xmlns="http://www.w3.org/2000/svg">{kpi.render(bubbles, { x: 0, y: 0, w }, insight)}</svg>,
     )
     expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+
+  it("crayon bubbles fit a 640-wide slot, stay group-centered, and keep air under each circle", () => {
+    const crayon = themeCtx("crayon")
+    const w = 640
+    const { container } = svg(kpi.render(bubbles, { x: 0, y: 0, w, h: 392 }, crayon))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles.length).toBe(5)
+    const rs = circles.map((c) => Number(c.getAttribute("r")))
+    expect(Math.max(...rs)).toBeLessThanOrEqual(80)
+    const minX = Math.min(...circles.map((c) => Number(c.getAttribute("cx")) - Number(c.getAttribute("r"))))
+    const maxX = Math.max(...circles.map((c) => Number(c.getAttribute("cx")) + Number(c.getAttribute("r"))))
+    expect(minX).toBeGreaterThanOrEqual(-2)
+    expect(maxX).toBeLessThanOrEqual(w + 2)
+    expect(Math.abs((minX + maxX) / 2 - w / 2)).toBeLessThanOrEqual(4)
+    const labels = Array.from(container.querySelectorAll("text")).filter((t) =>
+      /号线/.test(t.textContent ?? ""),
+    )
+    expect(labels.length).toBe(5)
+    const maxBottom = Math.max(
+      ...circles.map((c) => Number(c.getAttribute("cy")) + Number(c.getAttribute("r"))),
+    )
+    for (const label of labels) {
+      const y = Number(label.getAttribute("y"))
+      const fs = Number(label.getAttribute("font-size"))
+      expect(y - fs).toBeGreaterThanOrEqual(maxBottom + 18)
+    }
   })
 
   it("crayon paletteStroke uses chartPalette tokens, not a horizontal baseline", () => {
