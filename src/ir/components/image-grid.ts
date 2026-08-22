@@ -20,7 +20,7 @@ export const schema = z
   })
   .strict()
   .describe(
-    "A 2-4 photo/screenshot grid with cover-crop cells. For a set of organization/brand LOGOS (sponsors, customers, press, partners) use logo_wall instead — it fits logos without cropping and backs each cell for light-ink marks.",
+    "A 2-4 photo/screenshot grid with cover-crop cells.",
   )
 
 export const aliases = {} satisfies ComponentAliasSpec

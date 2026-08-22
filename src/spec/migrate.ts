@@ -30,7 +30,7 @@
  * reporting a malformed source file is `runMigrate`'s job
  * (`../cli/commands.ts`), not this mechanical rename step's.
  */
-import { migrateBloomToClassroom, migrateChromeToBranding } from "../ir/migrate"
+import { migrateBloomToClassroom, migrateChromeToBranding, migrateLogoWallToImageGrid } from "../ir/migrate"
 
 export function migrateDeckPlanToSpec(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw
@@ -46,9 +46,9 @@ export function migrateDeckPlanToSpec(raw: unknown): unknown {
     result.pages = pages
   }
   // After scenario→narrative / rhythm→beat: chrome→branding, then the
-  // one-shot bloom→classroom relocate. Dual-source (chrome + branding)
-  // hard-errors via migrateChromeToBranding.
-  return migrateBloomToClassroom(migrateChromeToBranding(result))
+  // one-shot bloom→classroom relocate, then leftover logo_wall → image_grid.
+  // Dual-source (chrome + branding) hard-errors via migrateChromeToBranding.
+  return migrateLogoWallToImageGrid(migrateBloomToClassroom(migrateChromeToBranding(result)))
 }
 
 /** `pages[].rhythm` → `pages[].beat` (spec §9.2) — applied per page so a

@@ -612,6 +612,16 @@ describe("hard gate: focus vocabulary (strategy tendencies âˆª component types â
     expect(err!.message).toMatch(/kpi_cards/) // strategy tendency list present
     expect(err!.message).toMatch(/bullets/) // component type vocabulary present
     expect(err!.message).toMatch(/two-column/) // layout id vocabulary present
+    expect(err!.message).not.toMatch(/pptfast migrate/)
+  })
+
+  it("rejects leftover focus logo_wall and points at migrate to image_grid", () => {
+    const errors = expectErrors(wrapPage(content("p-1", { focus: "logo_wall" }), { narrative: pyramidScenario }))
+    const err = errors.find((e) => e.pageId === "p-1")
+    expect(err).toBeDefined()
+    expect(err!.message).toMatch(/removed/)
+    expect(err!.message).toMatch(/pptfast migrate/)
+    expect(err!.message).toMatch(/image_grid/)
   })
 
   it("accepts an omitted focus", () => {

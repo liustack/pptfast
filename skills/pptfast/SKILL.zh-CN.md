@@ -80,7 +80,6 @@ pptfast themes --json      # built-in themes (id + label)
 | 跨阶段的比例流量/数量分布（例如预算分配、能源结构） | `sankey` | `chart`（funnel）或 `flowchart` |
 | 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
 | 一份人员名单（团队、讲者阵容、评委阵容、作者名单），需要一个无照片可用的身份锚点 | `people_cards` | `row_cards`/`icon_cards` |
-| 一组机构/品牌标识（赞助商、客户墙、媒体报道/"as seen in"、合作伙伴） | `logo_wall` | `image_grid` |
 | 一组短平行标签（技术栈、能力清单、关键词、资质认证）——是标签，不是带描述的条目 | `tag_row` | `bullets`/`row_cards` |
 
 形态对照、字段说明、满幅组件：`references/components.md`。

@@ -411,7 +411,7 @@ One question per candidate, chosen from the roadmap's §7 candidate pool:
 | p03 | agenda | a six-section meeting deck's opening slide, one section marked as currently active |
 | p04 | tier_stack | a four-rung capability-maturity ladder, deliberately without per-rung counts/percentages (kept out of funnel territory) |
 | p05 | people_cards | five new executives introduced by name/title/one-line background/current remit, initials in place of photos |
-| p06 | logo_wall | a twelve-name, equal-weight customer/partner proof slide for an investor deck |
+| p06 | withdrawn | a twelve-name, equal-weight customer/partner proof slide for an investor deck |
 | p07 | venn | two teams' responsibilities where the overlap itself (three shared duties) is the argument being made |
 | p08 | device_mockup | a real attached product screenshot that needs to read as "a phone in someone's hand," not a floating image (materials pattern follows q02/q12) |
 
@@ -433,7 +433,7 @@ Same schema as the main bank (`coverage.strategy`/`pacing`/`expects_components`/
 - **p03 agenda** → `numbered_cards`/`row_cards` (list shapes with no way to mark one item as "current" without extra text)
 - **p04 tier_stack** → `comparison` (side-by-side shape, not stacked/ordered), `matrix` (2×2 grid, wrong axis count for an n-rung ladder)
 - **p05 people_cards** → `row_cards`/`icon_cards` (nearest per-person card shapes, no dedicated person/avatar semantics)
-- **p06 logo_wall** → `image_grid` (nearest equal-weight grid shape, built for photos not marks/wordmarks), `icon_cards`
+- **p06 withdrawn brand-marks wall** → `image_grid` (nearest equal-weight grid shape, built for photos not marks/wordmarks), `icon_cards`
 - **p07 venn** → `rings` (nearest circular-comparison shape, no true set-intersection region), `comparison` (side-by-side, no overlap region at all)
 - **p08 device_mockup** → `image` (plain image, no frame semantics), `image_compare` (two-image shape, not a device-frame shape)
 

@@ -85,6 +85,38 @@ describe("validateIr", () => {
     expect(v.errors[0]!.message).toMatch(/classroom/)
   })
 
+  it("hard-rejects leftover logo_wall and points at migrate to image_grid", () => {
+    const v = validateIr({
+      theme: { id: "consulting" },
+      slides: [
+        {
+          heading: "x",
+          components: [
+            {
+              type: "logo_wall",
+              items: [{ asset_id: "a" }, { asset_id: "b" }, { asset_id: "c" }, { asset_id: "d" }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    const message = v.errors.map((e) => e.message).join("\n")
+    expect(message).toMatch(/removed/)
+    expect(message).toMatch(/pptfast migrate/)
+    expect(message).toMatch(/image_grid/)
+  })
+
+  it("unknown other component types still do NOT mention migrate", () => {
+    const v = validateIr({
+      theme: { id: "consulting" },
+      slides: [{ heading: "x", components: [{ type: "not_a_real_component" }] }],
+    })
+    expect(v.ok).toBe(false)
+    const message = v.errors.map((e) => e.message).join("\n")
+    expect(message).not.toMatch(/pptfast migrate/)
+  })
+
   it("maps slide-scoped issues to 1-based page numbers", () => {
     const bad = { ...raw, slides: [{ type: "nope" }] }
     const r = validateIr(bad)
@@ -2513,23 +2545,6 @@ describe("irJsonSchema", () => {
     const json = JSON.stringify(irJsonSchema())
     expect(json).toContain("the initials badge is derived from this exact string")
     expect(json).toContain("a CJK name takes only its first character (surname), never two")
-  })
-
-  // logo_wall wave (`.issues/2026-08-06-logo-wall/plan.md`, 裁定 5): the
-  // model already guesses this component's own name — the selection guidance
-  // (logo_wall vs image_grid vs device_mockup) has to reach the emitted JSON
-  // Schema the model reads, not just a source comment.
-  it("surfaces logo_wall's component-selection guidance (when to use it vs `image_grid`/`device_mockup`)", () => {
-    const json = JSON.stringify(irJsonSchema())
-    expect(json).toContain("Lays 4-12 organization/brand logos out on an even wall")
-    expect(json).toContain("contain-fit (never cropped)")
-    expect(json).toContain("Keep `image_grid`")
-  })
-
-  it("surfaces logo_wall's asset_id field-level guidance (the contain-fit backing contract)", () => {
-    const json = JSON.stringify(irJsonSchema())
-    expect(json).toContain("drawn contain-fit (never cropped) on an auto-generated neutral backing panel")
-    expect(json).toContain("transparent single-ink logo")
   })
 
   // chart-depth wave (`.issues/2026-08-06-chart-depth/task-1-report.md`): the

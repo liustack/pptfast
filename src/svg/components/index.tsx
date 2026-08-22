@@ -39,7 +39,6 @@ import { renderDef as dataTableRenderDef } from "./data-table"
 import { renderDef as deviceMockupRenderDef } from "./device-mockup"
 import { renderDef as cycleRenderDef } from "./cycle"
 import { renderDef as peopleCardsRenderDef } from "./people-cards"
-import { renderDef as logoWallRenderDef } from "./logo-wall"
 import { renderDef as tagRowRenderDef } from "./tag-row"
 
 /**
@@ -99,7 +98,6 @@ const RENDER_DEFS: Record<ComponentType, RenderDef> = {
   device_mockup: deviceMockupRenderDef,
   cycle: cycleRenderDef,
   people_cards: peopleCardsRenderDef,
-  logo_wall: logoWallRenderDef,
   tag_row: tagRowRenderDef,
 }
 

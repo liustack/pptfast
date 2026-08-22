@@ -45,6 +45,88 @@ export function migrateBloomToClassroom(raw: unknown): unknown {
   return raw
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isLogoWallComponent(value: unknown): value is Record<string, unknown> {
+  return isPlainRecord(value) && value.type === "logo_wall"
+}
+
+function arrayHasLogoWall(components: unknown): boolean {
+  return Array.isArray(components) && components.some(isLogoWallComponent)
+}
+
+/**
+ * Map one leftover `logo_wall` item onto an `image_grid` item. `asset_id`
+ * copies as-is. `label` becomes `caption` when present. Every other key is
+ * dropped. Non-object items pass through unchanged (mechanical, not
+ * validating).
+ */
+function rewriteLogoWallItem(item: unknown): unknown {
+  if (!isPlainRecord(item)) return item
+  const next: Record<string, unknown> = { asset_id: item.asset_id }
+  if (Object.hasOwn(item, "label") && item.label !== undefined) next.caption = item.label
+  return next
+}
+
+/**
+ * One leftover `logo_wall` component → one `image_grid`. Extra logos past 4
+ * are dropped because image_grid's own ceiling is 4. A 4-item wall maps 1:1.
+ * `title` and every other leftover key are dropped. Non-array `items` stay
+ * as-is (mechanical, not validating).
+ */
+function rewriteLogoWallComponent(component: Record<string, unknown>): Record<string, unknown> {
+  const items = component.items
+  if (!Array.isArray(items)) {
+    return { type: "image_grid", items }
+  }
+  return { type: "image_grid", items: items.slice(0, 4).map(rewriteLogoWallItem) }
+}
+
+function rewriteComponentsArray(components: unknown[]): unknown[] {
+  return components.map((component) => (isLogoWallComponent(component) ? rewriteLogoWallComponent(component) : component))
+}
+
+/**
+ * One-shot relocation of the removed `logo_wall` component onto
+ * `image_grid`. This is not a long-term alias. After this lands, logo_wall
+ * is not a registered component. Never mutates `raw`. Non-object / null /
+ * array input is returned as-is. Identity when there is no `type:
+ * "logo_wall"` component: the same `raw` reference, like bloom when bloom
+ * is absent.
+ *
+ * Walks IR `slides[].components[]` and a page-shaped top-level
+ * `components[]`. Each leftover wall becomes `{ type: "image_grid", items }`
+ * with `asset_id` copied and `label` renamed to `caption`. Extra items past
+ * 4 are dropped because image_grid's own ceiling is 4. A 4-item wall maps
+ * 1:1.
+ */
+export function migrateLogoWallToImageGrid(raw: unknown): unknown {
+  if (!isPlainRecord(raw)) return raw
+  let next: Record<string, unknown> | undefined
+  const take = (): Record<string, unknown> => {
+    if (!next) next = { ...raw }
+    return next
+  }
+
+  if (arrayHasLogoWall(raw.components)) {
+    take().components = rewriteComponentsArray(raw.components as unknown[])
+  }
+
+  if (Array.isArray(raw.slides)) {
+    let slidesChanged = false
+    const slides = raw.slides.map((slide) => {
+      if (!isPlainRecord(slide) || !arrayHasLogoWall(slide.components)) return slide
+      slidesChanged = true
+      return { ...slide, components: rewriteComponentsArray(slide.components as unknown[]) }
+    })
+    if (slidesChanged) take().slides = slides
+  }
+
+  return next ?? raw
+}
+
 /**
  * `scenario.mode` → `narrative.strategy` value map (spec §9.1): only the
  * `"narrative"` mode value renames (the abstraction/instance collision spec
@@ -150,5 +232,5 @@ export function migrateIrV3ToV4(v3: PptxIRV3): PptxIR {
     ...(v3.seed !== undefined ? { seed: v3.seed } : {}),
     slides: v3.slides,
   }
-  return migrateBloomToClassroom(migrateChromeToBranding(v4)) as PptxIR
+  return migrateLogoWallToImageGrid(migrateBloomToClassroom(migrateChromeToBranding(v4))) as PptxIR
 }

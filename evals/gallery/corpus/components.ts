@@ -21,7 +21,6 @@ import type { Lexicon } from "./lexicon"
 /** Asset ids the corpus declares — see `deck.ts`, which materializes them. */
 export const PHOTO_ASSETS = ["photo-1", "photo-2", "photo-3", "photo-4"] as const
 export const SCREENSHOT_ASSET = "screenshot-1"
-export const LOGO_ASSETS = Array.from({ length: 12 }, (_, i) => `logo-${i + 1}`)
 
 /** Take `n` items starting at `from`, wrapping — keeps builders total. */
 function slice(pool: readonly string[], n: number, from = 0): string[] {
@@ -341,12 +340,6 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     type: "people_cards",
     title: lex.kickers[1],
     people: lex.people.slice(0, 5).map((p) => ({ name: p.name, role: p.role, org: p.org })),
-  }),
-
-  logo_wall: (lex) => ({
-    type: "logo_wall",
-    title: lex.kickers[4],
-    items: LOGO_ASSETS.slice(0, 8).map((asset_id, i) => ({ asset_id, label: lex.orgs[i]! })),
   }),
 
   // ── Images ─────────────────────────────────────────────────────────────

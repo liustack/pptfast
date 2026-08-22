@@ -444,6 +444,15 @@ function checkFocusVocabulary(spec: DeckSpec, strategy: Strategy): SpecValidatio
   const errors: SpecValidationIssue[] = []
   spec.pages.forEach((page, i) => {
     if (page.focus === undefined) return
+    if (page.focus === "logo_wall") {
+      errors.push({
+        path: `pages.${i}.focus`,
+        pageId: page.id,
+        message:
+          'component type "logo_wall" was removed — run `pptfast migrate <input> -o <output>` to rewrite it to "image_grid"',
+      })
+      return
+    }
     if (tendencies.includes(page.focus) || COMPONENT_TYPES.includes(page.focus) || LAYOUT_IDS.includes(page.focus)) {
       return
     }

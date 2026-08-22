@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url"
 import type { Component, PptxIR, Slide } from "@/ir"
 import { FULL_BODY_TYPES } from "@/svg/component-traits"
 import { LAYOUT_REGISTRY, type LayoutDefinition } from "@/svg/layouts/registry"
-import { COMPONENT_BUILDERS, LOGO_ASSETS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
+import { COMPONENT_BUILDERS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
 import type { Lexicon } from "./lexicon"
 import { THEME_CONTENT_SLOTS, buildThemeSlot } from "./theme-slots"
 
@@ -49,10 +49,6 @@ export async function corpusAssets(lex: Lexicon): Promise<CorpusAssets> {
   images[SCREENSHOT_ASSET] = {
     src: fixtureJpegDataUri(SCREENSHOT_ASSET),
     alt: lex.captions[2]!,
-  }
-  for (const [i, id] of LOGO_ASSETS.entries()) {
-    const org = lex.orgs[i % lex.orgs.length]!
-    images[id] = { src: fixtureJpegDataUri(id), alt: org }
   }
   return { images }
 }

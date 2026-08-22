@@ -36,7 +36,6 @@ import { traits as dataTableTraits } from "@/ir/components/data-table"
 import { traits as deviceMockupTraits } from "@/ir/components/device-mockup"
 import { traits as cycleTraits } from "@/ir/components/cycle"
 import { traits as peopleCardsTraits } from "@/ir/components/people-cards"
-import { traits as logoWallTraits } from "@/ir/components/logo-wall"
 import { traits as tagRowTraits } from "@/ir/components/tag-row"
 
 /**
@@ -151,7 +150,6 @@ const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
   device_mockup: deviceMockupTraits,
   cycle: cycleTraits,
   people_cards: peopleCardsTraits,
-  logo_wall: logoWallTraits,
   tag_row: tagRowTraits,
 }
 

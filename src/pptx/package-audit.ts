@@ -385,7 +385,7 @@ function checkAnimationTargets(doc: Document, slidePart: string): PackageAuditVi
 /**
  * Asset ids this slide's IR mentions an alt-bearing image binding for
  * (`image` components, `image_grid` items, `image_compare` sides,
- * `device_mockup` components, `logo_wall` items, an asset-kind `background`) —
+ * `device_mockup` components, an asset-kind `background`) —
  * `checkImageAltExported`'s leg (b) uses this
  * *only* to narrow which global `ir.assets.images` entries it even
  * considers for a given slide, never to decide pass/fail on its own (see
@@ -407,8 +407,6 @@ function assetIdsDeclaredOnSlide(slide: PptxIR["slides"][number] | undefined): R
       ids.add(component.right.asset_id)
     } else if (component.type === "device_mockup") {
       ids.add(component.asset_id)
-    } else if (component.type === "logo_wall") {
-      for (const item of component.items) ids.add(item.asset_id)
     }
   }
   return ids
