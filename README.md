@@ -37,7 +37,7 @@ Issues are welcome any time. [Open one](https://github.com/liustack/pptfast/issu
 
 **🔌 Installs into the agent you already use.** One command puts pptfast into DeepSeek Harness, Claude Code, or any agent that reads a skill folder (Codex and friends), and it knows how to build a deck the moment it lands.
 
-**🔁 Revisions without describing everything again.** One command opens a preview page in your browser: page through it, write your notes right on the slides, and your AI picks them up and fixes them. The page refreshes itself as each revision lands.
+**🔁 Revisions without describing everything again.** One command opens a live preview in your browser. Tell your AI what to change in plain words — the page refreshes itself as each revision lands.
 
 **🔒 No account, no API key to render, no network at render time.** Install it and it works. Node 22.19+ or Bun is all you need on the machine. Optional stock-photo search uses the user's own Pexels key.
 
@@ -91,7 +91,7 @@ The commands you will reach for most:
 | `validate <target>` | Check the IR, with page numbers on every error |
 | `render <target> [-o <out.pptx>] [--theme <id>]` | Render a `.pptx`. Omit `-o` to write `.pptfast/<deck>/<deck>.pptx` |
 | `preview <target> [-o <dir>] [--html]` | One SVG per slide, plus a self-contained review page. Omit `-o` to write `.pptfast/<deck>/` |
-| `serve <target>` | Live preview that reloads on every change, with reviewer annotations |
+| `serve <target>` | Live preview that reloads on every change |
 | `audit <target>` | Geometry review: overflow, out-of-bounds, low contrast, overlap |
 | `themes` | List the built-in themes |
 | `doctor` | Check the install: runtime, skill copies, optional capabilities, self-test render |

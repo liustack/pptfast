@@ -6,7 +6,7 @@
  *
  * **The `ComponentSchema` union below is a pure aggregator (src domain reorg
  * wave 2, spec §4.3), same discipline as `src/svg/layouts/registry.ts`'s T1d
- * precedent.** Every one of the 32 component schemas used to live here as a
+ * precedent.** Every one of the component schemas used to live here as a
  * literal `z.object({...})` entry directly inside the `discriminatedUnion`
  * array. Each now lives in its own `src/ir/components/<name>.ts` domain file
  * instead (schema + field aliases + render-trait declaration together, spec
