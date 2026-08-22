@@ -62,6 +62,96 @@ describe("auditL1 planted defects", () => {
     )
     expect(classifyL1(auditL1(svg))).toEqual(classifyL1(auditL1(svg)))
   })
+
+  it("flags a horizontal line through the title x-height as strikethrough", () => {
+    const svg = wrap(
+      `<text x="100" y="200" font-size="80">客户与收入结构</text>` +
+        `<line x1="90" y1="172" x2="500" y2="172" stroke="#F5C518" stroke-width="2"/>`,
+    )
+    expect(codes(svg)).toContain("strikethrough")
+  })
+
+  it("does not flag a legal underline below the baseline as strikethrough", () => {
+    const svg = wrap(
+      `<text x="100" y="200" font-size="80">客户与收入结构</text>` +
+        `<line x1="90" y1="212" x2="500" y2="212" stroke="#F5C518" stroke-width="2"/>`,
+    )
+    expect(codes(svg)).not.toContain("strikethrough")
+  })
+
+  it("does not flag a short gold underline as edge-stick", () => {
+    const svg = wrap(
+      `<text x="640" y="404" font-size="84" text-anchor="middle">客户与收入结构</text>` +
+        `<line x1="568" y1="472" x2="712" y2="472" stroke="#F5C518" stroke-width="1.6"/>`,
+    )
+    expect(codes(svg)).not.toContain("edge-stick")
+    expect(codes(svg)).not.toContain("strikethrough")
+  })
+
+  it("flags two axis-aligned text ink boxes that intersect as overlap", () => {
+    const svg = wrap(
+      `<text x="200" y="435" font-size="70" font-weight="700">年第二季度业务评审</text>` +
+        `<text x="200" y="446" font-size="34">设备预测性维护业务的增长质量</text>`,
+    )
+    expect(codes(svg)).toContain("overlap")
+  })
+
+  it("does not flag stacked 70px lines at y=360 and y=435 as overlap", () => {
+    const svg = wrap(
+      `<text x="200" y="360" font-size="70" font-weight="700">岭原智能 2026</text>` +
+        `<text x="200" y="435" font-size="70" font-weight="700">年第二季度业务评审</text>`,
+    )
+    expect(codes(svg)).not.toContain("overlap")
+  })
+
+  it("flags boxless overflow when a long line leaves a 300px parent card", () => {
+    const zh = "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范说明"
+    const en = "Distributed transaction consistency under a microservice architecture and compensation policy"
+    const zhSvg = wrap(
+      `<g>` +
+        `<rect x="100" y="80" width="300" height="80" fill="#eee"/>` +
+        `<text x="110" y="130" font-size="20">${zh}</text>` +
+        `</g>`,
+    )
+    const enSvg = wrap(
+      `<g>` +
+        `<rect x="100" y="80" width="300" height="80" fill="#eee"/>` +
+        `<text x="110" y="130" font-size="20">${en}</text>` +
+        `</g>`,
+    )
+    expect(codes(zhSvg)).toContain("overflow")
+    expect(codes(enSvg)).toContain("overflow")
+  })
+
+  it("flags a bento shell that runs past the page bottom as out-of-bounds", () => {
+    const svg = wrap(
+      `<rect data-bento-shell="true" x="96" y="421" width="400" height="320" fill="#26342E"/>` +
+        `<text x="116" y="500" font-size="16">接入设备总量</text>`,
+    )
+    expect(codes(svg)).toContain("out-of-bounds")
+    const hit = auditL1(svg).findings.find((f) => f.code === "out-of-bounds")
+    expect(hit?.message).toMatch(/shell|card/i)
+    expect(hit?.message).toMatch(/1280/)
+  })
+
+  it("does not treat a giant watermark or the page fill as boxless overflow", () => {
+    const svg = wrap(
+      `<rect x="0" y="0" width="1280" height="720" fill="#1E2A4A"/>` +
+        `<text x="1224" y="650" font-size="260" font-weight="700" opacity="0.05" text-anchor="end">01</text>` +
+        `<text x="640" y="404" font-size="84" text-anchor="middle">客户与收入结构</text>`,
+    )
+    expect(codes(svg)).not.toContain("overflow")
+  })
+
+  it("classifies a mixed new-rule SVG identically on a dual run (0 drift)", () => {
+    const svg = wrap(
+      `<text x="100" y="200" font-size="80">客户与收入结构</text>` +
+        `<line x1="90" y1="172" x2="500" y2="172" stroke="#F5C518"/>` +
+        `<text x="200" y="435" font-size="70">年第二季度业务评审</text>` +
+        `<text x="200" y="446" font-size="34">设备预测性维护</text>`,
+    )
+    expect(classifyL1(auditL1(svg))).toEqual(classifyL1(auditL1(svg)))
+  })
 })
 
 describe("auditL1 live sample", () => {
