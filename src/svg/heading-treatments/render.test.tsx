@@ -476,6 +476,15 @@ describe("vertical kicker chain", () => {
     expect(stacked.map((t) => t.textContent).join("")).not.toBe(CHAPTER)
   })
 
+  it("stacks the full SubEnhanced board kicker, not an 8-character stub", () => {
+    const kicker = "增长质量与投入方向"
+    const { treated } = withChapter("ink", { subheading: kicker })
+    const root = rootOf(treated!.chrome)
+    const stacked = texts(root).filter((t) => num(t, "x") === 104)
+    expect(stacked.map((t) => t.textContent).join("")).toBe(kicker)
+    expect(stacked).toHaveLength(Array.from(kicker).length)
+  })
+
   it("both missing → no vertical texts, body x=96", () => {
     const { treated } = treat("ink", [contentSlide({ heading: HEADING })], 0)
     expect(treated).not.toBeNull()

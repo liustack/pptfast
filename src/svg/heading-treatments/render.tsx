@@ -67,11 +67,6 @@ function extraTitleY(fitted: ReturnType<typeof fitHeadingLines>): number {
   return Math.max(0, fitted.lines.length - 1) * fitted.lineHeight
 }
 
-function kickerStackSource(source: string): string {
-  const chars = Array.from(source)
-  return chars.length <= 8 ? source : chars.slice(0, 8).join("")
-}
-
 export function tryContentHeadingTreatment(
   props: SvgTemplateProps,
 ): { chrome: ReactNode; contentRect: ContentRect } | null {
@@ -198,7 +193,7 @@ function verticalSign(args: RenderArgs, source: string, opts: { short: boolean }
           <rect x={96} y={64} width={1} height={opts.short ? 96 : 120} fill={colors.accent} />
         </g>
       )}
-      {stackChars(kickerStackSource(source), {
+      {stackChars(source, {
         x: pos.x,
         y: pos.y,
         fontSize,
