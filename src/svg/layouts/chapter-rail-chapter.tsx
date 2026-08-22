@@ -26,7 +26,7 @@ import { accessibleOpacity, readableOn } from "../ink"
  * 建立映射的具名烤色，**档位一・逐字节等价**。
  *
  * 对比度自适应修复（W4 fix round，Critical C1）：主标题/副标题原先写死纯白
- * ——假设章节默认背景总是深色。全集放开后该假设对 bloom/enterprise/
+ * ——假设章节默认背景总是深色。全集放开后该假设对 enterprise/
  * heritage/ink/journal/runway 六个浅底章节主题不成立（runway/enterprise 精确
  * 1.00:1，白字压白底完全不可见。其余四个 1.05-1.14:1，米白/浅棕底同样远低于
  * 3:1 门槛）——同一缺陷模式已在 design decision 8 的台账记录过（consulting×
@@ -47,7 +47,7 @@ import { accessibleOpacity, readableOn } from "../ink"
  * `headingLastY + 46` 这个与字号无关的定值，在本版式实际渲染的 84px 标题下
  * 只留 6px 墨隙（用户在 `theme--ink--zh--p02` 上点名"副标题距离上面的大标题
  * 那么近"）。定值换成 `subheadingDrop()` 这个纯函数，推导见它自身的注释。
- * 本条属共享版式（bloom/campaign/classroom/enterprise/heritage/ink/luxe/
+ * 本条属共享版式（campaign/classroom/enterprise/heritage/ink/luxe/
  * tech/terra 九家 chapter 页共用），修一次九家同时受益，不是 ink 专属补丁。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是水印/进度轨/进度点

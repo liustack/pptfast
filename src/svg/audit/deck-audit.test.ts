@@ -216,7 +216,7 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
 // its own heading ink (`colors.text` — in-sentence coherence with the rest
 // of the heading, not a shared neutral ink; see the layout's own comment)
 // on the 7 that used to fail
-// (consulting/academic/bloom/classroom/heritage/pulse/ember) and stays
+// (consulting/academic/classroom/heritage/pulse/ember) and stays
 // byte-identical (still the theme's own accent fill) on the other 9. See
 // `ending-constellation-ending.test.tsx`'s 16-theme coherence-property test
 // for the fill-value-level assertion this block's low-contrast-findings
@@ -1932,7 +1932,7 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
   // 场：40 枚 8×5 的斜方片，每一枚的包围盒都在页缘带里，够不着任何文字），
   // 全 17 主题重扫一遍，**没有任何一家还能布上这个陷阱**
   // （`.issues/2026-08-18-theme-redesign/skins/tools/probe-armed-decor.mts`：
-  // decor path 数 campaign 40 / terra 3 / ink·classroom·bloom 各 1、其余为
+  // decor path 数 campaign 40 / terra 3 / ink·classroom 各 1、其余为
   // 0，armed 全 0）。
   //
   // 与其让守卫烂成一句空断言（`armed.length > 0` 恒假就再也测不到规则本身），

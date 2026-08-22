@@ -234,53 +234,6 @@
       "fashion-ending"
     ]
   },
-  "bloom": {
-    "1": [
-      "poster-center",
-      "masthead-chapter",
-      "tone-adaptive-content",
-      "split-band",
-      "rail-chapter",
-      "banner-heading",
-      "masthead-ending"
-    ],
-    "2": [
-      "fashion-masthead",
-      "tone-adaptive-chapter",
-      "asymmetric-triptych",
-      "two-column",
-      "rail-chapter",
-      "banner-heading",
-      "banner-ending"
-    ],
-    "3": [
-      "constellation",
-      "constellation-chapter",
-      "two-column",
-      "image-lead-split",
-      "roman-chapter",
-      "image-lead-split",
-      "banner-ending"
-    ],
-    "4": [
-      "split-diagonal",
-      "constellation-chapter",
-      "side-highlight",
-      "rail-numbered",
-      "tone-adaptive-chapter",
-      "rail-numbered",
-      "fashion-ending"
-    ],
-    "5": [
-      "poster-center",
-      "rail-chapter",
-      "two-column",
-      "tone-adaptive-content",
-      "poster-chapter",
-      "banner-heading",
-      "fashion-ending"
-    ]
-  },
   "classroom": {
     "1": [
       "poster-center",

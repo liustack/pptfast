@@ -136,7 +136,7 @@ describe("measureTextUnits — bold golden widths (data-anchored, bold-metrics f
     })
   })
 
-  describe("SimSun/KaiTi (heading-only: bloom/journal/runway SimSun, ink KaiTi) -- conservative-proxy, still class-average (see svg-text-layout.ts's SIMSUN_KAITI comment for why this face was deliberately not upgraded to an exact table)", () => {
+  describe("SimSun/KaiTi (heading-only: journal/runway SimSun, ink KaiTi) -- conservative-proxy, still class-average (see svg-text-layout.ts's SIMSUN_KAITI comment for why this face was deliberately not upgraded to an exact table)", () => {
     const SIMSUN_HEADING = "SimSun, 宋体, Georgia, serif" // resolveFontStack picks "SimSun" first
     const KAITI_HEADING = "KaiTi, 楷体, SimSun, 宋体, serif" // resolveFontStack picks "KaiTi" first
 

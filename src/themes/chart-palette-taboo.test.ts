@@ -27,7 +27,7 @@
 //     floor is what keeps the slate grey-blues out — heritage's #3F5361
 //     (s=0.21), insight's #7E93A8 (0.19), vermilion's #4A5C6E (0.20),
 //     luxe's #77808E (0.09) all read as neutrals on the page, not as blue,
-//     and the Morandi twins bloom/classroom sit just under the line too
+//     and classroom sits just under the line too
 //     (#4A6B8A at 0.30 against #988054 at 0.29).
 //
 // ## The four palettes this verdict actually changed

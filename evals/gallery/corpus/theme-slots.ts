@@ -135,11 +135,10 @@ function chart(chart_type: ThemeChartType, direction?: "horizontal"): ThemeConte
  * pair owns that form in `form-assignments.ts`.
  */
 export const THEME_CONTENT_SLOTS: Record<string, readonly ThemeContentSlot[]> = {
-  academic: [slot("icon_cards"), slot("paragraph"), slot("bullets"), slot("quote"), slot("callout"), slot("code"), slot("citation")],
+  academic: [slot("icon_cards"), slot("paragraph"), chart("funnel"), slot("quote"), slot("callout"), slot("code"), slot("citation")],
   arena: [chart("scatter"), slot("verdict_banner"), slot("tag_row"), slot("data_table"), slot("waterfall"), slot("heatmap"), slot("gantt")],
-  bloom: [chart("gauge"), slot("sankey"), slot("row_cards"), slot("roadmap"), slot("rings"), slot("matrix"), slot("flowchart")],
   campaign: [chart("dumbbell"), slot("architecture"), slot("insight_panel"), slot("swot"), slot("pest"), slot("five_forces"), slot("bmc")],
-  classroom: [chart("funnel"), slot("people_cards"), slot("logo_wall"), slot("image"), slot("image_compare"), slot("device_mockup"), slot("data_table")],
+  classroom: [chart("gauge"), slot("logo_wall"), slot("image"), slot("image_compare"), slot("device_mockup"), slot("data_table"), slot("bullets")],
   consulting: [chart("bar"), slot("bullets"), slot("kpi_cards"), slot("people_cards"), slot("heatmap"), slot("quote"), slot("architecture")],
   crayon: [slot("kpi_cards"), slot("bullets"), slot("swot"), slot("gantt"), slot("quote"), slot("logo_wall"), slot("code")],
   ember: [slot("numbered_cards"), slot("data_table"), slot("flowchart"), slot("callout"), slot("image"), slot("pest"), slot("rings")],

@@ -49,11 +49,6 @@ import type { StyleTokens } from "./tokens";
  *
  * 装饰见 `../svg/motifs/motif-classroom-motif.tsx`（拍纸簿：顶缘装订孔排 +
  * 底缘铅笔虚线 + 右上回形针弧）。
- *
- * **bloom 是本主题的色板 preset**（`./bloom.ts` 直接 spread 本对象，只覆盖
- * 五个色值），结构行也共用同一个 `layoutTendencies` 引用（`definitions.ts`
- * 的 `CLASSROOM_STRUCTURE`）——改本文件的任何非颜色字段都会一并改到 bloom，
- * 这是设计意图，`theme-structure.test.ts` 的 preset 块逐项钉住。
  */
 export const CLASSROOM_TOKENS: StyleTokens = {
   id: "classroom",

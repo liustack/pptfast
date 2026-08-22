@@ -1,7 +1,7 @@
 /**
  * Render-side content-page heading treatment assignment table. Treatments
  * are not IR: one theme maps to at most one treatment, looked up here.
- * bloom is a classroom recolor preset and is not listed. 16 rows.
+ * 16 rows. classroom is not listed.
  *
  * ghost_index and tag_box need a chapter page. Runtime falls back to the
  * native heading when `chapterNumberFor === 0`. The table still lists those

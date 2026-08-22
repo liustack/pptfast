@@ -31,7 +31,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  * 对比度自适应修复（W4 fix round，Important I1「content layout 的
  * subheading 出现同类回声」台账）：subheading 原样消费 `colors.accent`——
  * 这个 token 是为装饰性强调（小面积图标/分隔线）校准的，不保证在正文尺寸
- * 下达标（consulting/bloom/classroom/heritage/academic 均实测 1.45-2.92:1，
+ * 下达标（consulting/classroom/heritage/academic 均实测 1.45-2.92:1，
  * 该 layout 在这些主题 pre-W4 策展集里都不存在，是全集放开新暴露）。改用
  * `accessibleInk(colors.accent, ctx.defaultBg, fontSize)`——通过校验的主题
  * 原样返回、逐字节不变。

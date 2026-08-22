@@ -22,9 +22,9 @@
       "color": "leavcx"
     },
     "theme--academic--zh--p05": {
-      "hash": "1s3b9pp",
-      "geometry": "1ld7fpt",
-      "color": "pknpml"
+      "hash": "rv6y4l",
+      "geometry": "8qrk61",
+      "color": "vy4y7e"
     },
     "theme--academic--zh--p06": {
       "hash": "14ykpzq",
@@ -32,8 +32,8 @@
       "color": "18dt11o"
     },
     "theme--academic--zh--p07": {
-      "hash": "15ck2wn",
-      "geometry": "4jc14h",
+      "hash": "15drm7r",
+      "geometry": "1xe0eox",
       "color": "w155z8"
     },
     "theme--academic--zh--p08": {
@@ -101,56 +101,6 @@
       "geometry": "1nryw91",
       "color": "no4nvm"
     },
-    "theme--bloom--zh--p01": {
-      "hash": "j6dyhy",
-      "geometry": "4wslsu",
-      "color": "1w9uwd1"
-    },
-    "theme--bloom--zh--p02": {
-      "hash": "sdybb3",
-      "geometry": "rqmb00",
-      "color": "5qqne3"
-    },
-    "theme--bloom--zh--p03": {
-      "hash": "18xz0sk",
-      "geometry": "1aaxkuu",
-      "color": "1t9s1vz"
-    },
-    "theme--bloom--zh--p04": {
-      "hash": "1v8k90r",
-      "geometry": "1nwtkxg",
-      "color": "fzji96"
-    },
-    "theme--bloom--zh--p05": {
-      "hash": "1nflx3z",
-      "geometry": "14r7ny9",
-      "color": "1eshp0b"
-    },
-    "theme--bloom--zh--p06": {
-      "hash": "3qqgcn",
-      "geometry": "pulear",
-      "color": "1woj3hz"
-    },
-    "theme--bloom--zh--p07": {
-      "hash": "wb4vdj",
-      "geometry": "9n26dd",
-      "color": "1byl6kr"
-    },
-    "theme--bloom--zh--p08": {
-      "hash": "wunzyt",
-      "geometry": "11qc5j8",
-      "color": "1h9rsfy"
-    },
-    "theme--bloom--zh--p09": {
-      "hash": "8rtt9p",
-      "geometry": "1jttuky",
-      "color": "vtyi5n"
-    },
-    "theme--bloom--zh--p10": {
-      "hash": "ulzdh1",
-      "geometry": "1dqsl1g",
-      "color": "jktraq"
-    },
     "theme--campaign--zh--p01": {
       "hash": "1sis9az",
       "geometry": "18f7ta",
@@ -212,39 +162,39 @@
       "color": "1883ei8"
     },
     "theme--classroom--zh--p03": {
-      "hash": "rdwhmi",
-      "geometry": "fwo4b4",
-      "color": "ikistr"
+      "hash": "16h0dkw",
+      "geometry": "1aaxkuu",
+      "color": "5roxz"
     },
     "theme--classroom--zh--p04": {
-      "hash": "csi0rl",
-      "geometry": "gw8viy",
-      "color": "1301fiz"
+      "hash": "1du5yts",
+      "geometry": "1c2m0eg",
+      "color": "93ty7c"
     },
     "theme--classroom--zh--p05": {
-      "hash": "7uucl8",
-      "geometry": "m3jr2o",
-      "color": "1z0tcov"
+      "hash": "1wbt9pl",
+      "geometry": "1devg5v",
+      "color": "188xtb5"
     },
     "theme--classroom--zh--p06": {
-      "hash": "31c749",
-      "geometry": "19lk0cv",
-      "color": "10tn3i2"
+      "hash": "1amivoh",
+      "geometry": "nq08ac",
+      "color": "17tzvzc"
     },
     "theme--classroom--zh--p07": {
-      "hash": "t1cv3d",
-      "geometry": "vh57nk",
-      "color": "1nz49yx"
+      "hash": "14n9sqo",
+      "geometry": "mca0vo",
+      "color": "1jsy7f4"
     },
     "theme--classroom--zh--p08": {
-      "hash": "1gudbdh",
-      "geometry": "1lvtqrk",
-      "color": "5ovsbd"
+      "hash": "3y58cf",
+      "geometry": "vrox3r",
+      "color": "1pqmkb0"
     },
     "theme--classroom--zh--p09": {
-      "hash": "1ce376j",
-      "geometry": "1ntya90",
-      "color": "1qszs4f"
+      "hash": "cqvrlb",
+      "geometry": "19akffe",
+      "color": "4ne47k"
     },
     "theme--classroom--zh--p10": {
       "hash": "ag651d",
@@ -437,8 +387,8 @@
       "color": "tfiggc"
     },
     "theme--enterprise--zh--p08": {
-      "hash": "1grvisk",
-      "geometry": "13gg7ap",
+      "hash": "irvvyi",
+      "geometry": "iocpfb",
       "color": "1a5toui"
     },
     "theme--enterprise--zh--p09": {
@@ -487,8 +437,8 @@
       "color": "sdkd1s"
     },
     "theme--heritage--zh--p08": {
-      "hash": "p7w6a2",
-      "geometry": "1xqts5q",
+      "hash": "zsapdc",
+      "geometry": "rzzbqg",
       "color": "1wgvh2a"
     },
     "theme--heritage--zh--p09": {
@@ -632,8 +582,8 @@
       "color": "f517vs"
     },
     "theme--journal--zh--p07": {
-      "hash": "47c0bl",
-      "geometry": "1c7o28t",
+      "hash": "b7t7mr",
+      "geometry": "yutm35",
       "color": "nc8a4x"
     },
     "theme--journal--zh--p08": {
@@ -677,8 +627,8 @@
       "color": "7k95u9"
     },
     "theme--lecture--zh--p06": {
-      "hash": "xs9ct9",
-      "geometry": "1c0fmtp",
+      "hash": "o5jmm3",
+      "geometry": "fg1nrf",
       "color": "fcb3mj"
     },
     "theme--lecture--zh--p07": {
@@ -687,8 +637,8 @@
       "color": "z6yynd"
     },
     "theme--lecture--zh--p08": {
-      "hash": "1wffc3j",
-      "geometry": "10t196a",
+      "hash": "4bvu9p",
+      "geometry": "1wd6idg",
       "color": "1406t49"
     },
     "theme--lecture--zh--p09": {
@@ -1187,8 +1137,8 @@
       "color": "16ulbe9"
     },
     "theme--terra--zh--p08": {
-      "hash": "t75jjp",
-      "geometry": "nke8wh",
+      "hash": "5uxv6l",
+      "geometry": "eevgwh",
       "color": "1rwnbuy"
     },
     "theme--terra--zh--p09": {

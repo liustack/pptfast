@@ -74,7 +74,7 @@ import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
  *
  * 对比度自适应修复（W4 fix round，Important I1「content layout 的
  * subheading 出现同类回声」台账）：两分支的 subheading 都原样消费
- * `colors.accent`，同 content-narrow-column.tsx 先例——对 consulting/bloom/
+ * `colors.accent`，同 content-narrow-column.tsx 先例——对 consulting/
  * classroom/heritage/academic 五个主题不达标。两分支的有效背景不同（`withBg`
  * 分支落在自画的不透明白色卡片上，无背景分支落在页面默认背景上），各自改用
  * `accessibleInk(colors.accent, <对应背景>, fontSize)`：`withBg` 分支传固定

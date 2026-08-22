@@ -409,7 +409,11 @@ function checkTheme(spec: DeckSpec): SpecValidationIssue[] {
   const themeId = resolveSpecThemeId(spec)
   const installed = getInstalledThemeIds()
   if (installed.includes(themeId)) return []
-  return [{ path: "theme", message: `unknown theme "${themeId}" — available: ${installed.join(", ")} (see \`pptfast themes\`)` }]
+  const message =
+    themeId === "bloom"
+      ? 'theme id "bloom" was removed — run `pptfast migrate <input> -o <output>` to rewrite it to "classroom"'
+      : `unknown theme "${themeId}" — available: ${installed.join(", ")} (see \`pptfast themes\`)`
+  return [{ path: "theme", message }]
 }
 
 // ── hard gate: focus vocabulary ─────────────────────────────────────────

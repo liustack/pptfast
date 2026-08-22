@@ -31,8 +31,8 @@ export interface ThemeDefinition {
    * 全集。design decision 7/8 曾经的六处对比度策展排除（luxe/campaign/
    * classroom 的 content 排除 banner-heading、tech 的 cover/content、
    * consulting 的 chapter）已在 W4 fix round 随对比度自适应 ink helper
-   * （`src/svg/ink.ts`）的根因修复全部撤销。fix round 自身新发现的三处
-   * （bloom/classroom/heritage 的 chapter 排除 fashion-chapter）也已在
+   * （`src/svg/ink.ts`）的根因修复全部撤销。fix round 自身新发现的两处
+   * （classroom/heritage 的 chapter 排除 fashion-chapter）也已在
    * post-v0.3 W8 fix round 随 `readableOn` 两墨实测对比度取优的根因修复一并
    * 撤销（backlog item 2）——十三主题四页型现在均为不折不扣的全集，无任何
    * 排除残留。页型空集 = 该页型回落调用侧兜底（十三主题四页型均非空，
@@ -203,28 +203,28 @@ const CONSULTING_CONTENT_LAYOUTS: readonly string[] = [
 ]
 
 /**
- * Formerly "the full chapter set minus `fashion-chapter`" — three W4
- * fix-round exclusions (bloom/classroom/heritage), **reverted** in the
+ * Formerly "the full chapter set minus `fashion-chapter`" — two W4
+ * fix-round exclusions (classroom/heritage), **reverted** in the
  * post-v0.3 W8 fix round (backlog item 2,
  * `.issues/notes/engineering-history.md` #2) now that the root cause
  * is actually fixed. History, for the git-blame reader:
  * `chapter-fashion-chapter.tsx` already picked its own ink via
  * `readableOn(ctx.colors.accent)`, but `readableOn`'s old fixed-0.4-luminance
  * threshold didn't guarantee the 3:1 large-text ratio the way comparing both
- * inks' real contrast does — bloom (`#D89A8E`), classroom (`#D89A88`),
+ * inks' real contrast does — classroom (`#D89A88`),
  * heritage (`#C98A4B`) all have an accent luminance in the old threshold's
- * blind gap (~0.19-0.4), where white ink measured under 3:1 (bloom 2.35,
+ * blind gap (~0.19-0.4), where white ink measured under 3:1 (
  * classroom 2.36, heritage 2.91) even though dark ink was always the better
  * option there. `readableOn` now compares both inks' actual contrast and
  * picks the higher one (`src/svg/ink.ts`) — re-measured post-fix (`pnpm exec
- * tsx` against a real render of all three, 2026-07-19): dark ink measures
- * 8.23:1 (bloom), 8.19:1 (classroom), 6.65:1 (heritage) against the same
+ * tsx` against a real render of both, 2026-07-19): dark ink measures
+ * 8.19:1 (classroom), 6.65:1 (heritage) against the same
  * accent colors, and `auditDeck` reports zero low-contrast findings for the
- * heading/"CHAPTER NN" label on all three — comfortably above 3:1, so the
+ * heading/"CHAPTER NN" label on both — comfortably above 3:1, so the
  * curation workaround is no longer needed. (The decorative watermark digit's
  * own already-adjudicated sub-3:1 blend — `full-matrix-contrast.test.ts`'s
  * ratio-banded allowlist entry — is unaffected: its post-fix ratios, 1.537/
- * 1.537/1.498, still land inside that entry's existing [1.2, 1.8] band.)
+ * 1.498, still land inside that entry's existing [1.2, 1.8] band.)
  * `LAYOUTS` below now gives all 13 themes the plain {@link FULL_LAYOUTS.chapter}
  * — no remaining exclusion of any kind in this file.
  */
@@ -276,11 +276,11 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 撤销——`LAYOUTS` 现在是十三主题的纯 {@link FULL_LAYOUTS} 全集（A 方案纯
  * 终态），不再有任何 content/cover/chapter 排除残留于这六处。
  *
- * fix round 全矩阵扫描曾额外发现一类——bloom/classroom/heritage 的 chapter
+ * fix round 全矩阵扫描曾额外发现一类——classroom/heritage 的 chapter
  * 排除 `fashion-chapter`（`readableOn(ctx.colors.accent)` 固定 0.4 明度阈值
- * 对这三个主题的 accent 色不够精确，产出 <3:1）——但这处排除已在 post-v0.3
+ * 对这两个主题的 accent 色不够精确，产出 <3:1）——但这处排除已在 post-v0.3
  * W8 fix round（backlog item 2，`readableOn` 改为两墨实测对比度取优）随根因
- * 一起撤销：三个主题重测后的 accent-ink 对比度分别是 8.23:1/8.19:1/6.65:1，
+ * 一起撤销：两个主题重测后的 accent-ink 对比度分别是 8.19:1/6.65:1，
  * `auditDeck` 复核零 low-contrast 发现。W4 当时的终态是十三主题不折不扣的
  * {@link FULL_LAYOUTS} 全集。Gallery r2（2026-08-22）在 content 轴重新收窄：
  * D10 退订 image-lead-split 后自动池 11。D20 把 lecture / luxe 换成
@@ -288,28 +288,9 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * `CONSULTING_CONTENT_LAYOUTS`。其余主题的 content 仍是全集。
  */
 /**
- * classroom 的结构身份，被 classroom 和 bloom 两个 theme id **共用同一个对象**
- * （theme-structure-allocation wave，`structure-map.md` 会话 0 裁决 3）。
- *
- * 这是声明的同构，不是漏写。定稿分配表把 bloom 的四轴（heading-axis 左 /
- * meta top-band / decor medium / whitespace medium）与 classroom 判成同一格，
- * 而分配表的填表铁律是「任何两个主题不得四轴全同」——两家全同就意味着它们
- * 本来就是同一个结构身份，差别只在色板。与其给 bloom 硬编一组它并不真的想要
- * 的轴去满足查重脚本，不如把这层关系写成代码里的事实：bloom = classroom 的
- * 换肤（palette preset），保留自己的 id 和色板，结构行共享。
- *
- * **柔和组皮肤重设计（2026-08-20）把这层关系落到了底**：bloom 的 token 对象
- * 现在直接 spread `CLASSROOM_TOKENS`（`themes/bloom.ts`，只覆盖五个色值），
- * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
- * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
- *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「22 个 theme
- * id、21 个结构身份」是本仓从此的正式口径，不是过渡态。
- *
- * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
- * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
- * 谁把其中一家的值改开，两条断言一起红。复制字面量做不到这件事——两份字面量
- * 各自漂移时深等会红，但引用恒等这条更强的保证从一开始就不存在。
+ * classroom 自己的结构身份（theme-structure-allocation wave）。四轴是
+ * heading-axis 左 / meta top-band / decor medium / whitespace medium。
+ * 产品口径 24 套主题、24 个 id，classroom 独占这一行。
  */
 const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
   // cover `band-title`：通栏雾蓝板书带承反白标题，陶土波浪在带下。板上那张
@@ -330,7 +311,7 @@ const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
   ending: ["tone-adaptive-ending", "masthead-ending"],
 }
 
-/** classroom / bloom share one layouts object the same way they share CLASSROOM_STRUCTURE. */
+/** classroom 自己的 layouts 对象，与 {@link CLASSROOM_STRUCTURE} 成对。 */
 const CLASSROOM_LAYOUTS: ThemeDefinition["layouts"] = {
   cover: ["band-title"],
   chapter: FULL_LAYOUTS.chapter,
@@ -469,9 +450,9 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // and `poster-center`/`poster-chapter`/`poster-ending` are verbatim
     // extractions of insight's own predecessor creative.tsx render code
     // (`EditorialDarkCover`/`Chapter`/`Ending`) — matches the
-    // Bloomberg/Economist-style bold, information-forward register this
+    // terminal/Economist-style bold, information-forward register this
     // theme's own token comment names ("原 creative 改名...其实是
-    // Bloomberg/Economist 财经信息图风").
+    // terminal/Economist 财经信息图风").
     layoutTendencies: {
       // `editorial-masthead` appended (inert-declaration fix, 2026-08-19).
       // `poster-center` alone was a declaration a default deck could never
@@ -780,26 +761,11 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     },
   },
   // classroom（教学课堂，2026-07-13 第 13 主题）：讲义雾蓝 + 拍纸簿装饰由
-  // 专属 classroom-motif 承载（2026-08-20 柔和组重设计，同一个 motif 也是
-  // bloom 的锚点）。chapter 曾排除 fashion-chapter（W4 fix
-  // round 新发现），post-v0.3 W8 fix round 随 readableOn 根因修复一起撤销
-  // ——见上方 LAYOUTS 块注释。
-  // cover 声明（theme-structure-allocation wave）见 `CLASSROOM_STRUCTURE`
-  // 的文档注释——那个对象同时是 bloom 的结构行，两家共用一份引用。
+  // 专属 classroom-motif 承载（2026-08-20 柔和组重设计）。chapter 曾排除
+  // fashion-chapter（W4 fix round 新发现），post-v0.3 W8 fix round 随
+  // readableOn 根因修复一起撤销——见上方 LAYOUTS 块注释。
+  // cover 声明（theme-structure-allocation wave）见 `CLASSROOM_STRUCTURE`。
   classroom: {
-    layouts: CLASSROOM_LAYOUTS,
-    motif: "classroom-motif",
-    layoutTendencies: CLASSROOM_STRUCTURE,
-  },
-  // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：chapter 曾排除
-  // fashion-chapter，post-v0.3 W8 fix round 撤销——见上方 LAYOUTS 块注释。
-  // bloom 的结构身份就是 classroom 的结构身份，共用同一个对象——**这是声明的
-  // 同构（palette preset），不是遗漏**。理由、红线和测试怎么钉，全写在
-  // `CLASSROOM_STRUCTURE` 的文档注释里。
-  // motif 本轮（2026-08-20 柔和组）改指 `classroom-motif`：bloom 专属的
-  // 水彩 motif 随色板一起退役，preset 从此连装饰几何也是同一份，渲出来的是
-  // bloom 自己的樱粉色板。bloom 这个 theme id 永不删除的红线不变。
-  bloom: {
     layouts: CLASSROOM_LAYOUTS,
     motif: "classroom-motif",
     layoutTendencies: CLASSROOM_STRUCTURE,
@@ -1426,7 +1392,7 @@ const NO_SPARSE: readonly string[] = []
 /**
  * Per-theme sparse offer table, projected onto {@link THEME_DEFINITIONS}
  * below. Kept off the `LAYOUTS` literals so cover-lock tests that pin
- * `layoutTendencies` object identity (`bloom` `toBe` `classroom`) stay
+ * `layoutTendencies` object identity stay
  * untouched. Omitted keys stay `undefined` through the projection (offer
  * every sparse id). `[]` offers none. A list is the three boarded content
  * faces in `FACES` insertion order, then `verse-chapter`.
@@ -1434,7 +1400,6 @@ const NO_SPARSE: readonly string[] = []
 const SPARSE_LAYOUTS: Partial<Record<CanonicalThemeId, readonly string[]>> = {
   crayon: NO_SPARSE,
   classroom: NO_SPARSE,
-  bloom: NO_SPARSE,
   enterprise: NO_SPARSE,
   pulse: NO_SPARSE,
   runway: NO_SPARSE,

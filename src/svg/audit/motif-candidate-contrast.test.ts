@@ -248,7 +248,7 @@ describe("motif candidate decor-visibility guard (P1 variety wave, task 2 — re
             const shapes = decorRoot ? Array.from(decorRoot.querySelectorAll(DECOR_SHAPE_SELECTOR)) : []
             // No shapes at all is a legitimate, pre-existing "this motif
             // retreats on this slide type" design choice (e.g. every
-            // enterprise/luxe/heritage/classroom/bloom-family motif returns
+            // enterprise/luxe/heritage/classroom motif returns
             // null on chapter — the "memphis 先例" documented in each of
             // their own source headers, disclosed in this task's report) —
             // not a visibility bug, so it's intentionally not flagged here.
@@ -256,9 +256,9 @@ describe("motif candidate decor-visibility guard (P1 variety wave, task 2 — re
 
             const bgHex = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
             // Max ratio across the slide's own decor shapes, not "every
-            // shape individually" (review-fix round 2, `bloom-motif`'s own
-            // watercolor algorithm is many overlapping layers each at
-            // ~3-4.5% opacity by design — see that file's own header — any
+            // shape individually" (review-fix round 2, the deleted watercolor
+            // sibling motif used many overlapping layers each at
+            // ~3-4.5% opacity by design — any
             // *single* granule layer measured alone is intentionally
             // near-invisible; only their composite is meant to read as
             // visible texture). What must clear the floor is the *most*

@@ -99,7 +99,6 @@ describe("gallery coverage", () => {
 
     expect(subjects("crayon")).toEqual([])
     expect(subjects("classroom")).toEqual([])
-    expect(subjects("bloom")).toEqual([])
 
     const stage = subjects("stage")
     expect(stage).toContain("statement")
@@ -200,7 +199,7 @@ describe("gallery theme table corpus", () => {
     }
   })
 
-  it("covers every required surface at least once across the 25×7 union", async () => {
+  it("covers every required surface at least once across the 24×7 union", async () => {
     const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
     const drawn = themeTableSurfaces(jobs)
     const required = [...THEME_TABLE_REQUIRED_SURFACES].sort()

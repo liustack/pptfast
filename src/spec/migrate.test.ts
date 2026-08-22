@@ -172,4 +172,23 @@ describe("migrateDeckPlanToSpec", () => {
     expect(result.pages[0]!.beat).toBe("anchor")
     expect("rhythm" in result.pages[0]!).toBe(false)
   })
+
+  it('theme: "bloom" → "classroom"', () => {
+    const result = migrateDeckPlanToSpec({ theme: "bloom", pages: [] }) as Record<string, unknown>
+    expect(result.theme).toBe("classroom")
+  })
+
+  it("scenario + chrome + bloom: all remaps happen in one pass", () => {
+    const result = migrateDeckPlanToSpec({
+      scenario: "boardroom-report",
+      chrome: "full",
+      theme: "bloom",
+      pages: [{ id: "p-a", type: "content", heading: "A", rhythm: "anchor" }],
+    }) as { pages: Record<string, unknown>[] } & Record<string, unknown>
+    expect(result.narrative).toBe("boardroom-report")
+    expect(result.branding).toBe("full")
+    expect("chrome" in result).toBe(false)
+    expect(result.theme).toBe("classroom")
+    expect(result.pages[0]!.beat).toBe("anchor")
+  })
 })

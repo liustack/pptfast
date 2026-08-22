@@ -16,7 +16,7 @@ import { PptfastError } from "../errors"
 import { VERSION } from "../version"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { PptxIRV3Schema } from "../ir/legacy-v3"
-import { migrateChromeToBranding, migrateIrV3ToV4 } from "../ir/migrate"
+import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4 } from "../ir/migrate"
 import { disassembleDeck, type PageContent } from "../spec/assemble"
 import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../spec"
 import { migrateDeckPlanToSpec } from "../spec/migrate"
@@ -1458,10 +1458,12 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
  * - a file → {@link runMigrateIrFile}: an IR v3 document (`version: "3"`)
  *   wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`). A v4 IR or
  *   spec-shaped file that still carries the old `chrome` field is rewritten
- *   via {@link migrateChromeToBranding}. IR v2 is explicitly not accepted
- *   here (spec §15.3: "v2 无真实用户" — `pptfast migrate` does not convert
- *   v2, `validateIr`'s own v2 hard-reject message carries the full v2→v4
- *   combined mapping for a caller who needs to convert one by hand).
+ *   via {@link migrateChromeToBranding}, and a leftover `bloom` theme id is
+ *   relocated onto `classroom` via {@link migrateBloomToClassroom}. IR v2
+ *   is explicitly not accepted here (spec §15.3: "v2 无真实用户" —
+ *   `pptfast migrate` does not convert v2, `validateIr`'s own v2
+ *   hard-reject message carries the full v2→v4 combined mapping for a
+ *   caller who needs to convert one by hand).
  *
  * Both branches never overwrite `<output>` — a pre-existing file at the
  * resolved output path is a hard `PptfastError`, the same `wx`-flag EEXIST
@@ -1481,6 +1483,23 @@ export async function runMigrate(input: string, output: string, cwd = process.cw
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function needsChromeRewrite(raw: Record<string, unknown>): boolean {
+  return Object.hasOwn(raw, "chrome")
+}
+
+function needsBloomRewrite(raw: Record<string, unknown>): boolean {
+  const theme = raw.theme
+  if (theme === "bloom") return true
+  return isPlainRecord(theme) && theme.id === "bloom"
+}
+
+function migrateRewriteNote(chrome: boolean, bloom: boolean): string {
+  const parts: string[] = []
+  if (chrome) parts.push("renamed chrome → branding")
+  if (bloom) parts.push("relocated bloom → classroom")
+  return parts.join(", ")
 }
 
 /** Write JSON with the existing `wx` never-overwrite rule shared by migrate legs. */
@@ -1527,9 +1546,12 @@ async function writeMigratedJson(outPath: string, data: unknown): Promise<void> 
  * specific diagnosis to offer than that one already gives.
  *
  * A directory that has only `deck.spec.json` (no plan) still carrying the
- * old `chrome` field is rewritten via {@link migrateChromeToBranding} to
- * `<output>/deck.spec.json`. Same-dir write keeps the `wx` never-overwrite
- * rule. Dual-source hard-errors. No chrome left means already migrated.
+ * old `chrome` field is rewritten via {@link migrateChromeToBranding}, and
+ * a leftover `bloom` theme id is relocated onto `classroom` via
+ * {@link migrateBloomToClassroom}, written to `<output>/deck.spec.json`.
+ * Same-dir write keeps the `wx` never-overwrite rule. Dual-source
+ * hard-errors. Neither chrome-to-rename nor bloom left means already
+ * migrated.
  */
 async function runMigrateDeckDir(dir: string, output: string, cwd: string): Promise<string> {
   const planPath = join(dir, PLAN_FILENAME)
@@ -1538,10 +1560,12 @@ async function runMigrateDeckDir(dir: string, output: string, cwd: string): Prom
   const specPath = join(outDir, SPEC_FILENAME)
   if (!(await pathExists(planPath)) && (await pathExists(sourceSpecPath))) {
     const raw = await loadIrFile(sourceSpecPath, "spec")
-    if (isPlainRecord(raw) && Object.hasOwn(raw, "chrome")) {
-      const migrated = migrateChromeToBranding(raw)
+    if (isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw))) {
+      const chrome = needsChromeRewrite(raw)
+      const bloom = needsBloomRewrite(raw)
+      const migrated = migrateBloomToClassroom(migrateChromeToBranding(raw))
       await writeMigratedJson(specPath, migrated)
-      return `wrote ${specPath} (renamed chrome → branding)`
+      return `wrote ${specPath} (${migrateRewriteNote(chrome, bloom)})`
     }
     throw new PptfastError(
       `${dir} has ${SPEC_FILENAME} but no ${PLAN_FILENAME} — this deck project is already migrated, nothing to do`,
@@ -1560,8 +1584,9 @@ async function runMigrateDeckDir(dir: string, output: string, cwd: string): Prom
  * routing it through the v3 vocabulary as a stepping stone (spec §15.3:
  * "v2 无真实用户", "`pptfast migrate` 只支持 v3→v4，不接 v2"). A v4 IR or
  * spec-shaped file that still carries the old `chrome` field is rewritten
- * via {@link migrateChromeToBranding}. Anything else is rejected with a
- * message naming what this command does accept.
+ * via {@link migrateChromeToBranding}, and a leftover `bloom` theme id is
+ * relocated onto `classroom` via {@link migrateBloomToClassroom}. Anything
+ * else is rejected with a message naming what this command does accept.
  */
 async function runMigrateIrFile(filePath: string, output: string, cwd: string): Promise<string> {
   const raw = await loadIrFile(filePath)
@@ -1582,12 +1607,14 @@ async function runMigrateIrFile(filePath: string, output: string, cwd: string): 
     await writeMigratedJson(outPath, migrated)
     return `wrote ${outPath} (migrated IR v3 → v4)`
   }
-  if (isPlainRecord(raw) && Object.hasOwn(raw, "chrome")) {
-    const migrated = migrateChromeToBranding(raw)
+  if (isPlainRecord(raw) && (needsChromeRewrite(raw) || needsBloomRewrite(raw))) {
+    const chrome = needsChromeRewrite(raw)
+    const bloom = needsBloomRewrite(raw)
+    const migrated = migrateBloomToClassroom(migrateChromeToBranding(raw))
     await writeMigratedJson(outPath, migrated)
-    return `wrote ${outPath} (renamed chrome → branding)`
+    return `wrote ${outPath} (${migrateRewriteNote(chrome, bloom)})`
   }
   throw new PptfastError(
-    `pptfast migrate converts an IR v3 file (version: "3"), a v4 IR or deck spec still carrying the old chrome field (renamed to branding), or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath} with nothing to migrate`,
+    `pptfast migrate converts an IR v3 file (version: "3"), a v4 IR or deck spec still carrying the old chrome field (renamed to branding) or the removed bloom theme id (relocated to classroom), or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath} with nothing to migrate`,
   )
 }

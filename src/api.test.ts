@@ -69,7 +69,20 @@ describe("validateIr", () => {
   it("hard-rejects an unknown theme id with the available list", () => {
     const v = validateIr({ theme: { id: "neon" }, slides: [{ heading: "x" }] })
     expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/unknown theme "neon"/)
     expect(v.errors[0]!.message).toMatch(/available:.*consulting/)
+    expect(v.errors[0]!.message).not.toMatch(/pptfast migrate/)
+    expect(v.errors[0]!.message).not.toMatch(/was removed/)
+  })
+
+  it("hard-rejects leftover bloom and points at migrate to classroom", () => {
+    const v = validateIr({ theme: { id: "bloom" }, slides: [{ heading: "x" }] })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.path).toBe("theme.id")
+    expect(v.errors[0]!.message).toMatch(/bloom/)
+    expect(v.errors[0]!.message).toMatch(/removed/)
+    expect(v.errors[0]!.message).toMatch(/pptfast migrate/)
+    expect(v.errors[0]!.message).toMatch(/classroom/)
   })
 
   it("maps slide-scoped issues to 1-based page numbers", () => {
@@ -2414,9 +2427,11 @@ describe("checkAssetReferences: dangling asset_id warning (Task 2, borrow wave â
 })
 
 describe("listThemes", () => {
-  it("lists 25 canonical themes with labels and color tokens", () => {
+  it("lists 24 canonical themes with labels and color tokens", () => {
     const themes = listThemes()
-    expect(themes).toHaveLength(25)
+    expect(themes).toHaveLength(24)
+    expect(themes.map((t) => t.id)).not.toContain("bloom")
+    expect(themes.map((t) => t.id)).toContain("classroom")
     expect(themes.map((t) => t.id)).toContain("consulting")
     expect(themes.map((t) => t.id)).toContain("crayon")
     expect(themes.map((t) => t.id)).toContain("museum")

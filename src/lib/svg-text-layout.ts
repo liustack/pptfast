@@ -259,7 +259,7 @@ const YAHEI: FaceFactorTable = {
   other: { regular: 1, bold: 0.9593 },
 }
 
-// SimSun (heading: bloom/journal/runway) and KaiTi (heading: ink) share one
+// SimSun (heading: journal/runway) and KaiTi (heading: ink) share one
 // table -- their `hmtx` tables are byte-identical on every probed character
 // (same legacy GB font-grid design: Latin glyphs rigidly fixed at 0.5em,
 // CJK at 1.0em, zero exceptions, bold-data-pack.md S2). Still a

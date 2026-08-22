@@ -10,7 +10,7 @@ import type { StyleTokens } from "./tokens";
  * 与 classroom（讲义雾蓝、拍纸簿）场景切分：classroom 是「亲和的教与学」，
  * crayon 是更低龄的「蜡笔卡纸」。两家四轴最近邻（L / top-band / · / medium），
  * 装饰浓度岔开——classroom 是 medium 的打孔排，crayon 是 heavy 的页缘蜡笔描边。
- * 底色隔开一个色温段：classroom 雾蓝 `#ECF0F2`、bloom 樱粉、crayon 卡纸奶油
+ * 底色隔开一个色温段：classroom 雾蓝 `#ECF0F2`、crayon 卡纸奶油
  * `#FFF6E9`。
  *
  * 逐条来历（板上数字 vs 本仓库 `svg/ink.ts` 的 `contrastRatio`，压 `bg`
@@ -53,7 +53,7 @@ import type { StyleTokens } from "./tokens";
 export const CRAYON_TOKENS: StyleTokens = {
   id: "crayon",
   colors: {
-    bg: "#FFF6E9", // 卡纸奶油——暖黄段，与 classroom 雾蓝 / bloom 樱粉隔开色温
+    bg: "#FFF6E9", // 卡纸奶油——暖黄段，与 classroom 雾蓝隔开色温
     surface: "#FFFDF6", // 图画纸白
     primary: "#2B59C3", // 蜡笔蓝（压 bg 5.91:1，白字 6.33:1）——板书带承白字
     accent: "#E4572E", // 蜡笔橘红（3.44:1）——只给太阳涂鸦、星贴纸与一个强调词

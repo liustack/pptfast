@@ -330,6 +330,18 @@ describe("hard gate: theme resolution (installed-theme check)", () => {
     expect(errors[0]!.path).toBe("theme")
     expect(errors[0]!.message).toMatch(/unknown theme "not-a-theme"/)
     expect(errors[0]!.message).toMatch(/consulting/)
+    expect(errors[0]!.message).not.toMatch(/pptfast migrate/)
+    expect(errors[0]!.message).not.toMatch(/was removed/)
+  })
+
+  it("rejects leftover bloom and points at migrate to classroom", () => {
+    const errors = expectErrors(minimalValidPlan({ theme: "bloom" }))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]!.path).toBe("theme")
+    expect(errors[0]!.message).toMatch(/bloom/)
+    expect(errors[0]!.message).toMatch(/removed/)
+    expect(errors[0]!.message).toMatch(/pptfast migrate/)
+    expect(errors[0]!.message).toMatch(/classroom/)
   })
 })
 

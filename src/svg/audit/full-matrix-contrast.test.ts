@@ -188,20 +188,20 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     // layout regardless of how far its ratio has drifted — this band closes
     // that gap. Originally measured (2026-07-19, `pnpm exec tsx` against a
     // real render of every theme whose curated chapter set then included
-    // fashion-chapter — 10 of 13; bloom/classroom/heritage excluded it via
+    // fashion-chapter — 10 of 13; classroom/heritage excluded it via
     // `CHAPTER_WITHOUT_FASHION`) and **re-measured all 13/13** the same day
     // after the post-v0.3 W8 fix round (backlog item 2) revoked that
     // exclusion (`readableOn` moved from a fixed 0.4 luminance threshold to
     // a real two-ink contrast comparison, which flips the layout's own
     // `fg = readableOn(ctx.colors.accent)` for academic/heritage — same
     // fix also cleared the *heading* text that used to fail on
-    // bloom/classroom/heritage, the actual reason those three were
+    // classroom/heritage, the actual reason those two were
     // curation-excluded — see `themes/definitions.ts`'s own history there).
     // The watermark blend itself (`mixHex(accent, fg, 0.22)`) depends on
     // `fg`, so every theme whose `fg` flipped got a new ratio too; every
     // theme's ratio still lands inside the existing band. Current 13-theme
     // spread: runway 1.242 (lowest), ink 1.424, luxe 1.448, journal 1.459,
-    // academic 1.498, heritage 1.498, classroom 1.537, bloom 1.537,
+    // academic 1.498, heritage 1.498, classroom 1.537,
     // insight 1.539, tech 1.583, campaign 1.600, consulting 1.601,
     // enterprise 1.752 (highest). `ratioMin`/`ratioMax` round the original
     // 10-theme extremes outward by a small margin (~0.04-0.05, absorbing
@@ -730,7 +730,7 @@ describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment
 
   // Sweep all 13 canonical themes rather than hand-picking the ones known to
   // fail — this both proves the defect on the affected themes (red before
-  // the fix: bloom/classroom/consulting/heritage measure <3:1 between
+  // the fix: classroom/consulting/heritage measure <3:1 between
   // colors.accent and colors.surface at the kpi value's real render size,
   // independently confirmed against each theme's own token file) and proves
   // accessibleInk is a no-op everywhere else (the other 9 already clear the

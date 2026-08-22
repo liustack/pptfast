@@ -6,7 +6,6 @@ import { ENTERPRISE_TOKENS } from "./enterprise";
 import { ACADEMIC_TOKENS } from "./academic";
 import { INSIGHT_TOKENS } from "./insight";
 import { CAMPAIGN_TOKENS } from "./campaign";
-import { BLOOM_TOKENS } from "./bloom";
 import { CLASSROOM_TOKENS } from "./classroom";
 import { INK_TOKENS } from "./ink";
 import { TECH_TOKENS } from "./tech";
@@ -28,11 +27,11 @@ import { MEMO_TOKENS } from "./memo";
 import { PLAYBILL_TOKENS } from "./playbill";
 
 /**
- * The 22 canonical theme ids, registered/renderable（产品口径 21 套主题：
- * bloom 已并入 classroom 作纯换色 preset，id 因兼容保留）。场景化命名：对外 theme.id
+ * The 24 canonical theme ids, registered/renderable（产品口径 24 套主题、
+ * 24 个 id）。场景化命名：对外 theme.id
  * 按内容场景命名（consulting Business Consulting / enterprise Enterprise /
  * academic Academic / insight Financial Insight / campaign Marketing Campaign /
- * bloom Soft Bloom / classroom Classroom / ink Ink Wash / tech Tech /
+ * classroom Classroom / ink Ink Wash / tech Tech /
  * runway Fashion Runway / journal Editorial Journal / luxe Luxe /
  * heritage Heritage / pulse Health & Life Science——themes-16 wave task T1
  * 新增第 14 个 / terra Sustainability & ESG——themes-16 wave task T2 新增
@@ -60,7 +59,6 @@ export const CANONICAL_THEME_IDS = [
   "academic",
   "insight",
   "campaign",
-  "bloom",
   "classroom",
   "ink",
   "tech",
@@ -90,7 +88,6 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
   academic: "Academic",
   insight: "Financial Insight",
   campaign: "Marketing Campaign",
-  bloom: "Soft Bloom",
   classroom: "Classroom",
   ink: "Ink Wash",
   tech: "Tech",
@@ -126,7 +123,6 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   academic: ACADEMIC_TOKENS,
   insight: INSIGHT_TOKENS,
   campaign: CAMPAIGN_TOKENS,
-  bloom: BLOOM_TOKENS,
   classroom: CLASSROOM_TOKENS,
   ink: INK_TOKENS,
   tech: TECH_TOKENS,

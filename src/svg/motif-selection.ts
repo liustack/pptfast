@@ -60,12 +60,11 @@
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif (gilt invitation frame) so gallery p01 cannot draw heritage florets or journal's masthead rules. Ruling: built-in theme decoration is locked. |
  * | campaign | campaign-motif *(singleton)* | campaign's saturated multi-hue crayon/brush vocabulary has no sibling anywhere in the other 12 motifs — pairing it with grid lines, watercolor wash, or gold hairlines would break its "活力营销" identity rather than vary it, so it is deliberately left alone (candidate set of 1 — same-deck renders stay byte-identical to before this task, see `motif-selection.test.ts`'s byte-inertness block) |
- * | classroom | classroom-motif *(singleton)* | soft-group reskin (2026-08-20): the pair this row used to name (`classroom-motif`, `bloom-motif`) no longer exists — `bloom-motif`'s watercolor vocabulary retired with bloom's own palette, and its file was deleted outright, because bloom became a declared palette preset of classroom (`themes/bloom.ts`) and no third theme ever borrowed it. What is left is one legal-pad vocabulary (top punch holes, a pencil dashed line, a paperclip arc) shared by the two themes that are now the same design in two palettes, so there is nothing left to rotate *between*. Chapter still draws nothing (`return null`) — classroom/bloom's chapter background is a full-bleed `primary` band and this motif's muted/accent inks measure 1.04-1.55:1 against it, which is invisible, not restrained. |
- * | bloom | classroom-motif *(singleton)* | mirror of classroom's row above, and now literally the same motif: bloom is classroom's palette preset, so it draws classroom's geometry in bloom's own five colors. `MOTIF_CANDIDATES`'s anchor-first invariant still holds — `THEME_DEFINITIONS.bloom.motif` is `"classroom-motif"` too. |
+ * | classroom | classroom-motif *(singleton)* | one legal-pad vocabulary (top punch holes, a pencil dashed line, a paperclip arc). The watercolor sibling was deleted, so there is nothing left to rotate *between*. Chapter still draws nothing (`return null`) — classroom's chapter background is a full-bleed `primary` band and this motif's muted/accent inks measure 1.04-1.55:1 against it, which is invisible, not restrained. |
  * | ink | ink-motif *(singleton)* | ink's calligraphy/seal-stamp/vertical-inscription vocabulary is the most culturally-specific motif in the set with no sibling family — any other motif substituted in would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (byte-identical, same rationale pattern as campaign) |
  * | heritage | heritage-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif (bookplate rules + cover stamp) so gallery p01 cannot draw luxe's gilt frame. Ruling: built-in theme decoration is locked. |
- * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom/bloom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
- * | terra | terra-motif *(singleton)* | themes-16 wave, task T2 (2026-07-28): terra's topographic contour-line + leaf-vein/seed-dot vocabulary is its own new technique family — closer to classroom/bloom's organic register than to any grid or ornamental-line family, but its lines are irregular *closed terrain rings* (a land/growth reading), not smooth color blobs or watercolor wash, so pairing it with classroom/bloom would still read as a mismatched skin. Stays a candidate set of 1 (same rationale pattern as pulse/campaign/ink) |
+ * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
+ * | terra | terra-motif *(singleton)* | themes-16 wave, task T2 (2026-07-28): terra's topographic contour-line + leaf-vein/seed-dot vocabulary is its own new technique family — closer to classroom's organic register than to any grid or ornamental-line family, but its lines are irregular *closed terrain rings* (a land/growth reading), not smooth color blobs or watercolor wash, so pairing it with classroom would still read as a mismatched skin. Stays a candidate set of 1 (same rationale pattern as pulse/campaign/ink) |
  * | ember | ember-motif *(singleton)* | themes-16 wave, task T3 (2026-07-28): ember's rising-spark-particle vocabulary (dots fading along an ascending bezier arc) is its own new technique family — a directional motion mark, not a static blob/ornament/grid/glow like any of the other 15 motifs, so no existing motif reads as a compatible sibling. Stays a candidate set of 1 (same rationale pattern as pulse/terra/campaign/ink) |
  * | vermilion | vermilion-motif *(singleton)* | gov-theme wave (2026-08-06): vermilion's flag-ribbon-arc + gold-ray-fan vocabulary is its own new technique family — a filled tapering ribbon along an ascending bezier plus a radiating thin-line ray fan, reading as ceremonial "提气/庄重" official-report identity. Not a static blob/ornament, not a grid/glow, not ember's fading particle trail — no existing motif reads as a compatible sibling, and its deliberately-restrained CJK-official register would clash with any of the other 16. Stays a candidate set of 1 (same rationale pattern as pulse/terra/ember/campaign/ink) |
  * | crayon | crayon-motif *(singleton)* | kids-education theme (2026-08-21): crayon's crayon-smear edge + sun doodle + rainbow dashes + star-sticker vocabulary is its own new technique family — a heavy page-edge crayon stroke, not campaign's confetti field, not classroom's legal-pad punch holes. Pairing it with either would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/classroom/ink). |
@@ -133,8 +132,8 @@
  * regression net for defect class 2 — every candidate's own decor must clear
  * a small but nonzero visibility floor against its real background,
  * wherever it renders anything at all (`classroom-motif` `return null`s on
- * `chapter` entirely, pre-dating this task — see the `classroom`/`bloom`
- * table rows' own disclosure — correctly not flagged by either sweep:
+ * `chapter` entirely, pre-dating this task — see the `classroom`
+ * table row's own disclosure — correctly not flagged by either sweep:
  * nothing rendered is not the same failure as something rendered
  * invisibly). No candidate needed removal from this table — every
  * fix landed at the motif's own consumption seam instead. Recorded here per
@@ -178,7 +177,6 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   luxe: ["luxe-motif"],
   campaign: ["campaign-motif"],
   classroom: ["classroom-motif"],
-  bloom: ["classroom-motif"],
   ink: ["ink-motif"],
   heritage: ["heritage-motif"],
   pulse: ["pulse-motif"],
@@ -207,7 +205,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   directly — the exact pre-this-task behavior, so every theme outside the
  *   builtins (and the four none identities within them) renders
  *   byte-identically to before this module existed.
- * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
+ * - A 1-member candidate set (`campaign`, `ink`, `classroom`,
  *   crayon, arena, lecture, swiss, memo, academic, insight, tech, luxe,
  *   journal, heritage, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also

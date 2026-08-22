@@ -21,7 +21,7 @@ import { leafRecessOpacity } from "./decor-budget"
  * 是板上原话）。两件都走 accent（浅青），v1 里 `chartPalette` 的天青/砂灰
  * 取色一并退出——motif 读 `chartPalette` 是有先例的坑
  * （`motif-chart-palette-isolation.test.tsx` 的文件头记着 campaign/
- * classroom/bloom 三家被图表调色板轮转悄悄改色的那次 Major）。
+ * classroom 被图表调色板轮转悄悄改色的那次 Major）。
  *
  * chapter 继续完全退让（`return null`，v1 起就是如此，理由本轮更硬）：
  * pulse 的 chapter 默认底色是整版 primary 青绿（`themes/pulse.ts` 的

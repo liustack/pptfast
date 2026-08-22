@@ -22,7 +22,7 @@ import { underlineYFromBaseline } from "./underline"
  *
  * 对比度自适应修复（W4 fix round，Critical C1——与 chapter-rail-chapter.tsx
  * 同一根因、同一处置，见该文件头详述）：主标题/副标题原先写死纯白，假设章节
- * 默认背景总是深色，全集放开后对 bloom/enterprise/heritage/ink/journal/
+ * 默认背景总是深色，全集放开后对 enterprise/heritage/ink/journal/
  * runway 六个浅底章节主题不成立。改用 `readableOn(ctx.defaultBg)`——对本来
  * 就深色的七个章节底算出的仍是白色，字面量不变。章节号水印（0.05 透明度）
  * 保留原样纯白——低透明度装饰，不在本次缺陷范围内。

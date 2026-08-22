@@ -1,8 +1,8 @@
 import type { StyleTokens } from "./tokens";
 
 /**
- * lecture（黑板夜校）——2026-08-21 新增第 22 个 theme id（第 21 个结构身份。
- * bloom 仍是 classroom 的换色）。性格：灯灭之后的大学黑板，粉笔只划一道
+ * lecture（黑板夜校）——2026-08-21 新增第 22 个 theme id（第 21 个结构身份）。
+ * 性格：灯灭之后的大学黑板，粉笔只划一道
  * 重点。目标场景：大学/成人课程、技术分享、内训。与 classroom（小学生
  * 白日讲义纸）分昼夜，与 academic（祖母绿压暖象牙纸的书卷）分底色。
  *

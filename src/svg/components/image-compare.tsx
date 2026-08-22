@@ -149,7 +149,7 @@ export const imageCompare: SvgComponent<ImageCompareComponent> = {
           // handoff): a small rect (52x24=1,248px^2, well below the area
           // floor `deck-audit.ts` used to gate text-background attribution
           // by) — the AFTER chip (i===1, colors.accent fill) measures
-          // ~1:1 on consulting/academic/bloom/classroom/luxe/heritage once
+          // ~1:1 on consulting/academic/classroom/luxe/heritage once
           // correctly attributed to its own chip instead of falling through
           // to a background that always happened to pass. The BEFORE chip
           // (i===0, colors.muted fill) already clears the ratio on every

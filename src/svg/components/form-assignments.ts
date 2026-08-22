@@ -2,8 +2,9 @@
  * Render-side component form assignment table. Forms are not IR: one
  * theme + one component maps to at most one form, looked up here and
  * ignored by renderers until a later commit wires dispatch. campaign ×
- * cycle is hub_spoke (first-listed wins), never petal_wheel. bloom is a
- * classroom recolor preset and is not listed. 65 rows (41 prior + 24 callout).
+ * cycle is hub_spoke (first-listed wins), never petal_wheel. 65 rows
+ * (41 prior + 24 callout). classroom is listed on callout like every
+ * other canonical theme.
  */
 
 export const COMPONENT_FORMS = [

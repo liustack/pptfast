@@ -34,7 +34,7 @@ import { renderMatrix } from "../evals/gallery/render"
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)))
 
 /** The theme count the review claims to cover — a guard, not a lookup. */
-const EXPECTED_THEMES = 25
+const EXPECTED_THEMES = 24
 
 function flag(name: string): string | undefined {
   const hit = process.argv.slice(2).find((a) => a === `--${name}` || a.startsWith(`--${name}=`))

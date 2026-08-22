@@ -602,9 +602,9 @@ describe("runSchema / runThemes", () => {
   it("prints JSON Schema", () => {
     expect(JSON.parse(runSchema())).toHaveProperty("$schema")
   })
-  it("prints 25 themes, json mode parses", () => {
-    expect(runThemes(false).split("\n")).toHaveLength(25)
-    expect(JSON.parse(runThemes(true))).toHaveLength(25)
+  it("prints 24 themes, json mode parses", () => {
+    expect(runThemes(false).split("\n")).toHaveLength(24)
+    expect(JSON.parse(runThemes(true))).toHaveLength(24)
   })
 })
 
@@ -1764,6 +1764,75 @@ describe("runMigrate", () => {
         }),
       )
       await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/already migrated/)
+    })
+  })
+
+  describe("bloom → classroom", () => {
+    const specPages = [
+      { id: "p-cover", type: "cover", heading: "Cover" },
+      { id: "p-a", type: "content", heading: "Body" },
+      { id: "p-ending", type: "ending", heading: "Thanks" },
+    ]
+
+    it("a v4 IR file with bloom writes classroom, mentions the relocate, and does not touch the source", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      const source = { ...VALID_IR, theme: { id: "bloom" } }
+      await writeFile(irPath, JSON.stringify(source))
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toMatch(/bloom/)
+      expect(msg).toMatch(/classroom/)
+      expect(msg).not.toMatch(/v3 → v4/)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.theme.id).toBe("classroom")
+      expect(written.version).toBe("4")
+
+      const stillThere = JSON.parse(await readFile(irPath, "utf8"))
+      expect(stillThere.theme.id).toBe("bloom")
+    })
+
+    it("deck-dir only spec with bloom, different -o: writes classroom and does not touch the source", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(
+        join(deckDir, "deck.spec.json"),
+        JSON.stringify({
+          version: "1",
+          theme: "bloom",
+          pages: specPages,
+        }),
+      )
+      const outDir = await makeDeckDir()
+
+      const msg = await runMigrate(deckDir, outDir)
+      expect(msg).toMatch(/bloom/)
+      expect(msg).toMatch(/classroom/)
+
+      const written = JSON.parse(await readFile(join(outDir, "deck.spec.json"), "utf8"))
+      expect(written.theme).toBe("classroom")
+
+      const source = JSON.parse(await readFile(join(deckDir, "deck.spec.json"), "utf8"))
+      expect(source.theme).toBe("bloom")
+    })
+
+    it("a v4 IR file with both chrome and bloom rewrites both in one write", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      await writeFile(irPath, JSON.stringify({ ...VALID_IR, chrome: "full", theme: { id: "bloom" } }))
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toMatch(/chrome/)
+      expect(msg).toMatch(/branding/)
+      expect(msg).toMatch(/bloom/)
+      expect(msg).toMatch(/classroom/)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.branding).toBe("full")
+      expect(written.chrome).toBeUndefined()
+      expect(written.theme.id).toBe("classroom")
     })
   })
 })

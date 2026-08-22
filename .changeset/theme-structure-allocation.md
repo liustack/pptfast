@@ -3,7 +3,7 @@
 ---
 
 Every theme now says which cover it wants. Ten themes gain or extend a cover
-preference, and `bloom` is declared as a palette variant of `classroom`.
+preference.
 
 **Covers change on decks that don't pin one — read this with the ink note.**
 0.21 moves the cover slot for two reasons that land together. The ink redesign
@@ -18,21 +18,13 @@ any theme**, and no content is dropped, reflowed or truncated by either pass.
 Pin `slide.layout` on a cover to hold it exactly.
 
 The ten whose covers move: `enterprise` and `campaign` toward the diagonal
-split, `classroom` and `bloom` toward the quiet adaptive header, `luxe` toward
+split, `classroom` toward the quiet adaptive header, `luxe` toward
 the full-bleed masthead, `heritage` toward the double-ruled editorial masthead,
 `terra` toward a left anchor, `ember` toward the diagonal split, `insight`
 toward the editorial masthead and `vermilion` toward the tone-adaptive header.
 `consulting`, `academic`, `ink`, `tech`, `runway`, `journal` and `pulse` pick
 exactly what they picked before. Four checked-in example previews were
 re-recorded and every one shows only a different cover layout.
-
-**`bloom` is now declared as a recolor of `classroom`.** The two share one
-structure and differ in palette and decoration, which was already true of the
-rendered output and is now written down: they point at the same layout
-preferences, so the same deck under either theme picks the same layouts and
-differs in color. `bloom` keeps its id, its palette and its own motif, and the
-id is never going away. The theme list is still 17 ids; the count that changed
-is the number of distinct structures behind them, which is 16.
 
 Because the theme, narrative and beat preferences combine by taking the
 strongest rather than by multiplying, a theme that names only covers the active

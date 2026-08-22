@@ -117,10 +117,7 @@ describe("cover-fashion-masthead — bold-metrics fix red-first (user-reported c
       ["academic", "Georgia"],
       ["insight", "Georgia"],
       ["campaign", "Microsoft YaHei"],
-      // 柔和组皮肤重设计（2026-08-20）：bloom 成为 classroom 的色板 preset，
-      // 字体随之继承雅黑，宋体衬线报题退役（同时退出
-      // `definitions.test.ts` 的 nonExactHeadingBuiltins）。
-      ["bloom", "Microsoft YaHei"],
+      ["classroom", "Microsoft YaHei"],
       ["ink", "KaiTi"],
     ]
 

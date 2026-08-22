@@ -1,5 +1,5 @@
 // insight（深度洞察）——原 creative 改名（2026-07-10 用户裁决：深底红金
-// 气质其实是 Bloomberg/Economist 财经信息图风，不配叫 creative；真正的
+// 气质其实是 terminal/Economist 财经信息图风，不配叫 creative；真正的
 // 创意子类由 doodle/ink 两新主题承接）。
 import type { StyleTokens } from "./tokens";
 
