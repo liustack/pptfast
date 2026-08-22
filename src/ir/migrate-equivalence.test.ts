@@ -905,6 +905,22 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // annualReviewPreset, slides 1, 3, 4, and 5 change while its chapter
       // slide remains export-identical. Part-name sets stay identical. All
       // three audit goldens remain byte-identical with no new findings.
+      //
+      // Recaptured (wave8 batch 1, 2026-08-23). consulting board lock.
+      // `basic` is the consulting fixture. Cover stays `verdict-index` but
+      // knobs move kicker y226→150, title y316/58px → y304/60px, and the
+      // cover motif drops ikb-steps/ruler/spark for the banner-motif top
+      // rule. Chapter auto-pick `masthead-chapter` → `ghost-rule-chapter`
+      // (navy field, accent bar, 440px 6% ghost `01`). Partition strips the
+      // layout's routing `data-depth` after moving the ghost into mid, so
+      // the page keeps exactly three depth groups. Content slides 2-3 stay
+      // byte-identical. Ending stays pinned `banner-ending`, same type
+      // geometry, but the same motif swap as cover (ikb-steps cluster → top
+      // rule), so SVG slide 4 and `ppt/slides/slide5.xml` move. PPTX parts
+      // that change are the 1-indexed matches: slide1.xml, slide2.xml,
+      // slide5.xml. `.audit.json` stayed empty and was not recaptured.
+      // `scenarioBearing` / `annualReviewPreset` (journal) matched the
+      // goldens byte-for-byte. Not recaptured.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
@@ -1032,6 +1048,12 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `annualReviewPreset`: `ppt/slides/slide3.xml` (SVG slide 2).
       //     SVG slide 3 (`bento-panel` -> `tone-adaptive-content`) did not
       //     change exported geometry on this fixture.
+      //
+      // Recaptured (wave8 batch 1, 2026-08-23). Same consulting lock as the
+      // SVG ring above. `basic` parts: `ppt/slides/slide1.xml` (cover
+      // verdict-index knobs + banner-motif rule), `slide2.xml`
+      // (ghost-rule-chapter), `slide5.xml` (pinned banner-ending, motif
+      // only). File-name set unchanged. Journal fixtures not recaptured.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

@@ -68,6 +68,11 @@ function sha(svg: string): string {
 // Recaptured for the three-layer depth contract. All 378 hashes move because
 // the marked layer groups are now part of the serialized SVG contract. The
 // same matrix remains a byte nail for every later change.
+//
+// Recaptured (wave8 batch 1, 2026-08-23). ember (UNASSIGNED) moves on every
+// chapter+none key (token + motif + chapter lock). tech and enterprise
+// KEEP_NATIVE_WITHOUT_CHAPTER `none` paths move with their motif locks.
+// consulting `none` hashes are unchanged and were not rewritten.
 const fixture = JSON.parse(
   readFileSync(new URL("./__fixtures__/unassigned-bytes.json", import.meta.url), "utf-8"),
 ) as { pages: Record<string, string> }

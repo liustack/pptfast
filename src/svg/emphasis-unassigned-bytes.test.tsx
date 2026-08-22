@@ -114,6 +114,12 @@ function sha(svg: string): string {
 // Recaptured for the three-layer depth contract. All 115 hashes move because
 // the marked layer groups are now part of the serialized SVG contract. The
 // same matrix remains a byte nail for every later change.
+//
+// Recaptured (wave8 batch 1, 2026-08-23). Cover/content paths on the five
+// boarded themes pick up lock-board covers, motifs, and ink. Changed keys
+// are enterprise/insight/campaign/tech/ember × pages 0,2,3,4,5 (25 of 115).
+// Other unassigned themes stay byte-identical. consulting is not in this
+// fixture.
 const fixture = JSON.parse(
   readFileSync(new URL("./__fixtures__/emphasis-unassigned-bytes.json", import.meta.url), "utf-8"),
 ) as { pages: Record<string, string> }
