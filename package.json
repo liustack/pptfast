@@ -53,6 +53,7 @@
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
     "gallery": "tsx scripts/gallery.mts",
+    "evals:gallery": "tsx evals/gallery/run.mts",
     "prepublishOnly": "pnpm check && pnpm e2e",
     "release:version": "changeset version && tsx scripts/sync-version.mts && tsx scripts/stamp.mts",
     "bench:run": "tsx tests/bench/run.mts",

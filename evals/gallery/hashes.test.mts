@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { installNodePlatform } from "@/platform/node"
 import { corpusAssets } from "./corpus/decks"
-import { LEXICONS } from "./corpus/lexicon"
+import { LEXICONS, type LanguageId } from "./corpus/lexicon"
 import {
   diffAffectedPages,
   hashesFromManifest,
@@ -103,7 +103,7 @@ describe("hashesFromManifest", () => {
           fingerprint: { geometry: "g2", color: "c2" },
         },
       ],
-    } as Manifest
+    } as unknown as Manifest
     expect(hashesFromManifest(manifest)).toEqual({
       algorithm: "gallery-page-v2",
       pages: {
@@ -120,7 +120,11 @@ describe("gold sample against a live render", () => {
     const themeIds = listThemes()
       .map((t) => t.id)
       .sort()
-    const jobs = buildMatrix(themeIds, { zh: await corpusAssets(LEXICONS.zh) }, { only: "component", languages: ["zh"] })
+    const jobs = buildMatrix(
+      themeIds,
+      { zh: await corpusAssets(LEXICONS.zh) } as Record<LanguageId, Awaited<ReturnType<typeof corpusAssets>>>,
+      { only: "component", languages: ["zh"] },
+    )
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gold-sample-"))
     const current = hashesFromManifest(renderMatrix(jobs, outDir, "pin").manifest)
     const subset: GoldHashes = {

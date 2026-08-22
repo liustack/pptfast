@@ -255,6 +255,19 @@ Each measured overflow lands in one of three buckets
 Background and the reasoning behind how the matrix is cut:
 `.issues/2026-08-15-release-readiness/spec.md`.
 
+### Automated visual audit (`pnpm evals:gallery`)
+
+`pnpm evals:gallery` is the agent audit over the same matrix. L1 is a
+zero-model geometry pass (overflow, overlap, edge-stick, font-size,
+overflow markers, Latin vertical type). L2 is grok vision against
+`evals/gallery/rubric/`.
+Default mode is incremental: re-render, diff `evals/gallery/hashes.json`
+(`gallery-page-v2`), and audit `changed ∪ added`. `--full` audits every
+page. `--l1-only` skips L2. L2 is also skipped when `CI=true` or grok is
+not on PATH. The skip reason is printed. Verdicts land in
+`evals/gallery/verdicts/` and that directory is gitignored. Live corpus
+findings are written to the report and do not fail the process.
+
 ## Snapshot policy
 
 **Never blind-update with `-u`.** A snapshot diff *is* a behavior change —
