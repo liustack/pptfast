@@ -34,6 +34,8 @@ import { hasCjk, latinUpper, trackingPx } from "./minimal-shared"
 
 /** Center-x of the 1280-wide canvas — every poster-mode element anchors here. */
 const CENTER_X = 640
+/** Left-axis x when `shape.cover.textAnchor === "start"`. Default path stays on CENTER_X. */
+const START_X = 96
 
 /** Short hairline under the title: the *only* decorative accent-weight
  * element on this page — a pure decoration, never a text color, per the
@@ -61,6 +63,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
   const showKicker = cover?.showKicker === true
   const barFill = cover?.barFill === "accent" ? ctx.colors.accent : ctx.colors.primary
   const metaPlacement = cover?.metaPlacement ?? "center"
+  const textAnchor = cover?.textAnchor === "start" ? "start" : "middle"
+  const textX = textAnchor === "start" ? START_X : CENTER_X
+  const barX = textAnchor === "start" ? START_X : CENTER_X - ACCENT_BAR_W / 2
   const pageBg = ctx.defaultBg ?? ctx.colors.bg
 
   const title = fitHeadingLines(slide.heading, {
@@ -141,9 +146,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
       {kicker && (
         <text
           data-truncated={kicker.truncated ? "1" : undefined}
-          x={CENTER_X}
+          x={textX}
           y={kickerY}
-          textAnchor="middle"
+          textAnchor={textAnchor}
           fontFamily={ctx.fonts.body}
           fontSize={kicker.fontSize}
           fill={kickerFill}
@@ -158,9 +163,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
         <text
           key={i}
           data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
-          x={CENTER_X}
+          x={textX}
           y={COVER_TITLE_Y + i * title.lineHeight}
-          textAnchor="middle"
+          textAnchor={textAnchor}
           fontFamily={ctx.fonts.heading}
           fontSize={title.fontSize}
           fontWeight="800"
@@ -173,7 +178,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
       ))}
 
       <rect
-        x={CENTER_X - ACCENT_BAR_W / 2}
+        x={barX}
         y={accentY}
         width={ACCENT_BAR_W}
         height={ACCENT_BAR_H}
@@ -184,9 +189,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
       {subtitle.lines.map((line, i) => (
         <text
           key={i}
-          x={CENTER_X}
+          x={textX}
           y={subtitleY + i * subtitle.lineHeight}
-          textAnchor="middle"
+          textAnchor={textAnchor}
           fontFamily={ctx.fonts.heading}
           fontSize={subtitle.fontSize}
           fill={ctx.colors.muted}
@@ -223,9 +228,10 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {
-  // cover-poster-center.tsx: fully centered "poster". Optional kicker and
-  // metaPlacement knobs. Default: no kicker, org folded into the bottom
-  // meta line.
+  // cover-poster-center.tsx: fully centered "poster". Optional kicker,
+  // metaPlacement, and textAnchor knobs. Default: no kicker, org folded
+  // into the bottom meta line, middle anchor (start left-aligns the
+  // slogan and the short bar).
   id: "poster-center",
   kind: "archetype",
   slideTypes: ["cover"],

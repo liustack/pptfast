@@ -23,6 +23,9 @@ import { accessibleInk, metaInk, readableOn } from "../ink"
  *   2. ember 的 meta 反白入楔，收到 x1108，躲开 logo 盒。
  *   3. CJK 标题不加 letter-spacing（板上 arena 给了 2px）。
  *   4. 本版式不设 `paintsOwnBackground`：楔画在 `Background` 上面。
+ *   5. `wedgeInnerStartX` / `wedgeInnerPeakY` 同时给出时，沿外楔斜边再叠
+ *      一层内楔（更深一档，opacity 封顶）。缺省不画，外楔 + 叠加斜带几何
+ *      与坐标一字不改。
  */
 
 const DEFAULT_PEAK_Y = 340
@@ -30,6 +33,8 @@ const DEFAULT_START_X = 980
 const OUTER_INSET = 60
 const INNER_INSET = 100
 const OVERLAY_OPACITY = 0.7
+/** Dual-wedge inner overlay. Only painted when both inner knobs are set. */
+const INNER_WEDGE_OPACITY = 0.6
 
 const TITLE_SIZE_CENTER = 80
 const TITLE_SIZE_START = 64
@@ -68,12 +73,25 @@ function overlayPath(startX: number, peakY: number): string {
   return `M${outerStart},720 L1280,${yAt(outerStart)} L1280,${yAt(innerStart)} L${innerStart},720 Z`
 }
 
+/** Band between the outer hypotenuse and a taller/wider inner hypotenuse. */
+function innerBandPath(
+  outerStartX: number,
+  outerPeakY: number,
+  innerStartX: number,
+  innerPeakY: number,
+): string {
+  return `M${innerStartX},720 L1280,${innerPeakY} L1280,${outerPeakY} L${outerStartX},720 Z`
+}
+
 export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const bg = ctx.defaultBg ?? colors.bg
   const cover = ctx.shape?.cover
   const peakY = cover?.wedgePeakY ?? DEFAULT_PEAK_Y
   const startX = cover?.wedgeStartX ?? DEFAULT_START_X
+  const innerStartX = cover?.wedgeInnerStartX
+  const innerPeakY = cover?.wedgeInnerPeakY
+  const hasInner = innerStartX !== undefined && innerPeakY !== undefined
   const textAnchor = cover?.textAnchor ?? "middle"
   const metaInWedge = cover?.metaInWedge === true
   const centered = textAnchor === "middle"
@@ -85,12 +103,16 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
     : TITLE_LINE_HEIGHT_START / TITLE_SIZE_START
   // Title stays on paper. The wedge's leftmost point is startX at y=720,
   // and the hypotenuse climbs up-right, so anything left of startX cannot
-  // sit on the primary field. Long CJK headings at display size would
-  // otherwise spill onto the wedge and fail large-text 3:1 (academic 2.10,
-  // ink 1.10, journal 1.09 on the matrix heading).
+  // sit on the primary field. When an inner band is set, its AABB starts
+  // further left than the outer wedge, so the title budget uses the more
+  // left of the two. Default knobs omit inner, so arena geometry is
+  // unchanged. Long CJK headings at display size would otherwise spill
+  // onto the wedge and fail large-text 3:1 (academic 2.10, ink 1.10,
+  // journal 1.09 on the matrix heading).
+  const titleBoundX = innerStartX !== undefined ? Math.min(startX, innerStartX) : startX
   const titleMaxW = centered
-    ? Math.max(320, 2 * (startX - TITLE_CENTER_X - 24))
-    : Math.max(320, startX - TITLE_START_X - 24)
+    ? Math.max(320, 2 * (titleBoundX - TITLE_CENTER_X - 24))
+    : Math.max(320, titleBoundX - TITLE_START_X - 24)
   const kickerY = centered ? 248 : 262
   const designedSubtitleY = centered ? 446 : 496
   const onWedge = readableOn(colors.primary)
@@ -159,6 +181,13 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
     <>
       <path d={wedgePath(startX, peakY)} fill={colors.primary} />
       <path d={overlayPath(startX, peakY)} fill={colors.accent} opacity={OVERLAY_OPACITY} />
+      {hasInner && (
+        <path
+          d={innerBandPath(startX, peakY, innerStartX, innerPeakY)}
+          fill={colors.primary}
+          opacity={INNER_WEDGE_OPACITY}
+        />
+      )}
 
       {kicker && (
         <text
@@ -245,7 +274,8 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
 export const layoutDef: LayoutDefinition = {
   // cover-corner-wedge.tsx: lower-right triangular wedge plus a brighter
   // overlay slash inset from the hypotenuse. Title alignment and peak come
-  // from style.shape.cover. Overlay always on.
+  // from style.shape.cover. Overlay always on. Inner band only when both
+  // wedgeInnerStartX and wedgeInnerPeakY are set.
   id: "corner-wedge",
   kind: "archetype",
   slideTypes: ["cover"],

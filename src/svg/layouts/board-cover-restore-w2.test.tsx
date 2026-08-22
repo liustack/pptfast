@@ -16,8 +16,8 @@ const COVER: Slide = {
 const WAVE2 = [
   { id: "academic", layout: "left-anchor", motif: "rail-motif" },
   { id: "campaign", layout: "poster-center", motif: "campaign-motif" },
-  { id: "insight", layout: "poster-center", motif: "poster-motif" },
-  { id: "tech", layout: "constellation", motif: "constellation-motif" },
+  { id: "insight", layout: "stat-cover", motif: "poster-motif" },
+  { id: "tech", layout: "type-rule-cover", motif: "constellation-motif" },
   { id: "luxe", layout: "poster-center", motif: "luxe-motif" },
   { id: "journal", layout: "editorial-masthead", motif: "corner-ornament-motif" },
   { id: "ink", layout: "colophon", motif: "ink-motif" },

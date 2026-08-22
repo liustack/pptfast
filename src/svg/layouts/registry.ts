@@ -92,6 +92,9 @@ import { layoutDef as coverHeaderBand } from "./cover-header-band"
 import { layoutDef as coverPaperMasthead } from "./cover-paper-masthead"
 import { layoutDef as coverHorizonWedge } from "./cover-horizon-wedge"
 import { layoutDef as coverCornerWedge } from "./cover-corner-wedge"
+import { layoutDef as coverIkbFieldCover } from "./cover-ikb-field-cover"
+import { layoutDef as coverStatCover } from "./cover-stat-cover"
+import { layoutDef as coverTypeRuleCover } from "./cover-type-rule-cover"
 
 import { layoutDef as chapterMastheadChapter } from "./chapter-masthead-chapter"
 import { layoutDef as chapterConstellationChapter } from "./chapter-constellation-chapter"
@@ -102,6 +105,12 @@ import { layoutDef as chapterRomanChapter } from "./chapter-roman-chapter"
 import { layoutDef as chapterToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
 import { layoutDef as chapterFashionChapter } from "./chapter-fashion-chapter"
 import { layoutDef as chapterVerseChapter } from "./chapter-verse-chapter"
+import { layoutDef as chapterGhostRuleChapter } from "./chapter-ghost-rule-chapter"
+import { layoutDef as chapterBlockNumeralChapter } from "./chapter-block-numeral-chapter"
+import { layoutDef as chapterGhostSectionChapter } from "./chapter-ghost-section-chapter"
+import { layoutDef as chapterEmberIndexChapter } from "./chapter-ember-index-chapter"
+import { layoutDef as chapterStrokeIndexChapter } from "./chapter-stroke-index-chapter"
+import { layoutDef as chapterActChapter } from "./chapter-act-chapter"
 
 import { layoutDef as endingMastheadEnding } from "./ending-masthead-ending"
 import { layoutDef as endingConstellationEnding } from "./ending-constellation-ending"
@@ -110,6 +119,12 @@ import { layoutDef as endingBannerEnding } from "./ending-banner-ending"
 import { layoutDef as endingPosterEnding } from "./ending-poster-ending"
 import { layoutDef as endingToneAdaptiveEnding } from "./ending-tone-adaptive-ending"
 import { layoutDef as endingFashionEnding } from "./ending-fashion-ending"
+import { layoutDef as endingActionPadEnding } from "./ending-action-pad-ending"
+import { layoutDef as endingSignoffEnding } from "./ending-signoff-ending"
+import { layoutDef as endingCloseWordEnding } from "./ending-close-word-ending"
+import { layoutDef as endingAskEnding } from "./ending-ask-ending"
+import { layoutDef as endingRuleCloseEnding } from "./ending-rule-close-ending"
+import { layoutDef as endingPillCtaEnding } from "./ending-pill-cta-ending"
 
 import { layoutDef as contentNarrowColumn } from "./content-narrow-column"
 import { layoutDef as contentTwoColumn } from "./content-two-column"
@@ -234,41 +249,24 @@ export interface LayoutDefinition {
    */
   narrativesOnly?: readonly Strategy[]
   /**
-   * The pin-only tier (quote-stage wave, task T1 —
-   * `.issues/2026-07-28-quote-stage/plan.md`'s 裁定 1): marks a layout as
-   * reachable **only** through an explicit `slide.layout` pin, never through
-   * automatic selection. This is for genuinely low-capacity, content-blind-
-   * selection-hostile layouts (the motivating case: `quote-stage`, a
-   * single-heading "金句" page whose capacity-1 body would starve or
-   * silently drop content if a normal auto-pick pool ever sampled it for an
-   * ordinary multi-component slide) — the architecture ruling that "auto-
-   * selection stays content-blind" holds exactly *because* such layouts opt
-   * out of sampling entirely, rather than selection growing content-aware
-   * logic to route around them.
+   * Opt-out from the default auto-pick set (quote-stage wave, task T1,
+   * retargeted in wave 8 batch 1). `fullLayoutSet` drops every `pinOnly`
+   * id, so a theme that omits `layouts[slideType]` (or points at
+   * `FULL_LAYOUTS`) never samples it. That is how quote-stage, the speech
+   * faces, and the wave-8 board locks stay out of everyone else's lottery.
    *
-   * Enforced at exactly two candidate-pool construction points — never at
-   * the pin path itself, which is the whole point of the tier ("pin-only"
-   * means *only* that road reaches it):
-   * - `../themes/definitions.ts`'s `fullLayoutSet` (every built-in
-   *   theme's default pool, since it defaults to the full registered-
-   *   layout set)
-   * - `../layout-selection.ts`'s `resolveLayoutId` candidate-pool
-   *   construction (defensive: `registerTheme` legally allows a custom
-   *   theme to list a pinOnly id in its own curated `layouts` set — that
-   *   registration-time check validates existence/kind/slideTypes, not
-   *   this flag — so sampling itself must re-exclude it here too)
+   * A theme that *lists* the id in its own `layouts[slideType]` is locking
+   * that face and `resolveLayoutId` will sample it. Builtins only do this
+   * for a board-locked cover/chapter/ending. quote-stage and the other
+   * speech faces stay unlisted on every builtin, so they still reach
+   * render solely through an explicit `slide.layout` pin.
    *
    * `resolveLayoutId`'s `requestedLayout` short-circuit and
-   * `checkLayoutApplicability` (`../../validate-core.ts`) both stay
-   * unmodified by this flag: an explicit pin bypasses selection
-   * unconditionally regardless of `pinOnly`, and applicability only ever
-   * checks registry existence + `slideTypes`, never this tier.
+   * `checkLayoutApplicability` (`../../validate-core.ts`) are unchanged:
+   * an explicit pin bypasses selection regardless of this flag, and
+   * applicability only checks registry existence + `slideTypes`.
    *
-   * `undefined` (every built-in layout as of this task — the mechanism
-   * lands ahead of its first real consumer, `quote-stage`, T2's job) means
-   * ordinarily auto-selectable, same "no real member yet, byte-identical
-   * selection" posture `narrativesOnly` launched with (W4 design decision
-   * 5). See {@link excludePinOnly} for the pure filter this field feeds.
+   * See {@link excludePinOnly} for the filter `fullLayoutSet` uses.
    */
   pinOnly?: boolean
   /**
@@ -383,10 +381,10 @@ export function filterByNarrativesOnly<T extends { narrativesOnly?: readonly Str
  * {@link LayoutDefinition.pinOnly}'s own doc comment for the full tier
  * semantics): drop every layout whose `pinOnly` is `true`, keep the rest.
  * Generic over any `pinOnly`-shaped record, same synthetic-fixture-testable
- * shape {@link filterByNarrativesOnly} already established. Two real call
- * sites: `../themes/definitions.ts`'s `fullLayoutSet` and
- * `../layout-selection.ts`'s `resolveLayoutId` candidate-pool
- * construction — see the field doc comment for why both are needed.
+ * shape {@link filterByNarrativesOnly} already established. One real call
+ * site after wave 8: `../themes/definitions.ts`'s `fullLayoutSet`. A theme
+ * that lists a pinOnly id in its own curated set is locking that face, so
+ * `resolveLayoutId` no longer re-excludes it.
  */
 export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T[]): T[] {
   return defs.filter((def) => !def.pinOnly)
@@ -396,11 +394,9 @@ export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T
 // Cover layouts (13, board-cover-fidelity wave 2026-08-22: 9 -> 13 —
 // institutional-block / memo-head / board-head / bill-head, four board
 // constructions that were not in the pool. Appended after colophon, same
-// position discipline every earlier pool growth used) — cover/chapter/ending
-// never read `slide.components`
-// (inventory headline finding — see each layout's own `layoutDef`
-// comment for the file-by-file confirmation), so none of them declare a
-// `body` slot.
+// position discipline every earlier pool growth used). Most covers still
+// have no body slot. `verdict-index` is the exception: it declares
+// `body accepts: ["bullets"]` and draws up to three numbered arguments.
 // ─────────────────────────────────────────────────────────────────────────
 const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [coverBannerTitle.id]: coverBannerTitle,
@@ -436,6 +432,9 @@ const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [coverPaperMasthead.id]: coverPaperMasthead,
   [coverHorizonWedge.id]: coverHorizonWedge,
   [coverCornerWedge.id]: coverCornerWedge,
+  [coverIkbFieldCover.id]: coverIkbFieldCover,
+  [coverStatCover.id]: coverStatCover,
+  [coverTypeRuleCover.id]: coverTypeRuleCover,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -453,6 +452,12 @@ const CHAPTER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [chapterToneAdaptiveChapter.id]: chapterToneAdaptiveChapter,
   [chapterFashionChapter.id]: chapterFashionChapter,
   [chapterVerseChapter.id]: chapterVerseChapter,
+  [chapterGhostRuleChapter.id]: chapterGhostRuleChapter,
+  [chapterBlockNumeralChapter.id]: chapterBlockNumeralChapter,
+  [chapterGhostSectionChapter.id]: chapterGhostSectionChapter,
+  [chapterEmberIndexChapter.id]: chapterEmberIndexChapter,
+  [chapterStrokeIndexChapter.id]: chapterStrokeIndexChapter,
+  [chapterActChapter.id]: chapterActChapter,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -467,6 +472,12 @@ const ENDING_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [endingPosterEnding.id]: endingPosterEnding,
   [endingToneAdaptiveEnding.id]: endingToneAdaptiveEnding,
   [endingFashionEnding.id]: endingFashionEnding,
+  [endingActionPadEnding.id]: endingActionPadEnding,
+  [endingSignoffEnding.id]: endingSignoffEnding,
+  [endingCloseWordEnding.id]: endingCloseWordEnding,
+  [endingAskEnding.id]: endingAskEnding,
+  [endingRuleCloseEnding.id]: endingRuleCloseEnding,
+  [endingPillCtaEnding.id]: endingPillCtaEnding,
 }
 
 // ─────────────────────────────────────────────────────────────────────────

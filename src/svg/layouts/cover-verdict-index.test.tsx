@@ -6,6 +6,7 @@ import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle, CANONICAL_THEME_IDS } from "../../themes"
 import { contrastRatio, requiredContrastRatio } from "../ink"
 import { VerdictIndexCover, layoutDef } from "./cover-verdict-index"
+import type { StyleTokens } from "../../themes/tokens"
 import type { PptxIR, Slide } from "@/ir"
 
 const HEADING = "工作区订阅增长优质，下半年应加倍投入交付侧"
@@ -33,8 +34,12 @@ const FULL_META: PptxIR["meta"] = {
   version: "v1.0",
 }
 
-function renderCover(themeId: string, s: Slide = slide(), meta: PptxIR["meta"] = FULL_META) {
-  const tokens = resolveStyle(themeId)
+function renderCover(
+  themeId: string,
+  s: Slide = slide(),
+  meta: PptxIR["meta"] = FULL_META,
+  tokens: StyleTokens = resolveStyle(themeId),
+) {
   const ctx = buildCtx(
     tokens,
     {},
@@ -49,9 +54,14 @@ function renderCover(themeId: string, s: Slide = slide(), meta: PptxIR["meta"] =
   return { markup, root: parseSvgRoot(markup), tokens }
 }
 
+function withoutVerdictKnobs(themeId: string): StyleTokens {
+  const tokens = resolveStyle(themeId)
+  return { ...tokens, shape: { ...tokens.shape, cover: undefined } }
+}
+
 describe("cover-verdict-index — board geometry", () => {
-  it("places the verdict heading at the board coordinates and uses tokens, not hex", () => {
-    const { root, tokens } = renderCover("consulting")
+  it("omitted knobs keep the restore-wave-1 coordinates", () => {
+    const { root, tokens } = renderCover("consulting", slide(), FULL_META, withoutVerdictKnobs("consulting"))
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700" && t.getAttribute("x") === "96")
     expect(headings[0]?.getAttribute("y")).toBe("316")
     expect(Number(headings[0]?.getAttribute("font-size"))).toBeGreaterThanOrEqual(50)
@@ -59,6 +69,21 @@ describe("cover-verdict-index — board geometry", () => {
     const fills = new Set(Array.from(root.querySelectorAll("[fill]")).map((el) => el.getAttribute("fill")))
     expect(fills.has(tokens.colors.primary) || [...fills].some((f) => f === tokens.colors.text || f === tokens.colors.muted)).toBe(true)
     expect(root.innerHTML).not.toMatch(/#F5C518/i)
+  })
+
+  it("consulting knobs move the cluster onto the wave8 board", () => {
+    const { root } = renderCover("consulting")
+    const kicker = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("云觅科技"))
+    expect(kicker?.getAttribute("y")).toBe("150")
+    const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700" && t.getAttribute("x") === "96")
+    expect(headings[0]?.getAttribute("y")).toBe("304")
+    expect(Number(headings[0]?.getAttribute("font-size"))).toBe(60)
+    const foot = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("陈砚清"))
+    expect(foot?.getAttribute("y")).toBe("676")
+    const rule = Array.from(root.querySelectorAll("line")).find((l) => l.getAttribute("y1") === "640")
+    expect(rule).toBeTruthy()
+    expect(rule?.getAttribute("x1")).toBe("96")
+    expect(rule?.getAttribute("x2")).toBe("1184")
   })
 
   it("does not invent numbered columns when components are empty", () => {
@@ -88,9 +113,9 @@ describe("cover-verdict-index — emphasis and bullets", () => {
     expect(Array.from(plain.root.querySelectorAll("rect"))).toHaveLength(0)
   })
 
-  it("with 3 bullet items draws 01/02/03 at the board columns", () => {
+  it("with 3 bullet items draws 01/02/03 at the default columns", () => {
     const withBullets = slide(HEADING, { components: [{ type: "bullets", items: ITEMS }] })
-    const { root } = renderCover("consulting", withBullets)
+    const { root } = renderCover("consulting", withBullets, FULL_META, withoutVerdictKnobs("consulting"))
     const texts = Array.from(root.querySelectorAll("text"))
     expect(texts.some((t) => t.textContent === "01" && t.getAttribute("x") === "96" && t.getAttribute("y") === "556")).toBe(true)
     expect(texts.some((t) => t.textContent === "02" && t.getAttribute("x") === "470")).toBe(true)
@@ -98,8 +123,20 @@ describe("cover-verdict-index — emphasis and bullets", () => {
     expect(root.querySelectorAll("line").length).toBeGreaterThanOrEqual(2)
   })
 
+  it("consulting knobs drop the column rules and sit the numbers on the wave8 row", () => {
+    const withBullets = slide(HEADING, { components: [{ type: "bullets", items: ITEMS }] })
+    const { root } = renderCover("consulting", withBullets)
+    const texts = Array.from(root.querySelectorAll("text"))
+    expect(texts.some((t) => t.textContent === "01" && t.getAttribute("x") === "96" && t.getAttribute("y") === "560")).toBe(true)
+    expect(texts.some((t) => t.textContent === "02" && t.getAttribute("x") === "470" && t.getAttribute("y") === "560")).toBe(true)
+    const bodies = texts.filter((t) => ITEMS.some((item) => (t.textContent ?? "").includes(item.slice(0, 4))))
+    expect(bodies.some((t) => t.getAttribute("y") === "592")).toBe(true)
+    const vertical = Array.from(root.querySelectorAll("line")).filter((l) => l.getAttribute("x1") === l.getAttribute("x2"))
+    expect(vertical).toHaveLength(0)
+  })
+
   it("with components: [] draws no numbered columns", () => {
-    const { root } = renderCover("consulting", slide(HEADING, { components: [] }))
+    const { root } = renderCover("consulting", slide(HEADING, { components: [] }), FULL_META, withoutVerdictKnobs("consulting"))
     expect(Array.from(root.querySelectorAll("text")).map((t) => t.textContent)).not.toContain("01")
     expect(root.querySelectorAll("line")).toHaveLength(0)
   })

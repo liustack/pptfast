@@ -18,6 +18,9 @@ import { HeaderBandCover } from "./cover-header-band"
 import { PaperMastheadCover } from "./cover-paper-masthead"
 import { HorizonWedgeCover } from "./cover-horizon-wedge"
 import { CornerWedgeCover } from "./cover-corner-wedge"
+import { IkbFieldCover } from "./cover-ikb-field-cover"
+import { StatCover } from "./cover-stat-cover"
+import { TypeRuleCover } from "./cover-type-rule-cover"
 
 export type { CoverLayout, CoverLayoutId } from "./types"
 
@@ -43,4 +46,7 @@ export const COVER_LAYOUTS: Record<CoverLayoutId, CoverLayout> = {
   "paper-masthead": PaperMastheadCover,
   "horizon-wedge": HorizonWedgeCover,
   "corner-wedge": CornerWedgeCover,
+  "ikb-field-cover": IkbFieldCover,
+  "stat-cover": StatCover,
+  "type-rule-cover": TypeRuleCover,
 }

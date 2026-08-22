@@ -232,4 +232,40 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
     expect(meta.getAttribute("y")).toBe("56")
     expect(meta.getAttribute("text-anchor")).toBe("start")
   })
+
+  it("omitted textAnchor equals explicit middle (default poster geometry)", () => {
+    const omitted = renderCover("insight", { metaPlacement: "top" })
+    const middle = renderCover("insight", { metaPlacement: "top", textAnchor: "middle" })
+    expect(omitted.markup).toBe(middle.markup)
+    const title = Array.from(omitted.root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("创意提案"),
+    )!
+    expect(title.getAttribute("text-anchor")).toBe("middle")
+    expect(title.getAttribute("x")).toBe("640")
+    expect(bar(omitted.root).getAttribute("x")).toBe("610")
+  })
+
+  it("textAnchor start left-aligns kicker, title, bar and subtitle at x=96", () => {
+    const knobs = {
+      showKicker: true,
+      barFill: "accent" as const,
+      metaPlacement: "bottom-left" as const,
+      textAnchor: "start" as const,
+    }
+    const { root } = renderCover("campaign", knobs)
+    const title = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("创意提案"))!
+    expect(title.getAttribute("text-anchor")).toBe("start")
+    expect(title.getAttribute("x")).toBe("96")
+    const kicker = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "云觅科技" && Number(t.getAttribute("y")) < 280,
+    )!
+    expect(kicker.getAttribute("text-anchor")).toBe("start")
+    expect(kicker.getAttribute("x")).toBe("96")
+    expect(bar(root).getAttribute("x")).toBe("96")
+    const subtitle = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("一次品牌焕新实验"),
+    )!
+    expect(subtitle.getAttribute("text-anchor")).toBe("start")
+    expect(subtitle.getAttribute("x")).toBe("96")
+  })
 })
