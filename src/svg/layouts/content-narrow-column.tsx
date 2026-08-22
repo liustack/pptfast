@@ -4,7 +4,7 @@ import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -18,7 +18,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  * accent-italic subheading slots in below it. Extracted from
  * templates/magazine.tsx 的 `EditorialSerifContent`（212-380 行）。
  * 随迁 helper：无——本函数消费的 `SvgContent`/`sectionNameFor`/
- * `fitHeadingLines`/`fitSvgLine`/`fitEmphasisLine`/`renderEmphasisTspans`
+ * `fitHeadingLines`/`fitSvgLine`/`fitEmphasisLine`/`renderEmphasisText`
  * 均是 svg 或 pptx-preview 下的公共 helper（经 import 消费，非
  * templates 文件私有），照常 import，不复制。
  *
@@ -224,19 +224,26 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
       ))}
 
       {/* Subheading: accent italic so-what sentence below the heading (Task 5) */}
-      {subheading && (
-        <text
-          x="96"
-          y={subheadingY}
-          fontFamily={fonts.heading}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          fontStyle="italic"
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x="96"
+            y={subheadingY}
+            fontFamily={fonts.heading}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       <SvgContent
         arrangement={slide.arrangement}

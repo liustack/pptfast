@@ -5,7 +5,7 @@ import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -269,18 +269,25 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
         </text>
       ))}
 
-      {subheading && (
-        <text
-          x="96"
-          y={subheadingY}
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x="96"
+            y={subheadingY}
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Persistent structure: unconditional regardless of component count
           (see file header — the T1 handoff's single-component visibility

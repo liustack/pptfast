@@ -5,7 +5,13 @@ import type { ComponentCtx } from "../components/types"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { hasCjk } from "../layouts/minimal-shared"
 import { stacksVertically } from "../../lib/text-script"
-import { parseEmphasis } from "../emphasis"
+import {
+  parseEmphasis,
+  renderEmphasisText,
+  resolveEmphasisForm,
+  sliceEmphasisForLines,
+  stripEmphasis,
+} from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import { fitHeadingLines } from "../heading-fit"
@@ -359,8 +365,13 @@ function verticalKickerFill(knobs: HeadingKnobs, colors: ComponentCtx["colors"])
 function renderGhostIndex(args: RenderArgs): { chrome: ReactNode; contentRect: ContentRect } {
   const { colors, fonts } = args.ctx
   const hasSub = args.subheading.length > 0
-  const titleX = leftTitleX(PAGE_LEFT, 128, 42, args.heading, fonts.heading, args.reserve)
-  const title = fitTitle(args.heading, 42, titleMaxWidthFor(titleX), fonts.heading)
+  const pad = resolveEmphasisForm(args.ctx.themeId) === "pad"
+  const heading = pad ? stripEmphasis(args.heading) : args.heading
+  const titleX = leftTitleX(PAGE_LEFT, 128, 42, heading, fonts.heading, args.reserve)
+  const title = fitTitle(heading, 42, titleMaxWidthFor(titleX), fonts.heading)
+  const titleSegments = pad
+    ? sliceEmphasisForLines(parseEmphasis(args.heading), title.lines)
+    : title.lines.map((line) => [{ text: line, emphasized: false }])
   const y = (hasSub ? 238 : 196) + extraTitleY(title)
   const index = padded(args.chapterNumber)
   const strokeCorner = args.knobs.indexStyle === "stroke-corner"
@@ -402,32 +413,63 @@ function renderGhostIndex(args: RenderArgs): { chrome: ReactNode; contentRect: C
             {index}
           </text>
         )}
-        {title.lines.map((line, i) => (
-          <text
-            key={i}
-            x={titleX}
-            y={128 + i * title.lineHeight}
-            fontSize={title.fontSize}
-            fontWeight={700}
-            fontFamily={fonts.heading}
-            fill={ink(colors.text, args.ctx, title.fontSize)}
-            dominantBaseline="alphabetic"
-          >
-            {line}
-          </text>
-        ))}
-        {hasSub && (
-          <text
-            x={96}
-            y={172 + extraTitleY(title)}
-            fontSize={18}
-            fontFamily={fonts.body}
-            fill={ink(colors.muted, args.ctx, 18)}
-            dominantBaseline="alphabetic"
-          >
-            {args.subheading}
-          </text>
-        )}
+        {title.lines.map((line, i) => {
+          const titleFill = ink(colors.text, args.ctx, title.fontSize)
+          return renderEmphasisText(
+            titleSegments[i] ?? [{ text: line, emphasized: false }],
+            {
+              accent: colors.accent,
+              padFill: colors.accent,
+              baseFill: titleFill,
+              fontWeight: "700",
+              themeId: args.ctx.themeId,
+              measureWeight: { bold: true, fontFamily: fonts.heading },
+            },
+            <text
+              key={i}
+              x={titleX}
+              y={128 + i * title.lineHeight}
+              fontSize={title.fontSize}
+              fontWeight={700}
+              fontFamily={fonts.heading}
+              fill={titleFill}
+              dominantBaseline="alphabetic"
+            />,
+          )
+        })}
+        {hasSub &&
+          (pad
+            ? renderEmphasisText(
+                parseEmphasis(args.subheading),
+                {
+                  accent: colors.accent,
+                  padFill: colors.accent,
+                  baseFill: ink(colors.muted, args.ctx, 18),
+                  fontWeight: "700",
+                  themeId: args.ctx.themeId,
+                  measureWeight: { fontFamily: fonts.body },
+                },
+                <text
+                  x={96}
+                  y={172 + extraTitleY(title)}
+                  fontSize={18}
+                  fontFamily={fonts.body}
+                  fill={ink(colors.muted, args.ctx, 18)}
+                  dominantBaseline="alphabetic"
+                />,
+              )
+            : (
+                <text
+                  x={96}
+                  y={172 + extraTitleY(title)}
+                  fontSize={18}
+                  fontFamily={fonts.body}
+                  fill={ink(colors.muted, args.ctx, 18)}
+                  dominantBaseline="alphabetic"
+                >
+                  {args.subheading}
+                </text>
+              ))}
       </>
     ),
   }

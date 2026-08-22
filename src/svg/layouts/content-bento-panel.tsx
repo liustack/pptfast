@@ -30,7 +30,7 @@ import {
   type KpiValueScale,
 } from "../components/kpi"
 import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
 import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
@@ -78,7 +78,7 @@ import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
  * `../../lib/svg-text-layout`；`Icon` 定义于 `../icons`；
  * `deltaProps`/`splitKpiValueWidths` 定义于 `../components/kpi`；
  * `iconCardContentHeight`/`renderIconCardBody` 定义于 `../components/icon-cards`；
- * `fitEmphasisLine`/`renderEmphasisTspans` 定义于 `../emphasis`——全部是已
+ * `fitEmphasisLine`/`renderEmphasisText` 定义于 `../emphasis`——全部是已
  * 公开导出的模块，没有任何一个又回头依赖 `templates/tech.tsx` 文件私有的
  * 其它符号（`CONF_LABEL`/`chapterNumberFor` 等 Cover/Chapter 专属依赖均未
  * 被此区间引用）。本文件不 import `../templates/tech`。
@@ -942,22 +942,25 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       ))}
 
       {/* Subheading: accent so-what sentence below the heading (Task 5) */}
-      {subheading && (
-        <text
-          x="96"
-          y={subheadingY}
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, {
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
             accent: colors.text,
+            padFill: colors.accent,
             baseFill: subheadingFill,
             fontWeight: "700",
-          })}
-        </text>
-      )}
+            themeId: ctx.themeId,
+          },
+          <text
+            x="96"
+            y={subheadingY}
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {body}
 

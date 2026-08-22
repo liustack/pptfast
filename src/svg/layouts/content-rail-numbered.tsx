@@ -4,7 +4,7 @@ import { SvgContent } from "../svg-content"
 import { chapterNumberFor, contentIndexInChapter } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -23,7 +23,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  * 比 brief 给出的 390-558 短——558 行已进入下一节"Ending"的头注释）。随迁
  * helper：无——本函数消费的 `SvgContent`/`chapterNumberFor`/
  * `contentIndexInChapter`/`fitHeadingLines`/`fitSvgLine`/`fitEmphasisLine`/
- * `renderEmphasisTspans` 均是 svg 或 pptx-preview 下的公共 helper（经
+ * `renderEmphasisText` 均是 svg 或 pptx-preview 下的公共 helper（经
  * import 消费，非 templates 文件私有），照常 import，不复制。函数消费的模块
  * 级私有几何常量（`RAIL_*`/`BADGE_*`/`TITLE_*`/`CONTENT_*`/`SUBHEADING_*`/
  * `BASELINE_FUDGE_RATIO`——均是像素/比例数值，非颜色）随函数体一并复制为本
@@ -37,7 +37,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  *     节点/徽章底色），未烤死，原样保留。
  *   - 源文件私有常量 `TEXT`  → `ctx.colors.text`  —— 逐字符精确匹配。
  *   - 源文件私有常量 `MUTED` → `ctx.colors.muted` —— 逐字符精确匹配。
- *   - `colors.text`/`colors.primary`（`renderEmphasisTspans` 的
+ *   - `colors.text`/`colors.primary`（`renderEmphasisText` 的
  *     accent/baseFill 入参）：源函数已直接消费，未烤死，原样保留。
  * 两处烤死常量都在 academic 的 token 表里有精确匹配，**无孤儿色**。
  *
@@ -295,18 +295,25 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
       ))}
 
       {/* Subheading: accent so-what sentence below the badge/title row */}
-      {subheading && (
-        <text
-          x={TITLE_X}
-          y={subheadingY}
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x={TITLE_X}
+            y={subheadingY}
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Content components below the title row (was a divider + foreignObject) */}
       <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />

@@ -5,7 +5,7 @@ import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -286,18 +286,25 @@ export function SplitBandContent({ ir, slide, index, ctx }: SvgTemplateProps) {
             </text>
           ))}
 
-          {subheading && (
-            <text
-              x={TEXT_X}
-              y={subheadingY}
-              fontFamily={fonts.body}
-              fontSize={subheading.fontSize}
-              fill={subheadingFill}
-              dominantBaseline="alphabetic"
-            >
-              {renderEmphasisTspans(subheading.segments, { accent: readableOn(colors.primary), baseFill: subheadingFill, fontWeight: "700" })}
-            </text>
-          )}
+          {subheading &&
+            renderEmphasisText(
+              subheading.segments,
+              {
+                accent: readableOn(colors.primary),
+                padFill: colors.accent,
+                baseFill: subheadingFill,
+                fontWeight: "700",
+                themeId: ctx.themeId,
+              },
+              <text
+                x={TEXT_X}
+                y={subheadingY}
+                fontFamily={fonts.body}
+                fontSize={subheading.fontSize}
+                fill={subheadingFill}
+                dominantBaseline="alphabetic"
+              />,
+            )}
         </g>
       </g>
 

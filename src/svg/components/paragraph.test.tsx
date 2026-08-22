@@ -4,6 +4,9 @@ import { render } from "@testing-library/react"
 import { paragraph } from "./paragraph"
 import type { ComponentCtx } from "./types"
 import { PACING_BUDGETS } from "@/narrative"
+import { CONSULTING_TOKENS } from "@/themes/consulting"
+import { measureTextUnits } from "@/lib/svg-text-layout"
+import { contrastRatio, requiredContrastRatio } from "../ink"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -50,6 +53,55 @@ describe("paragraph component", () => {
 })
 
 describe("paragraph component emphasis", () => {
+  it("renders consulting emphasis as a measured foreground pad before readable text", () => {
+    const consultingCtx: ComponentCtx = {
+      ...ctx,
+      colors: CONSULTING_TOKENS.colors,
+      themeId: "consulting",
+    }
+    const marked = { type: "paragraph" as const, text: "普通 **强调内容** 普通" }
+    const { container } = svg(paragraph.render(marked, { x: 0, y: 0, w: 1120 }, consultingCtx))
+    const group = container.querySelector("g")!
+    const rect = group.querySelector("rect")!
+    const text = group.querySelector("text")!
+    const emphasized = Array.from(text.querySelectorAll("tspan")).find(
+      (span) => span.textContent === "强调内容",
+    )!
+    const spans = Array.from(text.querySelectorAll("tspan"))
+
+    expect(rect).toBeTruthy()
+    expect(rect.getAttribute("data-emphasis-pad")).toBe("")
+    expect(rect.closest("[data-decor]")).toBeNull()
+    expect(Array.from(group.children).indexOf(rect)).toBeLessThan(
+      Array.from(group.children).indexOf(text),
+    )
+    expect(rect.getAttribute("fill")).toBe(CONSULTING_TOKENS.colors.accent)
+
+    const runWidth =
+      measureTextUnits("强调内容") * consultingCtx.bodyFontPx
+    const runStart =
+      measureTextUnits("普通 ") * consultingCtx.bodyFontPx
+    expect(Number(spans[0]?.getAttribute("x"))).toBe(0)
+    expect(Number(rect.getAttribute("x"))).toBeCloseTo(
+      runStart - consultingCtx.bodyFontPx * 0.1,
+      6,
+    )
+    expect(Number(emphasized.getAttribute("x"))).toBeCloseTo(runStart, 6)
+    expect(emphasized.getAttribute("text-anchor")).toBe("start")
+    expect(emphasized.getAttribute("data-emphasis-pad-fill")).toBe(CONSULTING_TOKENS.colors.accent)
+    const leftPadding = Number(emphasized.getAttribute("x")) - Number(rect.getAttribute("x"))
+    const rightPadding = Number(rect.getAttribute("width")) - runWidth - leftPadding
+    expect(leftPadding).toBeGreaterThan(0)
+    expect(rightPadding).toBeCloseTo(leftPadding, 6)
+    expect(Number(rect.getAttribute("height"))).toBeCloseTo(consultingCtx.bodyFontPx * 1.1, 6)
+    expect(Number(rect.getAttribute("y"))).toBeLessThan(Number(text.getAttribute("y")))
+
+    const ink = emphasized.getAttribute("fill")!
+    expect(contrastRatio(ink, CONSULTING_TOKENS.colors.accent)).toBeGreaterThanOrEqual(
+      requiredContrastRatio(consultingCtx.bodyFontPx),
+    )
+  })
+
   it("renders unmarked text with no tspan wrapper, byte-identical to plain text", () => {
     const plain = { type: "paragraph" as const, text: "一段没有强调标记的普通文本" }
     const { container } = svg(paragraph.render(plain, { x: 0, y: 0, w: 1120 }, ctx))
@@ -87,6 +139,30 @@ describe("paragraph component emphasis", () => {
       Array.from(t.querySelectorAll("tspan")).some((s) => s.getAttribute("fill") === "#00A878"),
     )
     expect(linesWithAccent.length).toBeGreaterThan(1)
+  })
+
+  it("draws one consulting pad for each wrapped line of a cross-line emphasis run", () => {
+    const consultingCtx: ComponentCtx = {
+      ...ctx,
+      colors: CONSULTING_TOKENS.colors,
+      themeId: "consulting",
+    }
+    const long = {
+      type: "paragraph" as const,
+      text: "**这是一段足够长会被换行切断的强调文本内容用于测试跨行垫块延续**",
+    }
+    const { container } = svg(paragraph.render(long, { x: 0, y: 0, w: 260 }, consultingCtx))
+    const group = container.querySelector("g")!
+    const texts = Array.from(group.querySelectorAll("text"))
+    const pads = Array.from(group.querySelectorAll("rect"))
+
+    expect(texts.length).toBeGreaterThan(1)
+    expect(pads).toHaveLength(texts.length)
+    for (let i = 0; i < texts.length; i += 1) {
+      expect(Array.from(group.children).indexOf(pads[i]!)).toBeLessThan(
+        Array.from(group.children).indexOf(texts[i]!),
+      )
+    }
   })
 })
 
@@ -153,4 +229,3 @@ describe("paragraph truncation budget", () => {
     expect(markup).not.toContain("…")
   })
 })
-

@@ -3,7 +3,7 @@ import type { Component } from "@/ir"
 import { layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import {
   parseEmphasis,
-  renderEmphasisTspans,
+  renderEmphasisText,
   sliceEmphasisForLines,
   stripEmphasis,
   truncateEmphasisSegments,
@@ -258,20 +258,26 @@ export const bullets: SvgComponent<BulletsComponent> = {
                 strokeWidth={1}
               />
             )}
-            {item.lineSegments.map((segments, li) => (
-              <text
-                key={li}
-                data-truncated={item.lineTruncated[li] ? "1" : undefined}
-                x={indent}
-                y={item.firstLineY + li * lineHeight}
-                fontFamily={ctx.fonts.body}
-                fontSize={fontSize}
-                fill={ctx.colors.text}
-                dominantBaseline="alphabetic"
-              >
-                {renderEmphasisTspans(segments, { accent: ctx.colors.accent, baseFill: ctx.colors.text })}
-              </text>
-            ))}
+            {item.lineSegments.map((segments, li) =>
+              renderEmphasisText(
+                segments,
+                {
+                  accent: ctx.colors.accent,
+                  baseFill: ctx.colors.text,
+                  themeId: ctx.themeId,
+                },
+                <text
+                  key={li}
+                  data-truncated={item.lineTruncated[li] ? "1" : undefined}
+                  x={indent}
+                  y={item.firstLineY + li * lineHeight}
+                  fontFamily={ctx.fonts.body}
+                  fontSize={fontSize}
+                  fill={ctx.colors.text}
+                  dominantBaseline="alphabetic"
+                />,
+              ),
+            )}
           </Fragment>
         ))}
         {hidden > 0 && <g data-dropped={hidden} />}

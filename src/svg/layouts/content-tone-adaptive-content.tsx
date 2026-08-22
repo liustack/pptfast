@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -46,7 +46,7 @@ import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
  *     ending-tone-adaptive-ending.tsx 的既有写法（`border` 在 `StyleColors`
  *     上是可选字段）。
  *   - `ctx.colors.accent`/`ctx.colors.text`：函数体内已直接消费（两分支的
- *     section label、subheading 及其 `renderEmphasisTspans` 强调段落、
+ *     section label、subheading 及其 `renderEmphasisText` 强调段落、
  *     divider 第一段短横条），本就是 token 而非烤死常量，原样保留不进
  *     替换表。
  * 三个烤死常量全部精确匹配 token 值，**无孤儿色**。
@@ -398,18 +398,25 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
         ))}
 
         {/* Subheading: accent so-what sentence below the heading (Task 5) */}
-        {subheading && (
-          <text
-            x="92"
-            y={subheadingY}
-            fontFamily={fonts.body}
-            fontSize={subheading.fontSize}
-            fill={subheadingFill}
-            dominantBaseline="alphabetic"
-          >
-            {renderEmphasisTspans(subheading.segments, { accent: subheadingEmphasisFill, baseFill: subheadingFill, fontWeight: "700" })}
-          </text>
-        )}
+        {subheading &&
+          renderEmphasisText(
+            subheading.segments,
+            {
+              accent: subheadingEmphasisFill,
+              padFill: colors.accent,
+              baseFill: subheadingFill,
+              fontWeight: "700",
+              themeId: ctx.themeId,
+            },
+            <text
+              x="92"
+              y={subheadingY}
+              fontFamily={fonts.body}
+              fontSize={subheading.fontSize}
+              fill={subheadingFill}
+              dominantBaseline="alphabetic"
+            />,
+          )}
 
         {/* Divider inside card: accent short bar (Task 5c, candidate ①) +
             thin rule — same x1/x2/y span as the pre-Task-5 single line, just
@@ -555,18 +562,25 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       ))}
 
       {/* Subheading: accent so-what sentence below the heading (Task 5) */}
-      {subheading && (
-        <text
-          x="64"
-          y={subheadingY}
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x="64"
+            y={subheadingY}
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Divider: accent short bar (Task 5c, candidate ①) + thin rule — same
           x1/x2/y span as the pre-Task-5 single line, just split into two

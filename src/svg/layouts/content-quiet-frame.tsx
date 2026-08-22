@@ -5,7 +5,7 @@ import { FULL_BODY_TYPES } from "../component-traits"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -203,19 +203,26 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
         </text>
       ))}
 
-      {subheading && (
-        <text
-          x={CENTER_X}
-          y={subheadingY}
-          textAnchor="middle"
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x={CENTER_X}
+            y={subheadingY}
+            textAnchor="middle"
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Centered accent hairline — the frame's only decoration, deliberately
           short (RULE_W) and centered, unlike every other layout's
