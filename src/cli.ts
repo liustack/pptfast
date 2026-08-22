@@ -457,4 +457,4 @@ program
     }
   })
 
-program.parseAsync().catch(fail)
+program.parseAsync(process.argv, { from: "node" }).catch(fail)
