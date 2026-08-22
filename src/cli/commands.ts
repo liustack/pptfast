@@ -16,7 +16,7 @@ import { PptfastError } from "../errors"
 import { VERSION } from "../version"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { PptxIRV3Schema } from "../ir/legacy-v3"
-import { migrateIrV3ToV4 } from "../ir/migrate"
+import { migrateChromeToBranding, migrateIrV3ToV4 } from "../ir/migrate"
 import { disassembleDeck, type PageContent } from "../spec/assemble"
 import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../spec"
 import { migrateDeckPlanToSpec } from "../spec/migrate"
@@ -1455,11 +1455,12 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
  *   rewrites it to `deck.spec.json` per spec §9.2's field mapping
  *   ({@link migrateDeckPlanToSpec}, `../spec/migrate.ts`), written to
  *   `<output>` (a directory — `<output>/deck.spec.json`).
- * - a file → {@link runMigrateIrFile}: must be an IR v3 document
- *   (`version: "3"`), wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`),
- *   written to `<output>` (a file). IR v2 is explicitly not accepted here
- *   (spec §15.3: "v2 无真实用户" — `pptfast migrate` only supports v3→v4,
- *   `validateIr`'s own v2 hard-reject message carries the full v2→v4
+ * - a file → {@link runMigrateIrFile}: an IR v3 document (`version: "3"`)
+ *   wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`). A v4 IR or
+ *   spec-shaped file that still carries the old `chrome` field is rewritten
+ *   via {@link migrateChromeToBranding}. IR v2 is explicitly not accepted
+ *   here (spec §15.3: "v2 无真实用户" — `pptfast migrate` does not convert
+ *   v2, `validateIr`'s own v2 hard-reject message carries the full v2→v4
  *   combined mapping for a caller who needs to convert one by hand).
  *
  * Both branches never overwrite `<output>` — a pre-existing file at the
@@ -1476,6 +1477,23 @@ export async function runMigrate(input: string, output: string, cwd = process.cw
     return runMigrateDeckDir(resolvedInput, output, cwd)
   }
   return runMigrateIrFile(resolvedInput, output, cwd)
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/** Write JSON with the existing `wx` never-overwrite rule shared by migrate legs. */
+async function writeMigratedJson(outPath: string, data: unknown): Promise<void> {
+  await mkdir(dirname(outPath), { recursive: true })
+  try {
+    await writeFile(outPath, JSON.stringify(data, null, 2) + "\n", { flag: "wx" })
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new PptfastError(`${outPath} already exists — refusing to overwrite, delete it first or choose a different -o`)
+    }
+    throw e
+  }
 }
 
 /**
@@ -1507,40 +1525,42 @@ export async function runMigrate(input: string, output: string, cwd = process.cw
  * directory was never a deck project at all. A directory with neither file
  * still reaches `loadIrFile`'s generic error — this function has no more
  * specific diagnosis to offer than that one already gives.
+ *
+ * A directory that has only `deck.spec.json` (no plan) still carrying the
+ * old `chrome` field is rewritten via {@link migrateChromeToBranding} to
+ * `<output>/deck.spec.json`. Same-dir write keeps the `wx` never-overwrite
+ * rule. Dual-source hard-errors. No chrome left means already migrated.
  */
 async function runMigrateDeckDir(dir: string, output: string, cwd: string): Promise<string> {
   const planPath = join(dir, PLAN_FILENAME)
   const sourceSpecPath = join(dir, SPEC_FILENAME)
+  const outDir = resolve(cwd, output)
+  const specPath = join(outDir, SPEC_FILENAME)
   if (!(await pathExists(planPath)) && (await pathExists(sourceSpecPath))) {
+    const raw = await loadIrFile(sourceSpecPath, "spec")
+    if (isPlainRecord(raw) && Object.hasOwn(raw, "chrome")) {
+      const migrated = migrateChromeToBranding(raw)
+      await writeMigratedJson(specPath, migrated)
+      return `wrote ${specPath} (renamed chrome → branding)`
+    }
     throw new PptfastError(
       `${dir} has ${SPEC_FILENAME} but no ${PLAN_FILENAME} — this deck project is already migrated, nothing to do`,
     )
   }
   const raw = await loadIrFile(planPath, "plan")
   const migrated = migrateDeckPlanToSpec(raw)
-  const outDir = resolve(cwd, output)
-  const specPath = join(outDir, SPEC_FILENAME)
-  await mkdir(outDir, { recursive: true })
-  try {
-    await writeFile(specPath, JSON.stringify(migrated, null, 2) + "\n", { flag: "wx" })
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
-      throw new PptfastError(`${specPath} already exists — refusing to overwrite, delete it first or choose a different -o`)
-    }
-    throw e
-  }
+  await writeMigratedJson(specPath, migrated)
   return `wrote ${specPath} — run \`pptfast spec validate ${specPath}\` to confirm it, then delete ${planPath} (a directory with both files present is rejected)`
 }
 
 /**
- * Single-file leg of {@link runMigrate}: requires an explicit `version: "3"`
- * (spec §9.3: "IR v4 入口遇到 v3 时硬拒绝" is `validateIr`'s own job — this
- * command instead requires v3 *specifically*, since v3 is the only version
- * it knows how to convert). `version: "2"` gets its own message pointing at
- * `validateIr`'s existing combined v2→v4 mapping rather than silently
+ * Single-file leg of {@link runMigrate}: an explicit `version: "3"` is the
+ * IR v3 → v4 path (spec §9.3). `version: "2"` gets its own message pointing
+ * at `validateIr`'s existing combined v2→v4 mapping rather than silently
  * routing it through the v3 vocabulary as a stepping stone (spec §15.3:
- * "v2 无真实用户", "`pptfast migrate` 只支持 v3→v4，不接 v2"). Any other
- * version (already v4, or missing/malformed entirely) is rejected with a
+ * "v2 无真实用户", "`pptfast migrate` 只支持 v3→v4，不接 v2"). A v4 IR or
+ * spec-shaped file that still carries the old `chrome` field is rewritten
+ * via {@link migrateChromeToBranding}. Anything else is rejected with a
  * message naming what this command does accept.
  */
 async function runMigrateIrFile(filePath: string, output: string, cwd: string): Promise<string> {
@@ -1551,26 +1571,23 @@ async function runMigrateIrFile(filePath: string, output: string, cwd: string): 
       "pptfast migrate does not support IR v2 (spec §15.3: v2 has no real users) — run `pptfast validate` on the v2 file to see the full v2→v4 combined field mapping and rewrite it by hand",
     )
   }
-  if (version !== "3") {
-    throw new PptfastError(
-      `pptfast migrate only converts an IR v3 file (version: "3") or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath}`,
-    )
-  }
-  const parsed = PptxIRV3Schema.safeParse(raw)
-  if (!parsed.success) {
-    const detail = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")
-    throw new PptfastError(`invalid IR v3 file ${filePath}:\n${detail}`)
-  }
-  const migrated = migrateIrV3ToV4(parsed.data)
   const outPath = resolve(cwd, output)
-  await mkdir(dirname(outPath), { recursive: true })
-  try {
-    await writeFile(outPath, JSON.stringify(migrated, null, 2) + "\n", { flag: "wx" })
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
-      throw new PptfastError(`${outPath} already exists — refusing to overwrite, delete it first or choose a different -o`)
+  if (version === "3") {
+    const parsed = PptxIRV3Schema.safeParse(raw)
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")
+      throw new PptfastError(`invalid IR v3 file ${filePath}:\n${detail}`)
     }
-    throw e
+    const migrated = migrateIrV3ToV4(parsed.data)
+    await writeMigratedJson(outPath, migrated)
+    return `wrote ${outPath} (migrated IR v3 → v4)`
   }
-  return `wrote ${outPath} (migrated IR v3 → v4)`
+  if (isPlainRecord(raw) && Object.hasOwn(raw, "chrome")) {
+    const migrated = migrateChromeToBranding(raw)
+    await writeMigratedJson(outPath, migrated)
+    return `wrote ${outPath} (renamed chrome → branding)`
+  }
+  throw new PptfastError(
+    `pptfast migrate converts an IR v3 file (version: "3"), a v4 IR or deck spec still carrying the old chrome field (renamed to branding), or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath} with nothing to migrate`,
+  )
 }

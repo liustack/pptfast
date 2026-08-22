@@ -2,6 +2,7 @@ import { z } from "zod"
 import {
   AssetsSchema,
   BrandSchema,
+  DeckBrandingSchema,
   MetaSchema,
   NarrativeProfileInputSchema,
   SlideSchema,
@@ -42,6 +43,9 @@ export const PptxIRV3Schema = z
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),
     brand: BrandSchema.optional(),
+    // Optional so a v3 file that already carried the (then-undocumented)
+    // chrome key still parses. migrateIrV3ToV4 rewrites it to branding.
+    chrome: DeckBrandingSchema.optional(),
     seed: z.number().int().optional(),
     slides: z.array(SlideSchema),
   })

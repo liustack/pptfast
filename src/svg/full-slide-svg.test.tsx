@@ -896,23 +896,23 @@ describe("deck chrome posture vs theme motif", () => {
   }
 
   it("cover-only leaves the theme motif on a content page (motif is not brand chrome)", () => {
-    const doc: PptxIR = { ...ir([pinnedContent]), chrome: "cover-only" }
+    const doc: PptxIR = { ...ir([pinnedContent]), branding: "cover-only" }
     const { container } = render(<FullSlideSvg ir={doc} slide={pinnedContent} index={0} />)
     expect(container.querySelector("[data-decor]")).not.toBeNull()
     expect(container.textContent).toContain("三大支柱")
     expect(container.querySelector('line[y1="664"]')).toBeNull()
   })
 
-  it("omitted chrome and explicit cover-only serialize to the same content-page SVG", () => {
+  it("omitted branding and explicit cover-only serialize to the same content-page SVG", () => {
     const omitted = ir([pinnedContent])
-    const coverOnly: PptxIR = { ...omitted, chrome: "cover-only" }
+    const coverOnly: PptxIR = { ...omitted, branding: "cover-only" }
     const a = renderSvgMarkup(<FullSlideSvg ir={omitted} slide={pinnedContent} index={0} />)
     const b = renderSvgMarkup(<FullSlideSvg ir={coverOnly} slide={pinnedContent} index={0} />)
     expect(a).toBe(b)
   })
 
-  it("explicit chrome full still draws the content-page footer rule", () => {
-    const full: PptxIR = { ...ir([pinnedContent]), chrome: "full" }
+  it("explicit branding full still draws the content-page footer rule", () => {
+    const full: PptxIR = { ...ir([pinnedContent]), branding: "full" }
     const markup = renderSvgMarkup(<FullSlideSvg ir={full} slide={pinnedContent} index={0} />)
     expect(markup).toContain('y1="664"')
     expect(markup).toContain("ACME")

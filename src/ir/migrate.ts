@@ -1,5 +1,26 @@
+import { PptfastError } from "../errors"
 import type { PptxIR } from "./index"
 import type { PptxIRV3 } from "./legacy-v3"
+
+/**
+ * Rewrite a raw deck object's root `chrome` key to `branding`. Dual-source
+ * (both keys present) is a hard error, not a silent pick. Identity when
+ * `chrome` is absent: omitted stays omitted, no default is materialized.
+ * Never mutates `raw`. Non-object / null / array input is returned as-is.
+ */
+export function migrateChromeToBranding(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw
+  const obj = raw as Record<string, unknown>
+  const hasChrome = Object.hasOwn(obj, "chrome")
+  const hasBranding = Object.hasOwn(obj, "branding")
+  if (hasChrome && hasBranding) {
+    throw new PptfastError('cannot migrate: both "chrome" and "branding" are present')
+  }
+  if (!hasChrome) return raw
+  const next: Record<string, unknown> = { ...obj, branding: obj.chrome }
+  delete next.chrome
+  return next
+}
 
 /**
  * `scenario.mode` → `narrative.strategy` value map (spec §9.1): only the
@@ -94,15 +115,17 @@ function migrateNarrativeInput(
  */
 export function migrateIrV3ToV4(v3: PptxIRV3): PptxIR {
   const narrative = migrateNarrativeInput(v3.scenario as string | Record<string, unknown> | undefined)
-  return {
-    version: "4",
+  const v4 = {
+    version: "4" as const,
     filename: v3.filename,
     ...(narrative !== undefined ? { narrative } : {}),
     theme: v3.theme,
     meta: v3.meta,
     assets: v3.assets,
     ...(v3.brand !== undefined ? { brand: v3.brand } : {}),
+    ...(v3.chrome !== undefined ? { chrome: v3.chrome } : {}),
     ...(v3.seed !== undefined ? { seed: v3.seed } : {}),
     slides: v3.slides,
   }
+  return migrateChromeToBranding(v4) as PptxIR
 }

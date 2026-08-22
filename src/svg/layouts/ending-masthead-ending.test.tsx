@@ -25,7 +25,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
     version: "3",
     filename: "x.pptx",
     theme: { id: theme },
-    chrome: "full",
+    branding: "full",
     meta: { organization: "维岚科技", date: "2026-07-09" },
     assets: { images: {} },
     slides: [slide],

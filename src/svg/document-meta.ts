@@ -1,4 +1,4 @@
-import type { DeckChrome } from "@/ir"
+import type { DeckBranding } from "@/ir"
 
 /**
  * Confidentiality and date paint only when the deck wrote `"full"`. The
@@ -8,6 +8,6 @@ import type { DeckChrome } from "@/ir"
  * BrandChrome's content-page footer already only draws under `"full"`, so
  * it does not consult this helper.
  */
-export function showsDocumentMeta(ir: { chrome?: DeckChrome }): boolean {
-  return ir.chrome === "full"
+export function showsDocumentMeta(ir: { branding?: DeckBranding }): boolean {
+  return ir.branding === "full"
 }

@@ -278,14 +278,14 @@ describe("assembleDeck", () => {
       expect(ir.brand).toEqual({ logo_asset_id: "logo-1", position: "tl" })
     })
 
-    it("passes chrome through into ir.chrome when the spec sets it", () => {
-      const { ir } = assembleDeck(makePlan({ chrome: "cover-only" }), {})
-      expect(ir.chrome).toBe("cover-only")
+    it("passes branding through into ir.branding when the spec sets it", () => {
+      const { ir } = assembleDeck(makePlan({ branding: "cover-only" }), {})
+      expect(ir.branding).toBe("cover-only")
     })
 
-    it("omits ir.chrome when the spec omits chrome (no baked default)", () => {
+    it("omits ir.branding when the spec omits branding (no baked default)", () => {
       const { ir } = assembleDeck(makePlan(), {})
-      expect(ir.chrome).toBeUndefined()
+      expect(ir.branding).toBeUndefined()
     })
 
     it("lets IR schema defaults handle theme/filename/meta when the spec omits them", () => {
@@ -695,13 +695,13 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
     expect(reassembled.brand).toEqual(original.brand)
   })
 
-  it("round-trips an explicit chrome posture and still omits it when the IR never set one", () => {
-    const withChrome = PptxIRSchema.parse({
+  it("round-trips an explicit branding posture and still omits it when the IR never set one", () => {
+    const withBranding = PptxIRSchema.parse({
       version: "4",
       filename: "talk-deck",
       theme: { id: "consulting" },
       narrative: { pacing: "spacious" },
-      chrome: "cover-only",
+      branding: "cover-only",
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
         { id: "p-body", type: "content", heading: "Body" },
@@ -709,10 +709,10 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
         { id: "p-ending", type: "ending", heading: "End" },
       ],
     })
-    const { spec, pages } = disassembleDeck(withChrome)
-    expect(spec.chrome).toBe("cover-only")
+    const { spec, pages } = disassembleDeck(withBranding)
+    expect(spec.branding).toBe("cover-only")
     const { ir: reassembled } = assembleDeck(spec, pages)
-    expect(reassembled.chrome).toBe("cover-only")
+    expect(reassembled.branding).toBe("cover-only")
 
     const omitted = PptxIRSchema.parse({
       version: "4",
@@ -726,8 +726,8 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
       ],
     })
     const back = disassembleDeck(omitted)
-    expect(back.spec.chrome).toBeUndefined()
-    expect(assembleDeck(back.spec, back.pages).ir.chrome).toBeUndefined()
+    expect(back.spec.branding).toBeUndefined()
+    expect(assembleDeck(back.spec, back.pages).ir.branding).toBeUndefined()
   })
 
   it("round-trips a deck whose slides omit id entirely (positional synthesis both ways)", () => {

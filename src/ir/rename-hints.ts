@@ -59,6 +59,10 @@ const RENAME_HINTS: Readonly<Record<string, RenameHint>> = {
     at: (path) => path === "theme",
     hint: '"theme.override" was renamed to "theme.style" in IR v4',
   },
+  chrome: {
+    at: (path) => path === "",
+    hint: '"chrome" was renamed to "branding"',
+  },
 }
 
 /**

@@ -32,7 +32,7 @@ export const schema = z
     url: z
       .string()
       .optional()
-      .describe('Address-bar text shown in the browser chrome bar. Only valid when device is "browser".'),
+      .describe('Address-bar text shown in the browser window bar. Only valid when device is "browser".'),
   })
   .strict()
   // Schema guidance (review fix round, Important-1 — this is the first

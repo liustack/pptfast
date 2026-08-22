@@ -45,7 +45,7 @@ const bgSlide: Slide = {
   background: { kind: "asset", asset_id: "bg", fit: "cover" },
 } as Slide
 
-function ir(theme: string, images: PptxIR["assets"]["images"] = {}, chrome?: PptxIR["chrome"]): PptxIR {
+function ir(theme: string, images: PptxIR["assets"]["images"] = {}, branding?: PptxIR["branding"]): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
@@ -59,7 +59,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}, chrome?: Ppt
     },
     assets: { images },
     slides: [slide],
-    ...(chrome !== undefined ? { chrome } : {}),
+    ...(branding !== undefined ? { branding } : {}),
   } as unknown as PptxIR
 }
 
@@ -173,10 +173,10 @@ describe("ToneAdaptiveHeaderCover", () => {
     expect(out).not.toContain(ctxWithImg.colors.border)
   })
 
-  // date 只在 chrome:"full" 下有值。省略 chrome 且没有 version 时右下角 meta
+  // date 只在 branding:"full" 下有值。省略 branding 且没有 version 时右下角 meta
   // 单元格会空掉。svg2pptx 的 textToOp 对空 runs 照样产出一只文本框，所以这格
   // 必须整个不画，而不是画一个空的。
-  it("右下角 meta 无内容时不画空 <text>（省略 chrome + 无 version）", () => {
+  it("右下角 meta 无内容时不画空 <text>（省略 branding + 无 version）", () => {
     const tokens = resolveStyle("tech")
     const ctx = buildCtx(tokens, {})
     const doc = ir("tech")
@@ -196,12 +196,12 @@ describe("ToneAdaptiveHeaderCover", () => {
 function renderTone(
   themeId: string,
   cover?: NonNullable<StyleTokens["shape"]>["cover"],
-  chrome: PptxIR["chrome"] = "full",
+  branding: PptxIR["branding"] = "full",
 ) {
   const tokens = resolveStyle(themeId)
   const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
   const ctx = buildCtx(shaped, {})
-  const doc = ir(themeId, {}, chrome)
+  const doc = ir(themeId, {}, branding)
   const markup = renderSvgMarkup(
     wrap(<ToneAdaptiveHeaderCover ir={doc} slide={slide} index={0} ctx={ctx} />),
   )
@@ -209,7 +209,7 @@ function renderTone(
 }
 
 describe("ToneAdaptiveHeaderCover — cover knobs (board-cover-restore wave 2)", () => {
-  it("default title is 92 and the right-bottom date is drawn under chrome full", () => {
+  it("default title is 92 and the right-bottom date is drawn under branding full", () => {
     const { root } = renderTone("consulting")
     const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "年度战略回顾")!
     expect(title.getAttribute("font-size")).toBe("92")
@@ -220,7 +220,7 @@ describe("ToneAdaptiveHeaderCover — cover knobs (board-cover-restore wave 2)",
     expect(right!.textContent).toMatch(/2026|v1/)
   })
 
-  it("terra knobs: font-size 64 and no right-bottom date text when date is in meta with chrome full", () => {
+  it("terra knobs: font-size 64 and no right-bottom date text when date is in meta with branding full", () => {
     const { root } = renderTone("terra", { titleSize: 64, hideRightMeta: true }, "full")
     const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "年度战略回顾")!
     expect(title.getAttribute("font-size")).toBe("64")

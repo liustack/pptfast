@@ -17,7 +17,7 @@ function chromeDeck(theme: string, slides: Slide[]): PptxIR {
     version: "4",
     filename: "minimal-chrome.pptx",
     theme: { id: theme },
-    chrome: "full",
+    branding: "full",
     meta: { organization: "ACME", date: "2026", version: "v1" },
     brand: { logo_asset_id: "logo", position: "br" },
     assets: { images: { logo: { src: LOGO_SRC, alt: "logo" } } },

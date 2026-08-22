@@ -21,7 +21,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}): PptxIR {
     version: "4",
     filename: "band-title.pptx",
     theme: { id: themeId },
-    chrome: "full",
+    branding: "full",
     meta,
     assets: { images: {} },
     slides: [slide()],

@@ -745,12 +745,12 @@ export function ImageBottomPage({
   })
   // 底图垂直通栏到页缘（2026-07-09 用户裁决：绝不拉伸，slice 裁剪出血）。
   // meta 页脚由 BrandChrome 以遮罩浮层压图渲染，caption 条相应上移让位。
-  // 让位条件必须与 BrandChrome 的实际绘制一致：内容页脚只在 chrome:"full"
+  // 让位条件必须与 BrandChrome 的实际绘制一致：内容页脚只在 branding:"full"
   // 时画（cover-only 默认与 minimal 都不画 meta 行），只看 meta 字段会为
   // 不存在的页脚悬空 40px。
   const meta = ir.meta
   const hasMetaFooter =
-    ir.chrome === "full" &&
+    ir.branding === "full" &&
     Boolean(meta.confidentiality || meta.organization || meta.version || meta.date)
   const captionBottom = hasMetaFooter ? H - 40 : H
   let cursor = 96

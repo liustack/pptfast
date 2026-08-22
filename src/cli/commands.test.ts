@@ -776,7 +776,7 @@ describe("runSchema --spec", () => {
   it("prints the deck spec schema", () => {
     const s = JSON.parse(runSchema("spec")) as { properties?: Record<string, unknown> }
     expect(Object.keys(s.properties ?? {})).toEqual(
-      expect.arrayContaining(["version", "narrative", "theme", "brand", "chrome", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "brand", "branding", "pages"]),
     )
   })
 })
@@ -1565,7 +1565,7 @@ describe("runMigrate", () => {
       const irPath = join(srcDir, "v4.json")
       await writeFile(irPath, JSON.stringify(VALID_IR))
       const outPath = join(await makeDeckDir(), "out.json")
-      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/only converts an IR v3 file/)
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/branding/)
     })
 
     it("rejects a v3-labeled file that fails PptxIRV3Schema, naming the issue", async () => {
@@ -1574,6 +1574,20 @@ describe("runMigrate", () => {
       await writeFile(irPath, JSON.stringify({ version: "3", slides: "not-an-array" }))
       const outPath = join(await makeDeckDir(), "out.json")
       await expect(runMigrate(irPath, outPath)).rejects.toThrow(/invalid IR v3 file/)
+    })
+
+    it("a v3 file that also has chrome: \"minimal\" comes out version 4 with branding and no chrome", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v3.json")
+      await writeFile(irPath, JSON.stringify({ ...V3_IR, chrome: "minimal" }))
+      const outPath = join(await makeDeckDir(), "v4.json")
+
+      await runMigrate(irPath, outPath)
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.version).toBe("4")
+      expect(written.branding).toBe("minimal")
+      expect(written.chrome).toBeUndefined()
+      expect(written.narrative).toEqual({ strategy: "storytelling", pacing: "dense", audience: "public" })
     })
   })
 
@@ -1646,6 +1660,110 @@ describe("runMigrate", () => {
       await expect(runSpecValidate(join(deckDir, "deck.spec.json"))).resolves.toMatch(/^OK —/)
       const assembleMsg = await runAssemble(deckDir)
       expect(assembleMsg).toContain(`${spec.pages.length} slides`)
+    })
+  })
+
+  describe("chrome → branding", () => {
+    const specPages = [
+      { id: "p-cover", type: "cover", heading: "Cover" },
+      { id: "p-a", type: "content", heading: "Body" },
+      { id: "p-ending", type: "ending", heading: "Thanks" },
+    ]
+
+    it("a v4 file with chrome: \"full\" writes branding, drops chrome, and mentions the rename not v3 → v4", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      await writeFile(irPath, JSON.stringify({ ...VALID_IR, chrome: "full" }))
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toMatch(/branding/)
+      expect(msg).toMatch(/chrome/)
+      expect(msg).not.toMatch(/v3 → v4/)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.branding).toBe("full")
+      expect(written.chrome).toBeUndefined()
+      expect(written.version).toBe("4")
+    })
+
+    it("a spec-shaped file (version 1 + pages) with chrome: \"cover-only\" rewrites to branding", async () => {
+      const srcDir = await makeDeckDir()
+      const specPath = join(srcDir, "deck.spec.json")
+      await writeFile(
+        specPath,
+        JSON.stringify({
+          version: "1",
+          theme: "consulting",
+          filename: "talk",
+          chrome: "cover-only",
+          pages: specPages,
+        }),
+      )
+      const outPath = join(await makeDeckDir(), "out.json")
+
+      await runMigrate(specPath, outPath)
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.branding).toBe("cover-only")
+      expect(written.chrome).toBeUndefined()
+      expect(written.version).toBe("1")
+      expect(written.pages).toHaveLength(3)
+    })
+
+    it("a dual-source v4 file (chrome + branding) is a hard error naming both keys", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      await writeFile(irPath, JSON.stringify({ ...VALID_IR, chrome: "full", branding: "minimal" }))
+      const outPath = join(await makeDeckDir(), "out.json")
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/chrome/)
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/branding/)
+    })
+
+    it("deck-dir plan → spec: a plan with chrome writes a spec with branding", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan({ chrome: "full" })))
+      const outDir = await makeDeckDir()
+
+      await runMigrate(deckDir, outDir)
+      const written = JSON.parse(await readFile(join(outDir, "deck.spec.json"), "utf8"))
+      expect(written.branding).toBe("full")
+      expect(written.chrome).toBeUndefined()
+      expect(written.narrative).toBe("boardroom-report")
+    })
+
+    it("deck-dir only spec with chrome, different -o: writes a branding spec", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(
+        join(deckDir, "deck.spec.json"),
+        JSON.stringify({
+          version: "1",
+          theme: "consulting",
+          chrome: "full",
+          pages: specPages,
+        }),
+      )
+      const outDir = await makeDeckDir()
+
+      await runMigrate(deckDir, outDir)
+      const written = JSON.parse(await readFile(join(outDir, "deck.spec.json"), "utf8"))
+      expect(written.branding).toBe("full")
+      expect(written.chrome).toBeUndefined()
+
+      const source = JSON.parse(await readFile(join(deckDir, "deck.spec.json"), "utf8"))
+      expect(source.chrome).toBe("full")
+    })
+
+    it("deck-dir only spec without chrome is still already migrated", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(
+        join(deckDir, "deck.spec.json"),
+        JSON.stringify({
+          version: "1",
+          theme: "consulting",
+          pages: specPages,
+        }),
+      )
+      await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/already migrated/)
     })
   })
 })
@@ -1875,7 +1993,7 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     const src = await writeFixtureTemplate(d)
     const themeOut = join(d, "acme.theme.json")
     await runBrandExtract(src, { output: themeOut })
-    await writeFile(join(d, "deck.json"), JSON.stringify({ ...VALID_IR, chrome: "full" }))
+    await writeFile(join(d, "deck.json"), JSON.stringify({ ...VALID_IR, branding: "full" }))
     const pptxOut = join(d, "branded.pptx")
     await runRender(join(d, "deck.json"), { output: pptxOut, themeFilePath: themeOut })
     const zip2 = await JSZip.loadAsync(await readFile(pptxOut))
@@ -1892,7 +2010,7 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     // (source accent2) and the derived muted (#666666, the mixHex walk's
     // first step clearing 4.5:1 against both white bg and the E7E6E6
     // surface). Muted's paint site on this deck is the content-page footer
-    // rule, so the IR writes chrome:"full" (the omitted default is now
+    // rule, so the IR writes branding:"full" (the omitted default is now
     // cover-only and would drop that rule). Primary (accent1) has no paint
     // site on these two layouts, so it is asserted at the theme-file level
     // in the extract test above.

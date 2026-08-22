@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 import {
   COMPONENT_FIELD_ALIASES,
   COMPONENT_ITEM_FIELD_ALIASES,
+  DECK_ROOT_ALIASES,
   SLIDE_FIELD_ALIASES,
   normalizeComponentAliases,
+  normalizeDeckRootAliases,
 } from "./field-aliases"
 import { PptxIRSchema } from "./index"
 
@@ -710,5 +712,48 @@ describe("value type mismatches survive the rename (no _coerce_str port — fiel
     const r = PptxIRSchema.safeParse(value)
     expect(r.success).toBe(false)
     if (!r.success) expect(r.error.issues.some((i) => i.path.join(".").includes("date"))).toBe(true)
+  })
+})
+
+// Deck-root alias chrome → branding via normalizeDeckRootAliases
+describe("normalizeDeckRootAliases", () => {
+  it("maps DECK_ROOT_ALIASES chrome → branding", () => {
+    expect(DECK_ROOT_ALIASES).toEqual({ chrome: "branding" })
+  })
+
+  it("rewrites chrome → branding when branding is absent", () => {
+    const input = { chrome: "full", filename: "x" }
+    const { value, normalized } = normalizeDeckRootAliases(input)
+    expect(normalized).toEqual(["(root): chrome → branding"])
+    expect(value).toEqual({ branding: "full", filename: "x" })
+    expect("chrome" in (value as object)).toBe(false)
+  })
+
+  it("both present: no rewrite, both keys remain, normalized empty", () => {
+    const input = { chrome: "full", branding: "minimal" }
+    const { value, normalized } = normalizeDeckRootAliases(input)
+    expect(normalized).toEqual([])
+    expect(value).toBe(input)
+    expect(value).toEqual({ chrome: "full", branding: "minimal" })
+  })
+
+  it("does not mutate the input", () => {
+    const input = { chrome: "cover-only", filename: "x" }
+    const snapshot = JSON.parse(JSON.stringify(input))
+    const { value } = normalizeDeckRootAliases(input)
+    expect(input).toEqual(snapshot)
+    expect(value).not.toBe(input)
+  })
+
+  it.each<[string, unknown]>([
+    ["null", null],
+    ["undefined", undefined],
+    ["a number", 42],
+    ["a string", "not an ir"],
+    ["an array", [{ chrome: "full" }]],
+  ])("passes through unchanged: %s", (_label, input) => {
+    const { value, normalized } = normalizeDeckRootAliases(input)
+    expect(value).toBe(input)
+    expect(normalized).toEqual([])
   })
 })

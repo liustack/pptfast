@@ -20,7 +20,7 @@ const ctx: ComponentCtx = {
   bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
 }
 
-function ir(themeId: PptxIR["theme"]["id"], slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
+function ir(themeId: PptxIR["theme"]["id"], slides: Slide[], branding?: PptxIR["branding"]): PptxIR {
   return {
     version: "4",
     filename: "deck.pptx",
@@ -30,7 +30,7 @@ function ir(themeId: PptxIR["theme"]["id"], slides: Slide[], chrome?: PptxIR["ch
       images: { bg: { src: "data:image/png;base64,iVBOR", alt: "背景" } },
     },
     slides,
-    ...(chrome !== undefined ? { chrome } : {}),
+    ...(branding !== undefined ? { branding } : {}),
   }
 }
 
@@ -129,7 +129,7 @@ const statementSlide: Slide = {
   components: [],
 }
 
-function branded(slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
+function branded(slides: Slide[], branding?: PptxIR["branding"]): PptxIR {
   const base = ir("consulting", slides)
   return {
     ...base,
@@ -140,12 +140,12 @@ function branded(slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
         logo: { src: LOGO_SRC, alt: "logo" },
       },
     },
-    ...(chrome !== undefined ? { chrome } : {}),
+    ...(branding !== undefined ? { branding } : {}),
   }
 }
 
 describe("deck chrome posture (BrandChrome gate)", () => {
-  it("omitted chrome drops footer rule, meta, and logo on a content page", () => {
+  it("omitted branding drops footer rule, meta, and logo on a content page", () => {
     const doc = branded([plainContentSlide])
     const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()
@@ -153,7 +153,7 @@ describe("deck chrome posture (BrandChrome gate)", () => {
     expect(container.querySelector("image")).toBeNull()
   })
 
-  it("explicit chrome cover-only matches the omitted path on a content page", () => {
+  it("explicit branding cover-only matches the omitted path on a content page", () => {
     const omitted = branded([plainContentSlide])
     const coverOnly = branded([plainContentSlide], "cover-only")
     const a = svg(<BrandChrome ir={omitted} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
@@ -161,7 +161,7 @@ describe("deck chrome posture (BrandChrome gate)", () => {
     expect(a).toBe(b)
   })
 
-  it("explicit chrome full still draws the content footer rule, meta, and logo", () => {
+  it("explicit branding full still draws the content footer rule, meta, and logo", () => {
     const doc = branded([plainContentSlide], "full")
     const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).not.toBeNull()
@@ -169,7 +169,7 @@ describe("deck chrome posture (BrandChrome gate)", () => {
     expect(container.querySelector("image")).not.toBeNull()
   })
 
-  it("omitted chrome keeps the logo on cover and chapter pages", () => {
+  it("omitted branding keeps the logo on cover and chapter pages", () => {
     const doc = branded([coverSlide, chapterSlide])
     for (const slide of [coverSlide, chapterSlide]) {
       const { container } = svg(<BrandChrome ir={doc} slide={slide} ctx={ctx} />)
@@ -178,7 +178,7 @@ describe("deck chrome posture (BrandChrome gate)", () => {
     }
   })
 
-  it("omitted chrome drops the logo on an ending page", () => {
+  it("omitted branding drops the logo on an ending page", () => {
     const doc = branded([endingSlide])
     const { container } = svg(<BrandChrome ir={doc} slide={endingSlide} ctx={ctx} />)
     expect(container.querySelector("image")).toBeNull()
@@ -211,7 +211,7 @@ describe("deck chrome posture (BrandChrome gate)", () => {
     expect(container.textContent).not.toContain("ACME")
   })
 
-  it("layout chrome:none still wins under chrome full", () => {
+  it("layout chrome:none still wins under branding full", () => {
     const doc = branded([statementSlide], "full")
     const { container } = svg(<BrandChrome ir={doc} slide={statementSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()

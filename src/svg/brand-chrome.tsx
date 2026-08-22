@@ -28,14 +28,14 @@ export function BrandChrome({
   // which only suppress or restyle the footer while still drawing a logo.
   // Honour the *offered* pin, not a discarded sparse pin: crayon +
   // statement falls back to a regular content layout and still paints
-  // this fragment under chrome:full. Consulting + statement still skips.
+  // this fragment under branding:full. Consulting + statement still skips.
   if (layoutOmitsChrome(effectiveRequestedLayout(ir.theme.id, slide.layout))) return null
-  // Deck-level chrome posture. Omitted = "cover-only": cover and chapter keep
+  // Deck-level branding posture. Omitted = "cover-only": cover and chapter keep
   // the brand logo, content and ending skip the whole fragment (rule, meta,
   // logo). "full" is the explicit declaration that draws the content-page
   // footer. Layout chrome:none already returned above and still wins. Motif
   // is painted by FullSlideSvg, not this fragment.
-  const posture = ir.chrome ?? "cover-only"
+  const posture = ir.branding ?? "cover-only"
   if (posture === "cover-only" && (slide.type === "content" || slide.type === "ending")) {
     return null
   }

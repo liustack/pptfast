@@ -23,7 +23,7 @@ function slide(heading = HEADING, subheading: string | null = SUBHEADING): Slide
   return { type: "cover", heading, subheading: subheading ?? undefined, components: [] } as Slide
 }
 
-function ir(themeId: string, meta: PptxIR["meta"] = {}, chrome?: PptxIR["chrome"]): PptxIR {
+function ir(themeId: string, meta: PptxIR["meta"] = {}, branding?: PptxIR["branding"]): PptxIR {
   return {
     version: "4",
     filename: "colophon.pptx",
@@ -31,7 +31,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}, chrome?: PptxIR["chrome"
     meta,
     assets: { images: {} },
     slides: [slide()],
-    ...(chrome !== undefined ? { chrome } : {}),
+    ...(branding !== undefined ? { branding } : {}),
   } as unknown as PptxIR
 }
 
@@ -46,13 +46,13 @@ function renderCover(
   themeId: string,
   s: Slide = slide(),
   meta: PptxIR["meta"] = FULL_META,
-  chrome?: PptxIR["chrome"],
+  branding?: PptxIR["branding"],
 ) {
   const tokens = resolveStyle(themeId)
   const ctx = buildCtx(tokens, {}, undefined, resolveBackgroundHex(tokens.defaultBackgrounds.cover, tokens.colors.surface))
   const markup = renderSvgMarkup(
     <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
-      <ColophonCover ir={ir(themeId, meta, chrome)} slide={s} index={0} ctx={ctx} />
+      <ColophonCover ir={ir(themeId, meta, branding)} slide={s} index={0} ctx={ctx} />
     </svg>,
   )
   return { markup, root: parseSvgRoot(markup), tokens, ctx }

@@ -140,4 +140,36 @@ describe("migrateDeckPlanToSpec", () => {
     const result = migrateDeckPlanToSpec({ pages: [null, "not-a-page", 5] }) as { pages: unknown[] }
     expect(result.pages).toEqual([null, "not-a-page", 5])
   })
+
+  it("chrome → branding: a plan carrying chrome: \"full\" rewrites the field and drops chrome", () => {
+    const result = migrateDeckPlanToSpec({ chrome: "full", pages: [] }) as Record<string, unknown>
+    expect(result.branding).toBe("full")
+    expect("chrome" in result).toBe(false)
+  })
+
+  it("a plan with neither chrome nor branding materializes neither", () => {
+    const result = migrateDeckPlanToSpec({ pages: [] }) as Record<string, unknown>
+    expect("chrome" in result).toBe(false)
+    expect("branding" in result).toBe(false)
+  })
+
+  it("both chrome and branding present is a hard error naming both keys", () => {
+    const input = { chrome: "full", branding: "minimal", pages: [] }
+    expect(() => migrateDeckPlanToSpec(input)).toThrow(/chrome/)
+    expect(() => migrateDeckPlanToSpec(input)).toThrow(/branding/)
+  })
+
+  it("scenario + chrome: both remaps happen (narrative and branding)", () => {
+    const result = migrateDeckPlanToSpec({
+      scenario: "boardroom-report",
+      chrome: "full",
+      pages: [{ id: "p-a", type: "content", heading: "A", rhythm: "anchor" }],
+    }) as { pages: Record<string, unknown>[] } & Record<string, unknown>
+    expect(result.scenario).toBeUndefined()
+    expect(result.narrative).toBe("boardroom-report")
+    expect(result.branding).toBe("full")
+    expect("chrome" in result).toBe(false)
+    expect(result.pages[0]!.beat).toBe("anchor")
+    expect("rhythm" in result.pages[0]!).toBe(false)
+  })
 })

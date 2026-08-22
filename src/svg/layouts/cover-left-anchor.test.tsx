@@ -326,7 +326,7 @@ describe("LeftAnchorCover", () => {
       version: "3",
       filename: "x.pptx",
       theme: { id: "academic" },
-      chrome: "full",
+      branding: "full",
       meta: { organization: "测试所", date: "2026-07", confidentiality: "internal" },
       assets: { images: {} },
       slides: [slide],

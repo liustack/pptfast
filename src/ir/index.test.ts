@@ -1926,24 +1926,32 @@ describe("theme.style override", () => {
   })
 })
 
-describe("deck chrome posture", () => {
-  it("is omittable: chrome stays undefined, no default is baked in by the schema", () => {
+describe("deck branding posture", () => {
+  it("is omittable: branding stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.chrome).toBeUndefined()
+    if (r.success) expect(r.data.branding).toBeUndefined()
   })
 
-  it.each(["full", "cover-only", "minimal"] as const)("accepts chrome %s", (chrome) => {
+  it.each(["full", "cover-only", "minimal"] as const)("accepts branding %s", (branding) => {
     const d: any = minimal()
-    d.chrome = chrome
+    d.branding = branding
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.chrome).toBe(chrome)
+    if (r.success) expect(r.data.branding).toBe(branding)
   })
 
-  it("rejects an unknown chrome value (typo, not omission)", () => {
+  it("rejects an unknown branding value (typo, not omission)", () => {
     const d: any = minimal()
-    d.chrome = "none"
+    d.branding = "none"
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/branding/)
+  })
+
+  it("rejects raw chrome as an unrecognized key (alias lives in validateIr, not parsePptxIR)", () => {
+    const d: any = minimal()
+    d.chrome = "full"
     const r = parsePptxIR(d)
     expect(r.success).toBe(false)
     if (!r.success) expect(r.error).toMatch(/chrome/)

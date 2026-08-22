@@ -20,7 +20,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}, s: Slide = slide()): Ppt
     version: "4",
     filename: "paper-masthead.pptx",
     theme: { id: themeId },
-    chrome: "full",
+    branding: "full",
     meta,
     assets: { images: {} },
     slides: [s],
