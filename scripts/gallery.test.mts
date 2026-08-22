@@ -21,13 +21,13 @@
 import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
-import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
-import { THEME_TABLE_REQUIRED_SURFACES } from "./gallery/corpus/theme-slots"
+import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "../evals/gallery/corpus/components"
+import { THEME_TABLE_REQUIRED_SURFACES } from "../evals/gallery/corpus/theme-slots"
 import { COMPONENT_FORMS, resolveComponentForm } from "@/svg/components/form-assignments"
-import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
-import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
-import { buildGalleryHtml } from "./gallery/html"
-import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "../evals/gallery/corpus/decks"
+import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "../evals/gallery/corpus/lexicon"
+import { buildGalleryHtml } from "../evals/gallery/html"
+import { assertFullCoverage, buildMatrix } from "../evals/gallery/matrix"
 import { SPARSE_LAYOUT_IDS, THEME_DEFINITIONS, themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
@@ -41,7 +41,7 @@ const themeIds = listThemes()
   .map((t) => t.id)
   .sort()
 
-/** Built once — rasterizing the placeholders is the slow part. */
+/** Built once — loading the committed JPEG fixtures is the slow part. */
 let cached: Record<LanguageId, CorpusAssets> | undefined
 async function assets(): Promise<Record<LanguageId, CorpusAssets>> {
   if (!cached) {
@@ -304,7 +304,7 @@ describe("gallery corpus", () => {
     // Deliberately the whole matrix, not a sample: a corpus page that stops
     // rendering is a hole in the review, and which page it is cannot be
     // predicted from which code changed.
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -322,7 +322,7 @@ describe("gallery corpus", () => {
     // Verdicts are stamped with these, and a page that shipped without them
     // would quietly fall back to the old all-or-nothing staleness rule —
     // which is exactly what the split exists to retire.
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -399,7 +399,7 @@ describe("gallery corpus content", () => {
 
 describe("gallery page", () => {
   it("stays self-contained — nothing in it reaches the network", async () => {
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -428,7 +428,7 @@ describe("gallery page", () => {
     // check here still passed because they only look at the JSON payloads.
     // The page is one file with one script — if it does not parse, nothing
     // renders at all, so parsing it is the cheapest possible smoke test.
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -452,7 +452,7 @@ describe("gallery page", () => {
     // never be running two different versions of it. Two ways that breaks
     // silently: esbuild's keepNames wrapper, which references a helper only
     // Node has, and the function simply not arriving.
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -469,7 +469,7 @@ describe("gallery page", () => {
   }, 60_000)
 
   it("escapes the payload so no embedded content can close the script block", async () => {
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -496,7 +496,7 @@ describe("gallery page", () => {
     // edge column and reads as a pale line down the page — see
     // `src/lib/slide-edge.ts`. Reported against five pages of the 2026-08-20
     // review, on three unrelated themes.
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
@@ -528,7 +528,7 @@ describe("gallery page", () => {
 // drop branch still fails the coverage test below until a builder is added.
 describe("gallery density table", () => {
   it("renders every page at full load, with no drop marker and no silent drop", async () => {
-    const { renderMatrix } = await import("./gallery/render")
+    const { renderMatrix } = await import("../evals/gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")

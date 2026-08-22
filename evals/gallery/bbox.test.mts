@@ -166,9 +166,9 @@ describe("the browser stays out of `pnpm check`", () => {
     // module were imported at the top of `gallery.mts`, the browser driver
     // would become a hard dependency of the default gate — the one thing the
     // `--bbox` channel was built to avoid.
-    const entry = readFileSync(fileURLToPath(new URL("../gallery.mts", import.meta.url)), "utf8")
-    expect(entry).toMatch(/await import\("\.\/gallery\/bbox"\)/)
-    expect(entry).not.toMatch(/^import .* from "\.\/gallery\/bbox"/m)
+    const entry = readFileSync(fileURLToPath(new URL("../../scripts/gallery.mts", import.meta.url)), "utf8")
+    expect(entry).toMatch(/await import\("\.\.\/evals\/gallery\/bbox"\)/)
+    expect(entry).not.toMatch(/^import .* from "\.\.\/evals\/gallery\/bbox"/m)
   })
 
   it("names no browser driver in the package's dependencies", () => {

@@ -14,13 +14,22 @@
  * fits. Every page in this file is sized so it does fit.
  */
 
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import type { Component, PptxIR, Slide } from "@/ir"
 import { FULL_BODY_TYPES } from "@/svg/component-traits"
 import { LAYOUT_REGISTRY, type LayoutDefinition } from "@/svg/layouts/registry"
 import { COMPONENT_BUILDERS, LOGO_ASSETS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
 import type { Lexicon } from "./lexicon"
-import { placeholderImage, placeholderLogo, placeholderScreenshot } from "./placeholders"
 import { THEME_CONTENT_SLOTS, buildThemeSlot } from "./theme-slots"
+
+const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/images")
+
+function fixtureJpegDataUri(id: string): string {
+  const bytes = readFileSync(join(FIXTURE_DIR, `${id}.jpg`))
+  return `data:image/jpeg;base64,${bytes.toString("base64")}`
+}
 
 /** The theme held fixed while layouts and components are under review. */
 export const BASELINE_THEME = "consulting"
@@ -28,25 +37,23 @@ export const BASELINE_THEME = "consulting"
 export type CorpusAssets = PptxIR["assets"]
 
 /**
- * Every asset id the corpus can reference, rasterized once per language
- * track. Async because the placeholders go through a real encoder — build
- * this once at startup and hand the result to the deck builders rather
- * than re-encoding the same twenty images for each of four hundred pages.
+ * Every asset id the corpus can reference, loaded once per language track
+ * from the committed JPEG fixtures. Async so the gallery entry can still
+ * await it; the bytes themselves are local files, never a network fetch.
  */
 export async function corpusAssets(lex: Lexicon): Promise<CorpusAssets> {
   const images: Record<string, { src: string; alt?: string }> = {}
-  await Promise.all([
-    ...PHOTO_ASSETS.map(async (id, i) => {
-      images[id] = { src: await placeholderImage(id), alt: lex.captions[i % lex.captions.length]! }
-    }),
-    (async () => {
-      images[SCREENSHOT_ASSET] = { src: await placeholderScreenshot(SCREENSHOT_ASSET), alt: lex.captions[2]! }
-    })(),
-    ...LOGO_ASSETS.map(async (id, i) => {
-      const org = lex.orgs[i % lex.orgs.length]!
-      images[id] = { src: await placeholderLogo(org), alt: org }
-    }),
-  ])
+  for (const [i, id] of PHOTO_ASSETS.entries()) {
+    images[id] = { src: fixtureJpegDataUri(id), alt: lex.captions[i % lex.captions.length]! }
+  }
+  images[SCREENSHOT_ASSET] = {
+    src: fixtureJpegDataUri(SCREENSHOT_ASSET),
+    alt: lex.captions[2]!,
+  }
+  for (const [i, id] of LOGO_ASSETS.entries()) {
+    const org = lex.orgs[i % lex.orgs.length]!
+    images[id] = { src: fixtureJpegDataUri(id), alt: org }
+  }
   return { images }
 }
 

@@ -44,7 +44,7 @@
   "scripts": {
     "build": "rm -rf dist && tsup",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src scripts tests dsh --no-error-on-unmatched-pattern",
+    "lint": "eslint src scripts tests dsh evals --no-error-on-unmatched-pattern",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
@@ -53,6 +53,7 @@
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
     "gallery": "tsx scripts/gallery.mts",
+    "evals:gallery": "tsx evals/gallery/run.mts",
     "prepublishOnly": "pnpm check && pnpm e2e",
     "release:version": "changeset version && tsx scripts/sync-version.mts && tsx scripts/stamp.mts",
     "bench:run": "tsx tests/bench/run.mts",

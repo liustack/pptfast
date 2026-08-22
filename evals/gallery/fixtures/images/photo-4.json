@@ -1,0 +1,9 @@
+{
+  "prompt": "Documentary photograph of a field engineer in a yellow hard hat and work jacket standing beside heavy mill machinery, closing a work order on a rugged smartphone, factory floor, natural overhead industrial light, realistic photo, no logos, no readable screen text, 3:2.",
+  "generator": "grok",
+  "model": "imagine",
+  "date": "2026-08-22",
+  "source": "local grok Imagine",
+  "width": 1248,
+  "height": 832
+}

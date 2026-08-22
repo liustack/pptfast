@@ -189,7 +189,7 @@ describe("cover-fashion-masthead — bold-metrics fix red-first (user-reported c
 // 1253.7px wide, right edge 1309.7 — 29.7px past the 1280px page.
 //
 // The corpus string below is verbatim the EN gallery subheading that produced
-// that measurement (`scripts/gallery/corpus/lexicon.ts`), so this test moves
+// that measurement (`evals/gallery/corpus/lexicon.ts`), so this test moves
 // when the real repro moves.
 describe("cover-fashion-masthead — letter-spacing wrap budget (round-3 D-cluster overflow)", () => {
   const EN_SUBHEADING = "Growth quality in predictive maintenance and where the second half goes"
