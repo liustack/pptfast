@@ -87,7 +87,7 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
-    "sharp": "^0.34.4"
+    "sharp": "^0.35"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.1",
