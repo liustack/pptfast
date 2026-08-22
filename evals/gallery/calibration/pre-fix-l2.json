@@ -48,7 +48,7 @@
     },
     "theme--crayon--zh--p04": {
       "verdict": "rework",
-      "note": "Crayon still has the forbidden bottom-left star sticker, and vivid orange (sun, gold KPI ring) shares the page with vivid blue (header wave, 10.2 ring). The 5 KPI and the truncated 岭原智能 source line also sit below the 12px type floor.",
+      "note": "Crayon still has the forbidden bottom-left star sticker, and vivid orange (sun, gold KPI ring) shares the page with vivid blue (header wave, 10.2 ring). The 5 KPI and the truncated 云觅科技 source line also sit below the 12px type floor.",
       "findings": [
         "taboo",
         "theme-independence",
@@ -76,7 +76,7 @@
     },
     "theme--playbill--zh--p04": {
       "verdict": "rework",
-      "note": "The first KPI source line 岭原智能 2026 年第二季度经营数据 is caption text at about 10px, under the 12px floor.",
+      "note": "The first KPI source line 云觅科技 2026 年第二季度经营数据 is caption text at about 10px, under the 12px floor.",
       "findings": [
         "font-size"
       ]
@@ -152,7 +152,7 @@
     },
     "layout--banner-heading--en": {
       "verdict": "rework",
-      "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress marker. Source line Lingyuan Intelligence Q2 2026 operating data is under the 12px floor.",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress marker. Source line CloudSeek Collaboration Q2 2026 operating data is under the 12px floor.",
       "findings": [
         "taboo",
         "font-size"
@@ -270,7 +270,7 @@
     },
     "layout--rail-numbered--zh": {
       "verdict": "rework",
-      "note": "Five equal dots with one filled and four hollow are the forbidden slide-progress motif. Source line 岭原智能 2026 年第二季度经营数据 is also below the 12px floor.",
+      "note": "Five equal dots with one filled and four hollow are the forbidden slide-progress motif. Source line 云觅科技 2026 年第二季度经营数据 is also below the 12px floor.",
       "findings": [
         "taboo",
         "font-size"
@@ -278,7 +278,7 @@
     },
     "layout--rail-numbered--en": {
       "verdict": "rework",
-      "note": "The header has five equal dots with one filled and four hollow, the banned progress-dot pattern. The card source line Lingyuan Intelligence Q2 2026 operating data is also below the 12px floor.",
+      "note": "The header has five equal dots with one filled and four hollow, the banned progress-dot pattern. The card source line CloudSeek Collaboration Q2 2026 operating data is also below the 12px floor.",
       "findings": [
         "taboo",
         "font-size"
@@ -286,14 +286,14 @@
     },
     "component--cycle-petal-wheel--zh": {
       "verdict": "rework",
-      "note": "Petal labels such as 现场勘测 and 存量客户产线扩容 are readable text below the 12px floor.",
+      "note": "Petal labels such as 现场勘测 and 存量客户席位扩容 are readable text below the 12px floor.",
       "findings": [
         "font-size"
       ]
     },
     "layout--rail-numbered--mixed": {
       "verdict": "rework",
-      "note": "The top-left motif is five equal dots with one filled and four hollow, which the progress-dot taboo forbids. The source line 岭原智能 Platform 团队压测报告 is also below the 12px type floor.",
+      "note": "The top-left motif is five equal dots with one filled and four hollow, which the progress-dot taboo forbids. The source line 云觅科技 Platform 团队压测报告 is also below the 12px type floor.",
       "findings": [
         "taboo",
         "font-size"

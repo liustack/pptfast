@@ -185,7 +185,7 @@
     "theme": "crayon",
     "page": 4,
     "verdict": "rework",
-    "note": "A crayon star sits in the lower-left corner, which that theme forbids, and the page pairs vivid blue (header wave, 10.2 ring) with vivid orange (sun, yellow KPI ring). The KPI 5 and the 岭原智能 caption sit under the 12px floor.",
+    "note": "A crayon star sits in the lower-left corner, which that theme forbids, and the page pairs vivid blue (header wave, 10.2 ring) with vivid orange (sun, yellow KPI ring). The KPI 5 and the 云觅科技 caption sit under the 12px floor.",
     "findings": [
       "taboo",
       "text",
@@ -262,7 +262,7 @@
     "theme": "playbill",
     "page": 4,
     "verdict": "rework",
-    "note": "The source caption 岭原智能 2026 年第二季度经营数据 on the first metric card is about 10px CJK, under the 12px readable-text floor.",
+    "note": "The source caption 云觅科技 2026 年第二季度经营数据 on the first metric card is about 10px CJK, under the 12px readable-text floor.",
     "findings": [
       "text"
     ],
@@ -352,7 +352,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The card source line Lingyuan Intelligence Q2 2026 operating data is readable caption text below the 12px floor.",
+    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The card source line CloudSeek Collaboration Q2 2026 operating data is readable caption text below the 12px floor.",
     "findings": [
       "taboo",
       "text",
@@ -409,7 +409,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The first-card source line 岭原智能 2026 年第二季度经营数据 is readable caption text under the 12px floor.",
+    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The first-card source line 云觅科技 2026 年第二季度经营数据 is readable caption text under the 12px floor.",
     "findings": [
       "taboo",
       "text"
@@ -465,7 +465,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Title ink for 年第二季度业务评审 sits on the subtitle 设备预测性维护业务的增长质量与下半年. Top motif is five equal dots with one filled and four hollow.",
+    "note": "Title ink for 年第二季度业务评审 sits on the subtitle 工作区席位订阅业务的增长质量与下半年. Top motif is five equal dots with one filled and four hollow.",
     "findings": [
       "overlap",
       "taboo"
@@ -486,7 +486,7 @@
     "theme": "arena",
     "page": 1,
     "verdict": "rework",
-    "note": "Title ink for 年第二季度业务评审 sits on the subtitle 设备预测性维护业务的增长质量与下半年, a clear title-on-subtitle overlap.",
+    "note": "Title ink for 年第二季度业务评审 sits on the subtitle 工作区席位订阅业务的增长质量与下半年, a clear title-on-subtitle overlap.",
     "findings": [
       "overlap"
     ],
@@ -523,7 +523,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Five equal dots at top left are one filled and four hollow, the banned progress motif. A '+2 …' overflow chip sits beside the KPI cards, and the Lingyuan Intelligence Q2 caption is under the 12px floor.",
+    "note": "Five equal dots at top left are one filled and four hollow, the banned progress motif. A '+2 …' overflow chip sits beside the KPI cards, and the CloudSeek Collaboration Q2 caption is under the 12px floor.",
     "findings": [
       "taboo",
       "overflow-marker",
@@ -676,7 +676,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The first-card source line 岭原智能 2026 年第二季度经营数据 is also below the 12px caption floor.",
+    "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The first-card source line 云觅科技 2026 年第二季度经营数据 is also below the 12px caption floor.",
     "findings": [
       "taboo",
       "text"
@@ -714,7 +714,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "页顶五点一实四空是进度装饰禁忌。第一张卡来源行岭原智能 Platform 团队压测报告低于 12px 字号地板。",
+    "note": "页顶五点一实四空是进度装饰禁忌。第一张卡来源行云觅科技 Platform 团队压测报告低于 12px 字号地板。",
     "findings": [
       "taboo",
       "text",
@@ -753,7 +753,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "The header uses the forbidden five-dot progress motif (one filled, four hollow). The first-card source line Lingyuan Intelligence Q2 2026 operating data is also below the 12px floor.",
+    "note": "The header uses the forbidden five-dot progress motif (one filled, four hollow). The first-card source line CloudSeek Collaboration Q2 2026 operating data is also below the 12px floor.",
     "findings": [
       "taboo",
       "text"
@@ -773,7 +773,7 @@
     "theme": "consulting",
     "page": 1,
     "verdict": "rework",
-    "note": "Readable petal captions (现场勘测, 存量客户产线扩容, 自建算力替换, 行业场景复制, 现场服务自动化) sit below the 12px floor.",
+    "note": "Readable petal captions (现场勘测, 存量客户席位扩容, 自建算力替换, 行业场景复制, 现场服务自动化) sit below the 12px floor.",
     "findings": [
       "text"
     ],

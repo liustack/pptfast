@@ -92,7 +92,7 @@ describe("auditL1 planted defects", () => {
   it("flags two axis-aligned text ink boxes that intersect as overlap", () => {
     const svg = wrap(
       `<text x="200" y="435" font-size="70" font-weight="700">年第二季度业务评审</text>` +
-        `<text x="200" y="446" font-size="34">设备预测性维护业务的增长质量</text>`,
+        `<text x="200" y="446" font-size="34">工作区席位订阅业务的增长质量</text>`,
     )
     expect(codes(svg)).toContain("overlap")
   })
@@ -100,14 +100,14 @@ describe("auditL1 planted defects", () => {
   it("does not flag a hanging quotation mark against the first glyph as overlap", () => {
     const svg = wrap(
       `<text x="96" y="200" font-size="48">“</text>` +
-        `<text x="110" y="200" font-size="24">我们不是在卖算法，是在卖一条产线少停一次机。</text>`,
+        `<text x="110" y="200" font-size="24">我们不是在卖算法，是在卖一个团队少开一场会。</text>`,
     )
     expect(codes(svg)).not.toContain("overlap")
   })
 
   it("does not flag stacked 70px lines at y=360 and y=435 as overlap", () => {
     const svg = wrap(
-      `<text x="200" y="360" font-size="70" font-weight="700">岭原智能 2026</text>` +
+      `<text x="200" y="360" font-size="70" font-weight="700">云觅科技 2026</text>` +
         `<text x="200" y="435" font-size="70" font-weight="700">年第二季度业务评审</text>`,
     )
     expect(codes(svg)).not.toContain("overlap")
@@ -157,7 +157,7 @@ describe("auditL1 planted defects", () => {
       `<text x="100" y="200" font-size="80">客户与收入结构</text>` +
         `<line x1="90" y1="172" x2="500" y2="172" stroke="#F5C518"/>` +
         `<text x="200" y="435" font-size="70">年第二季度业务评审</text>` +
-        `<text x="200" y="446" font-size="34">设备预测性维护</text>`,
+        `<text x="200" y="446" font-size="34">工作区订阅业务</text>`,
     )
     expect(classifyL1(auditL1(svg))).toEqual(classifyL1(auditL1(svg)))
   })
