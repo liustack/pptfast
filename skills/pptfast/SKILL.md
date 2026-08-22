@@ -78,7 +78,6 @@ Follow-up: edit a page → steps 3–6 on that file only. A new deck → step 1.
 | Proportional flow/quantity distribution across stages (e.g. budget allocation, energy mix) | `sankey` | `chart` (funnel) or `flowchart` |
 | A product/software screenshot that the slide needs to read as "this is real, running software" (an app dashboard, a live product UI) | `device_mockup` | `image` |
 | A roster of people (team, speaker lineup, judging panel, author list) needing an identity anchor with no photo available | `people_cards` | `row_cards`/`icon_cards` |
-| A set of organization/brand logos (sponsors, clients, press/"as seen in", partners) | `logo_wall` | `image_grid` |
 | A set of short parallel labels (a tech stack, capabilities, keywords, certifications) — labels, not described items | `tag_row` | `bullets`/`row_cards` |
 
 Lookalike pairs, field notes, and full-body types: `references/components.md`.
