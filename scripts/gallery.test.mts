@@ -151,6 +151,11 @@ function themeTableSurfaces(
 ): string[] {
   const surfaces = new Set<string>()
   for (const job of jobs) {
+    const slide = job.ir.slides[job.slideIndex]!
+    if (JSON.stringify(slide).includes("**")) {
+      const emphasisForm = resolveComponentForm("emphasis", job.theme)?.form
+      if (emphasisForm) surfaces.add(`form:${emphasisForm}`)
+    }
     if (job.slideType !== "content") continue
     const c = leadComponent(job)
     if (!c) continue
@@ -226,13 +231,9 @@ describe("gallery theme table corpus", () => {
     }
 
     const forms = new Set(
-      jobs
-        .filter((j) => j.slideType === "content")
-        .map((j) => {
-          const c = leadComponent(j)
-          return c ? resolveComponentForm(c.type, j.theme)?.form : undefined
-        })
-        .filter((f): f is (typeof COMPONENT_FORMS)[number] => f !== undefined),
+      themeTableSurfaces(jobs)
+        .filter((surface) => surface.startsWith("form:"))
+        .map((surface) => surface.slice("form:".length)),
     )
     for (const form of COMPONENT_FORMS) {
       expect(forms.has(form), form).toBe(true)
