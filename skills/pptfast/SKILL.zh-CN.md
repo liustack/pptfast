@@ -44,7 +44,7 @@ pptfast themes --json      # built-in themes (id + label)
 
 动手问人之前，先扫工作区。已有确认过的 `deck.spec.json` 已经锁死 narrative、theme、品牌框：不要重做访谈，改那份 deck。已有 `theme.json`、项目 `pptfast.config.json` 钉死的 theme、用户点名的 theme id、或用户递来的 `.thmx` / `.potx` / 带品牌 `.pptx`，都是品牌信号：抽取或沿用。不要再问有没有模板。
 
-**边界页规则：** `cover`、`chapter`、`ending` 三种页面，不论用哪个 layout，永远不渲染 `components` 或 `footnote`，没有例外。这类内容放到 `content` 页。对错 JSON 和 spec 写法：`references/spec.md`。
+**边界页规则：** `chapter` 和 `ending` 永远不渲染 `components` 或 `footnote`。`cover` 永远不渲染 `footnote`。封面只有在锁定版式声明了对应槽位时才能带 `components`。今天这只发生在 `verdict-index`（consulting）：它读第一个 `bullets` 块，画成最多三条编号论据。其余封面版式仍会丢掉 components。正文放到 `content` 页，除非你在填 consulting 封面那三列论据。对错 JSON 和 spec 写法：`references/spec.md`。
 
 1. **访谈**（最多一轮）：用户在场，且受众、怎么讲、pacing 任一轴仍未知时，把未决的问放进**一条**消息，然后停。不要自己填。Q1–Q4、★ 默认、查表、`NARRATIVE_INTERVIEW` 闸：`references/spec.md`。
 2. **定 spec 并确认**，再写任何页面。写 `deck.spec.json`（以 `cover` 开篇，以 `ending` 收尾，中间是 `content` 或 `chapter`）。跑 `pptfast spec validate` 直到 `OK`，然后固化 `seed`。已确认的 spec 不要重定。写法：`references/spec.md`。品牌框姿态：`references/branding.md`。

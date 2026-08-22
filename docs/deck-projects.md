@@ -48,14 +48,14 @@ A spec page with no matching `pages/<id>.json` file assembles into `{ placeholde
 
 ## Boundary-page render surface
 
-`PageContent` above is the same shape for every page type, but not every field it allows is actually drawn onto the canvas by every type — `components` and `footnote` never render on a `cover`, `chapter`, or `ending` page, confirmed by reading every layout in both families (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, `cover-*.tsx`'s 19 files) plus the background-asset `ImageCoverPage` takeover that intercepts `cover`/`chapter` before any layout runs (`full-slide-svg.tsx`'s `imageCoverTakeover` branch, `src/svg/image-pages.tsx`). `validate` hard-errors a page that sets either (`checkBoundaryPageContent`, `src/validate-core.ts`) — bench-driven fixes wave, defect D: before this gate existed, that content was silently dropped at render with no signal anywhere.
+`PageContent` above is the same shape for every page type, but not every field it allows is actually drawn onto the canvas by every type. `footnote` never renders on a `cover`, `chapter`, or `ending` page. `components` follow the knowable layout's slots, not a type-level ban: `verdict-index` declares a `body` slot that accepts `bullets`, so a consulting cover (that layout is the lock) may carry one bullets block. A layout with no matching slot, or a page type whose pool has more than one id so the face is not knowable at validate time, still hard-rejects. `validate` is `checkBoundaryPageContent` in `src/validate-core.ts`. Before that gate existed, stray fields were silently dropped at render with no signal anywhere.
 
 | type | heading | subheading | components | footnote |
 |---|---|---|---|---|
-| `cover` | always (19/19 layouts) | always (19/19) | never (0/19) | never (0/19) |
-| `chapter` | always (9/9) | 6/9 (not `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`) | never (0/9) | never (0/9) |
-| `content` | always (16/16) | 14/16 layouts (not `statement`/`one-evidence`), 3/4 image takeovers (not the `image-top` takeover) | 15/16 layouts (not `mono-bleed`), 4/4 takeovers | not `two-column` among the auto-selectable set, 0/4 takeovers |
-| `ending` | always (7/7) | 6/7 (not `tone-adaptive-ending`) | never (0/7) | never (0/7) |
+| `cover` | always | always | `verdict-index` body accepts `bullets`. every other cover layout: never | never |
+| `chapter` | always | 6/9 (not `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`) | never, unless a later board-lock layout declares a slot | never |
+| `content` | always | 14/16 layouts (not `statement`/`one-evidence`), 3/4 image takeovers (not the `image-top` takeover) | 15/16 layouts (not `mono-bleed`), 4/4 takeovers | not `two-column` among the auto-selectable set, 0/4 takeovers |
+| `ending` | always | 6/7 (not `tone-adaptive-ending`) | never, unless a later board-lock layout declares a slot | never |
 
 `subheading` is deliberately not hard-gated on any type, on either side of the table — no type drops it on every layout, so a "this type never renders subheading" claim would be unsound and false-positive on the majority layout that does render it (this is also why `subheading` is absent from `checkBoundaryPageContent`'s rule despite being one of the fields the wave's benchmark evidence first suspected). `notes` sits outside this table entirely by design — speaker notes, never drawn onto the canvas SVG regardless of page type (see its docstring in `ir/index.ts`).
 

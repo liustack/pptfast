@@ -542,7 +542,7 @@ describe("resolveLayoutId", () => {
       // weight 1): total = 2*3 + 17*1 = 23, expected combined tendency share
       // = 6/23 ≈ 0.261. (Was 13 ids / 6 of 17 ≈ 0.353, before the
       // board-cover-restore wave registered six more covers.)
-      const coverPool = layoutsForSlideType("cover").length
+      const coverPool = __fullLayoutSet("cover").length
       expect(coverPool).toBe(19)
       const tendencyIds = STRATEGY_DEFINITIONS.pyramid.identityTendencies.cover
       expect(tendencyIds.length).toBe(2)
@@ -594,7 +594,7 @@ describe("resolveLayoutId", () => {
       // 2 members at weight 3 over a full 7-id ending pool (the other 5 at
       // weight 1): total = 2*3 + 5*1 = 11, expected combined share = 6/11 ≈
       // 0.545.
-      const endingPool = layoutsForSlideType("ending").length
+      const endingPool = __fullLayoutSet("ending").length
       expect(endingPool).toBe(7)
       const tendencyIds = STRATEGY_DEFINITIONS.showcase.identityTendencies.ending
       const N = 5000
@@ -1279,7 +1279,7 @@ describe("render parity with FullSlideSvg", () => {
   // already be dropped by the pool's own `!== undefined` filter regardless
   // of `pinOnly` — indistinguishable from the exclusion this suite means to
   // prove.
-  describe("pinOnly layout tier: excluded from sampling, pin path unaffected", () => {
+  describe("pinOnly layout tier: omitted from the default set, listed sets lock it", () => {
     const PIN_ONLY_TEST_ID = "test-pin-only-layout"
 
     beforeEach(() => {
@@ -1295,30 +1295,48 @@ describe("render parity with FullSlideSvg", () => {
       delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
     })
 
-    it("never auto-selected across a seed spread, even when a curated layouts set (as a registerTheme-registered custom theme would legally build) lists it", () => {
+    it("is auto-selected when a curated layouts set lists it (wave 8 board lock)", () => {
       const layouts: ThemeDefinition["layouts"] = {
         cover: THEME_DEFINITIONS.consulting.layouts.cover,
         chapter: THEME_DEFINITIONS.consulting.layouts.chapter,
         content: [PIN_ONLY_TEST_ID, "two-column", "narrow-column"],
         ending: THEME_DEFINITIONS.consulting.layouts.ending,
       }
+      const picks = new Set<string>()
       for (let seed = 0; seed < 60; seed++) {
         const picked = resolveLayoutId("content", layouts, seed, String(seed), undefined, "briefing", null)
-        expect(picked, `seed ${seed} picked the pinOnly id`).not.toBe(PIN_ONLY_TEST_ID)
+        expect(picked).toBeTruthy()
+        picks.add(picked!)
       }
+      expect(picks.has(PIN_ONLY_TEST_ID)).toBe(true)
+      expect(picks.has("two-column") || picks.has("narrow-column")).toBe(true)
     })
 
-    it("a pool containing only the pinOnly id resolves to null (defensive empty-pool fallback), not to the pinOnly id itself", () => {
+    it("a pool containing only the pinOnly id resolves to that id (the lock), not to null", () => {
       const layouts: ThemeDefinition["layouts"] = {
         cover: THEME_DEFINITIONS.consulting.layouts.cover,
         chapter: THEME_DEFINITIONS.consulting.layouts.chapter,
         content: [PIN_ONLY_TEST_ID],
         ending: THEME_DEFINITIONS.consulting.layouts.ending,
       }
-      expect(resolveLayoutId("content", layouts, 1, "0", undefined, "briefing", null)).toBeNull()
+      expect(resolveLayoutId("content", layouts, 1, "0", undefined, "briefing", null)).toBe(PIN_ONLY_TEST_ID)
     })
 
-    it("an explicit pin naming the pinOnly id still resolves it (pin path untouched — pinOnly means 'only this road reaches it')", () => {
+    it("stays out of fullLayoutSet so an unlisted theme never samples it", () => {
+      expect(__fullLayoutSet("content")).not.toContain(PIN_ONLY_TEST_ID)
+      const layouts: ThemeDefinition["layouts"] = {
+        cover: THEME_DEFINITIONS.academic.layouts.cover,
+        chapter: THEME_DEFINITIONS.academic.layouts.chapter,
+        content: __fullLayoutSet("content"),
+        ending: THEME_DEFINITIONS.academic.layouts.ending,
+      }
+      for (let seed = 0; seed < 40; seed++) {
+        const picked = resolveLayoutId("content", layouts, seed, String(seed), undefined, "briefing", null)
+        expect(picked, `seed ${seed} sampled the unlisted pinOnly id`).not.toBe(PIN_ONLY_TEST_ID)
+      }
+    })
+
+    it("an explicit pin naming the pinOnly id still resolves it", () => {
       const layouts: ThemeDefinition["layouts"] = THEME_DEFINITIONS.consulting.layouts
       expect(
         resolveLayoutId("content", layouts, 1, "0", PIN_ONLY_TEST_ID, "briefing", null),

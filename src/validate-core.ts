@@ -28,7 +28,7 @@ import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
-import { getInstalledThemeIds, SPARSE_LAYOUT_IDS, themeOffersSparse } from "./themes/definitions"
+import { getInstalledThemeIds, getThemeDefinition, SPARSE_LAYOUT_IDS, themeOffersSparse } from "./themes/definitions"
 
 export interface ValidationIssue {
   path: string
@@ -363,41 +363,43 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
+ * The layout a boundary page will actually draw, when that is knowable at
+ * validate time. An explicit pin wins. A theme that locked the page type
+ * to a single id is equally knowable. A multi-member pool is not: auto-pick
+ * has not run yet, so the gate cannot claim a slot that only some of the
+ * candidates declare.
+ */
+function knownBoundaryLayout(ir: PptxIR, slide: PptxIR["slides"][number]) {
+  if (slide.layout) {
+    const pinned = getLayout(slide.layout)
+    return pinned?.slideTypes.includes(slide.type) ? pinned : undefined
+  }
+  const pool = getThemeDefinition(ir.theme.id).layouts[slide.type]
+  if (pool.length !== 1) return undefined
+  return getLayout(pool[0]!)
+}
+
+function layoutAcceptsComponent(
+  layout: NonNullable<ReturnType<typeof getLayout>>,
+  componentType: string,
+): boolean {
+  return layout.slots.some((slot) => slot.accepts === "any" || slot.accepts.includes(componentType))
+}
+
+/**
  * Boundary-page render-surface hard gate (bench-driven fixes wave, defect
- * D): `cover`, `chapter`, and `ending` slides can never render `components`
- * or `footnote` — every layout in all three families
- * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 19 cover
- * layouts `index.ts` re-exports, plus the background-asset
- * `ImageCoverPage` takeover that intercepts cover/chapter before any
- * layout runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
- * `imageCoverTakeover` branch) was read to confirm zero exceptions before
- * this gate was written. A slide carrying either field on one of these
- * three types was previously silently dropped at render with no signal
- * anywhere — this makes it a validate error instead, naming exactly which
- * fields to move or remove. `docs/deck-projects.md`'s boundary-page render
- * surface table carries the full per-type accounting this gate's rule is
- * the "always dead, zero exceptions" subset of.
+ * D, retargeted in wave 8 batch 1). `footnote` still never renders on
+ * cover/chapter/ending. `components` used to be the same universal never —
+ * that was coarser than the slot model, and it sealed `verdict-index`'s
+ * declared `body accepts: ["bullets"]` behind a type-level reject the
+ * layout already knew how to draw. The gate now consults the knowable
+ * layout's slots: a component type a slot accepts is live content, not
+ * dead IR. A multi-member pool (or a layout with no matching slot) still
+ * hard-rejects, same signal as before.
  *
- * `content` is deliberately never gated on any field: its own `footnote`
- * (dropped only by the `two-column` layout) and `subheading` (dropped
- * only by the `image-top` takeover) are each a minority exception among
- * that type's full layout set, not a universal "never" — the same
- * reason `subheading` is deliberately absent from `cover`/`chapter`/
- * `ending`'s rule below despite the benchmark evidence that first flagged
- * this defect suspecting it might belong: `subheading` renders
- * unconditionally on all 19 cover layouts, on 5 of `chapter`'s 9 (all but
- * `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`), and on 6 of
- * `ending`'s 7 (all but `tone-adaptive-ending`) — gating any of those at
- * the type level would be a false positive for the majority layout that
- * does render it. A hard gate must be sound for every reachable render
- * path, not just the one the benchmark's four questions happened to hit.
- *
- * Placeholder pages (`slide.placeholder`) are exempt, same as
- * {@link checkIrQuality}'s content rules — an assemble-generated unfilled
- * stub has no real content to judge. `notes` (speaker notes, never
- * rendered onto the canvas by design — see its own docstring in
- * `ir/index.ts`) is never checked here or anywhere else in the render/audit
- * chain, by construction, not by an added exemption.
+ * `content` is deliberately never gated on any field. `subheading` is
+ * still absent from this rule: no type drops it on every layout. Placeholder
+ * pages (`slide.placeholder`) are exempt. `notes` is never checked here.
  */
 function checkBoundaryPageContent(ir: PptxIR): ValidationIssue[] {
   const errors: ValidationIssue[] = []
@@ -405,7 +407,9 @@ function checkBoundaryPageContent(ir: PptxIR): ValidationIssue[] {
     if (slide.placeholder) return
     if (slide.type !== "cover" && slide.type !== "chapter" && slide.type !== "ending") return
     const ignored: string[] = []
-    if (slide.components.length > 0) ignored.push("components")
+    const layout = knownBoundaryLayout(ir, slide)
+    const stray = slide.components.filter((component) => !layout || !layoutAcceptsComponent(layout, component.type))
+    if (stray.length > 0) ignored.push("components")
     if (slide.footnote) ignored.push("footnote")
     if (ignored.length === 0) return
     errors.push({
