@@ -1042,9 +1042,9 @@
       "color": "1hpzo98"
     },
     "theme--swiss--zh--p09": {
-      "hash": "yrxwr1",
-      "geometry": "gd1378",
-      "color": "10961ac"
+      "hash": "1a82as",
+      "geometry": "1ec9kr8",
+      "color": "1mub64x"
     },
     "theme--swiss--zh--p10": {
       "hash": "1jqxkbf",
@@ -3235,6 +3235,21 @@
       "hash": "1ss72gj",
       "geometry": "1gko118",
       "color": "1mtn168"
+    },
+    "component--flowchart-typed-nodes--zh": {
+      "hash": "ox60lh",
+      "geometry": "qiooqy",
+      "color": "zdf8px"
+    },
+    "component--flowchart-typed-nodes--en": {
+      "hash": "npeyq0",
+      "geometry": "sxlqid",
+      "color": "1dknkc1"
+    },
+    "component--flowchart-typed-nodes--mixed": {
+      "hash": "pmc5iu",
+      "geometry": "1td6op7",
+      "color": "zdf8px"
     },
     "density--architecture--zh": {
       "hash": "1beu84i",

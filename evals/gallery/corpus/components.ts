@@ -482,6 +482,7 @@ export const FORM_VARIANTS: readonly FormVariant[] = [
   { id: "steps · arrow band", theme: "runway", build: (lex) => COMPONENT_BUILDERS.steps!(lex) },
   { id: "timeline · vertical nodes", theme: "stage", build: (lex) => COMPONENT_BUILDERS.timeline!(lex) },
   { id: "image_grid · numbered photos", theme: "museum", build: (lex) => COMPONENT_BUILDERS.image_grid!(lex) },
+  { id: "flowchart · typed nodes", theme: "swiss", build: (lex) => COMPONENT_BUILDERS.flowchart!(lex) },
 ]
 
 /** Icons for the full-load cards, cycled. One per card, none repeated. */
