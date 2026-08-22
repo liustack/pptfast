@@ -35,6 +35,30 @@ export const MIN_NODE = "22.19"
 /** The folder name a skill copy lands under, in every harness's skill root. */
 export const SKILL_DIR_NAME = "pptfast"
 
+/** Relative paths every current skill copy must contain, in this order.
+ *  A copy that pins the running CLI but is missing `references/` is
+ *  incomplete, not stale. */
+export const SKILL_COPY_FILES: readonly string[] = [
+  "SKILL.md",
+  "SKILL.zh-CN.md",
+  "scripts/run.sh",
+  "scripts/run.ps1",
+  "references/spec.md",
+  "references/spec.zh-CN.md",
+  "references/layouts.md",
+  "references/layouts.zh-CN.md",
+  "references/components.md",
+  "references/components.zh-CN.md",
+  "references/density.md",
+  "references/density.zh-CN.md",
+  "references/branding.md",
+  "references/branding.zh-CN.md",
+  "references/images.md",
+  "references/images.zh-CN.md",
+  "references/validate.md",
+  "references/validate.zh-CN.md",
+]
+
 /** Where each harness reads global skills from — this table is exactly what
  *  INSTALL.md step 2 documents, `~/.agents/skills` serving Pi and OpenCode
  *  both. dsh is deliberately absent: there the CLI ships inside the plugin
@@ -96,6 +120,9 @@ export interface DoctorSkillCopy {
   pinned: string | null
   /** True when the pin is older than the CLI doing the reporting. */
   stale: boolean
+  /** `SKILL_COPY_FILES` entries this copy does not have. Empty means the
+   *  copy is complete for this CLI. Independent of {@link stale}. */
+  missing: string[]
 }
 
 export interface DoctorSkills {
@@ -274,6 +301,10 @@ export async function scanSkillCopies(home: string, currentVersion: string): Pro
     } catch {
       // no launcher (or unreadable) — the copy still counts, version unknown
     }
+    const missing: string[] = []
+    for (const rel of SKILL_COPY_FILES) {
+      if (!(await pathExists(join(copyDir, rel)))) missing.push(rel)
+    }
     copies.push({
       harness,
       root,
@@ -281,6 +312,7 @@ export async function scanSkillCopies(home: string, currentVersion: string): Pro
       launcher,
       pinned,
       stale: pinned !== null && isOlder(pinned, currentVersion),
+      missing,
     })
   }
   return { scanned, copies }
@@ -563,6 +595,13 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
         fix: `re-run the install to restore a complete copy: ${skillRefreshCommand(copy.path)}`,
       })
     }
+    if (copy.missing.length > 0) {
+      warnings.push({
+        check: "skill copy",
+        message: `${copy.path} is missing ${copy.missing.join(", ")}`,
+        fix: `re-run the install to restore a complete copy: ${skillRefreshCommand(copy.path)}`,
+      })
+    }
   }
 
   for (const profile of dsh.profiles) {
@@ -614,13 +653,17 @@ export function renderDoctorReport(report: DoctorReport): string {
     lines.push(`      looked in: ${report.skills.scanned.join(", ")}`)
   } else {
     for (const copy of report.skills.copies) {
-      const state = copy.stale ? "warn" : copy.pinned === null ? "warn" : "ok"
+      const state = copy.stale || copy.pinned === null || copy.missing.length > 0 ? "warn" : "ok"
       const pin = copy.pinned === null ? "version unknown" : `pins ${copy.pinned}`
       lines.push(`  ${mark(state)} ${copy.harness}: ${copy.path} — ${pin}${copy.stale ? " (stale)" : ""}`)
       if (copy.stale) {
         lines.push(`      fix: ${skillRefreshCommand(copy.path)}`)
       } else if (copy.pinned === null) {
         lines.push(`      ${copy.launcher === null ? "no scripts/run.sh in this copy" : "scripts/run.sh carries no PINNED line"}`)
+        lines.push(`      fix: ${skillRefreshCommand(copy.path)}`)
+      }
+      if (copy.missing.length > 0) {
+        lines.push(`      missing: ${copy.missing.join(", ")}`)
         lines.push(`      fix: ${skillRefreshCommand(copy.path)}`)
       }
     }

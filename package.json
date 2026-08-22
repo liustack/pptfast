@@ -33,6 +33,7 @@
     "skills/pptfast/SKILL.md",
     "skills/pptfast/SKILL.zh-CN.md",
     "skills/pptfast/scripts",
+    "skills/pptfast/references",
     "README.zh-CN.md"
   ],
   "engines": {
