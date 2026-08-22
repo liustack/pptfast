@@ -113,7 +113,10 @@ const SUBHEADING_MIN_FONT_SIZE = 16
 const SUBHEADING_SLOT = 45
 
 export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
-  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
+  const treated = tryContentHeadingTreatment(
+    { ir, slide, index, ctx },
+    { rects: [{ x: BADGE_X, y: BADGE_Y, w: BADGE_W, h: BADGE_H }] },
+  )
   const { colors, fonts } = ctx
 
   const totalChapters = ir.slides.filter((s) => s.type === "chapter").length
