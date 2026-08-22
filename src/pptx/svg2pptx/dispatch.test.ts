@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { svgToOps, type Op } from "./dispatch"
+import { applyPoint, parseTransform } from "./transform"
 import { pxToIn, pxToPt, PX_PER_IN, SLIDE_W_IN } from "../../constants"
 
 function parseSvg(inner: string): Element {
@@ -446,5 +447,75 @@ describe("rotated text leaves (cartesian y-title)", () => {
     const baseline = -hPx / 2 + ascent
     expect(cx + baseline).toBeCloseTo(96 + 18, 5)
     expect(cy + -left).toBeCloseTo(52 + 222, 5)
+  })
+})
+
+describe("rotated text leaves (arbitrary small angles)", () => {
+  function rotatedBaseline(
+    text: Extract<Op, { kind: "text" }>,
+    fontSizePx: number,
+    anchor: "start" | "middle" | "end",
+  ): { x: number; y: number } {
+    const cx = (text.x + text.w / 2) * PX_PER_IN
+    const cy = (text.y + text.h / 2) * PX_PER_IN
+    const wPx = text.w * PX_PER_IN
+    const hPx = text.h * PX_PER_IN
+    const ascent = 0.8 * fontSizePx
+    const dx = anchor === "middle" ? 0 : anchor === "end" ? wPx / 2 : -wPx / 2
+    const dy = -hPx / 2 + ascent
+    const rad = ((text.rotate ?? 0) * Math.PI) / 180
+    return {
+      x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+      y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+    }
+  }
+
+  it("keeps rotate(4 CX CY) at 4° (not snapped to 0 or 90) with the middle-baseline on the SVG anchor", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<text x="1136" y="32" font-size="20" font-weight="700" text-anchor="middle" transform="rotate(4 1136 25)">2026 年 7 月</text>`,
+      ),
+    )
+    expect(ops).toHaveLength(1)
+    const text = ops[0] as Extract<Op, { kind: "text" }>
+    expect(text.rotate).toBeCloseTo(4, 5)
+    expect(text.rotate).not.toBe(0)
+    expect(text.rotate).not.toBe(90)
+    expect(text.w * PX_PER_IN).toBeLessThan(400)
+
+    const svgAnchor = applyPoint(parseTransform("rotate(4 1136 25)"), 1136, 32)
+    const baseline = rotatedBaseline(text, 20, "middle")
+    expect(baseline.x).toBeCloseTo(svgAnchor.x, 5)
+    expect(baseline.y).toBeCloseTo(svgAnchor.y, 5)
+  })
+
+  it("places a start-anchored rotate(4) so the left-baseline lands on the SVG anchor", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<text x="200" y="80" font-size="16" text-anchor="start" transform="rotate(4 200 80)">Tilt</text>`,
+      ),
+    )
+    const text = ops[0] as Extract<Op, { kind: "text" }>
+    expect(text.rotate).toBeCloseTo(4, 5)
+    const svgAnchor = applyPoint(parseTransform("rotate(4 200 80)"), 200, 80)
+    const baseline = rotatedBaseline(text, 16, "start")
+    expect(baseline.x).toBeCloseTo(svgAnchor.x, 5)
+    expect(baseline.y).toBeCloseTo(svgAnchor.y, 5)
+  })
+
+  it("places a rotate(90) start-anchored title with the same baseline construction as 270°", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g transform="translate(96,52)"><text x="18" y="222" font-size="14" text-anchor="start" transform="rotate(90 18 222)">Down</text></g>`,
+      ),
+    )
+    const text = ops[0] as Extract<Op, { kind: "text" }>
+    expect(text.rotate).toBe(90)
+    expect(text.w).toBeGreaterThan(0)
+    expect(text.h).toBeGreaterThan(0)
+    const svgAnchor = applyPoint(parseTransform("translate(96,52) rotate(90 18 222)"), 18, 222)
+    const baseline = rotatedBaseline(text, 14, "start")
+    expect(baseline.x).toBeCloseTo(svgAnchor.x, 5)
+    expect(baseline.y).toBeCloseTo(svgAnchor.y, 5)
   })
 })
