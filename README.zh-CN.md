@@ -37,7 +37,7 @@
 
 **🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
-**🔁 改稿不用重新描述一遍。** 一条命令打开预览网页，翻页看效果，直接在页面上写批注，AI 读了就改，改完网页自动刷新。
+**🔁 改稿不用重新描述一遍。** 一条命令打开实时预览网页，用一句话告诉 AI 要改哪里，改完网页自动刷新。
 
 **🔒 不用注册、渲染不用配 key、渲染时不联网。** 装好就能用，电脑上有 Node 22.19+ 或 Bun 就行。可选的图库搜索用用户自己的 Pexels key。
 
@@ -91,7 +91,7 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | `validate <target>` | 校验 IR，每条报错都带页码 |
 | `render <target> [-o <out.pptx>] [--theme <id>]` | 渲染出 `.pptx`。省略 `-o` 则写到 `.pptfast/<deck>/<deck>.pptx` |
 | `preview <target> [-o <dir>] [--html]` | 每页一张 SVG，外加一个自包含的审阅页。省略 `-o` 则写到 `.pptfast/<deck>/` |
-| `serve <target>` | 随改动自动刷新的实时预览，带批注面板 |
+| `serve <target>` | 随改动自动刷新的实时预览 |
 | `audit <target>` | 几何审查：溢出、越界、低对比度、重叠 |
 | `themes` | 列出 24 套内置主题（24 个 id） |
 | `doctor` | 体检这套安装：运行时、skill 副本、可选能力、自检渲染 |
