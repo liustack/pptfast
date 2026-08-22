@@ -50,8 +50,6 @@ const NODE_FONT_FLOOR = 12
  */
 const DIAMOND_FRAC_SINGLE = 0.78
 const DIAMOND_FRAC_MULTI = 0.6
-/** Page-space gap between an edge-label chip and the nearest node box. */
-const LABEL_NODE_CLEAR = 6
 const STROKE_W = 1.5
 const ARROW_SIZE = 6
 /** Page-space corner radius for orthogonal elbows. Tight gaps may go down to CORNER_R_MIN. */
@@ -348,7 +346,9 @@ function computeLayout(component: FlowchartComponent, direction: FlowDirection):
       kind,
     })
   }
+  const knownIds = new Set(component.nodes.map((n) => n.id))
   for (const e of component.edges) {
+    if (!knownIds.has(e.from) || !knownIds.has(e.to)) continue
     // 边标签是单行元素：换行标记（<br/>、\n）归一化成空格。
     g.setEdge(e.from, e.to, {
       label: (e.label ?? "").replace(/<br\s*\/?>|\n/gi, " ").trim(),
@@ -361,20 +361,23 @@ function computeLayout(component: FlowchartComponent, direction: FlowDirection):
   const width = graphLabel.width ?? 400
   const height = graphLabel.height ?? 200
 
-  const nodes: LayoutNode[] = g.nodes().map((id) => {
+  const nodes: LayoutNode[] = g.nodes().flatMap((id) => {
     const n = g.node(id) as dagre.Node & {
       lines: string[]
       kind: "rect" | "diamond" | "round"
     }
-    return {
-      id,
-      x: n.x - n.width / 2,
-      y: n.y - n.height / 2,
-      w: n.width,
-      h: n.height,
-      lines: n.lines,
-      kind: n.kind,
-    }
+    if (!n || !Number.isFinite(n.x) || !Number.isFinite(n.width)) return []
+    return [
+      {
+        id,
+        x: n.x - n.width / 2,
+        y: n.y - n.height / 2,
+        w: n.width,
+        h: n.height,
+        lines: n.lines,
+        kind: n.kind,
+      },
+    ]
   })
 
   const nodeById = new Map(nodes.map((n) => [n.id, n]))
@@ -452,6 +455,37 @@ function computeLayout(component: FlowchartComponent, direction: FlowDirection):
   return { nodes, edges, width, height }
 }
 
+function arrowGeometry(
+  points: { x: number; y: number }[],
+  scaleX: number,
+  scaleY: number,
+): { p1x: number; p1y: number; p2x: number; p2y: number; p3x: number; p3y: number } | null {
+  if (points.length < 2) return null
+  const tip = points[points.length - 1]!
+  const prev = points[points.length - 2]!
+  const dx = tip.x - prev.x
+  const dy = tip.y - prev.y
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len === 0) return null
+  const ux = dx / len
+  const uy = dy / len
+  const px = -uy
+  const py = ux
+  const s = ARROW_SIZE
+  const tx = tip.x * scaleX
+  const ty = tip.y * scaleY
+  const sx = s * scaleX
+  const sy = s * scaleY
+  return {
+    p1x: tx,
+    p1y: ty,
+    p2x: tx - ux * sx + px * sy * 0.5,
+    p2y: ty - uy * sy + py * sx * 0.5,
+    p3x: tx - ux * sx - px * sy * 0.5,
+    p3y: ty - uy * sy - py * sx * 0.5,
+  }
+}
+
 /** Build a polygon arrowhead at the end of an edge path. */
 function arrowPolygon(
   points: { x: number; y: number }[],
@@ -459,40 +493,20 @@ function arrowPolygon(
   scaleY: number,
   color: string,
 ): React.ReactElement | null {
-  if (points.length < 2) return null
-  const tip = points[points.length - 1]
-  const prev = points[points.length - 2]
-  const dx = tip.x - prev.x
-  const dy = tip.y - prev.y
-  const len = Math.sqrt(dx * dx + dy * dy)
-  if (len === 0) return null
+  const g = arrowGeometry(points, scaleX, scaleY)
+  if (!g) return null
+  return <polygon points={`${g.p1x},${g.p1y} ${g.p2x},${g.p2y} ${g.p3x},${g.p3y}`} fill={color} />
+}
 
-  const ux = dx / len
-  const uy = dy / len
-  // perpendicular
-  const px = -uy
-  const py = ux
-
-  const s = ARROW_SIZE
-  const tx = tip.x * scaleX
-  const ty = tip.y * scaleY
-  const sx = s * scaleX
-  const sy = s * scaleY
-
-  // Three points: tip, and two base corners
-  const p1x = tx
-  const p1y = ty
-  const p2x = tx - ux * sx + px * sy * 0.5
-  const p2y = ty - uy * sy + py * sx * 0.5
-  const p3x = tx - ux * sx - px * sy * 0.5
-  const p3y = ty - uy * sy - py * sx * 0.5
-
-  return (
-    <polygon
-      points={`${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y}`}
-      fill={color}
-    />
-  )
+function arrowAabb(points: { x: number; y: number }[], scale: number): Aabb | null {
+  const g = arrowGeometry(points, scale, scale)
+  if (!g) return null
+  const xs = [g.p1x, g.p2x, g.p3x]
+  const ys = [g.p1y, g.p2y, g.p3y]
+  const pad = 2
+  const x = Math.min(...xs) - pad
+  const y = Math.min(...ys) - pad
+  return { x, y, w: Math.max(...xs) + pad - x, h: Math.max(...ys) + pad - y }
 }
 
 interface EdgeLabelVisual {
@@ -533,28 +547,55 @@ interface EdgeLabelVisual {
  * anything legible, so the label is omitted rather than rendered as a bare
  * "…" or empty string.
  */
-function boxesContainingPoint(p: { x: number; y: number }, nodeBoxes: Aabb[], scale: number): Aabb[] {
-  const x = p.x * scale
-  const y = p.y * scale
-  const slop = Math.max(4, 4 * scale)
-  return nodeBoxes.filter(
-    (n) => x >= n.x - slop && x <= n.x + n.w + slop && y >= n.y - slop && y <= n.y + n.h + slop,
-  )
-}
-
-function connectedNodeBoxes(edge: LayoutEdge, nodeBoxes: Aabb[], scale: number): Aabb[] {
-  const start = edge.points[0]
-  const end = edge.points[edge.points.length - 1]
-  if (!start || !end) return []
-  const out: Aabb[] = []
-  for (const n of [...boxesContainingPoint(start, nodeBoxes, scale), ...boxesContainingPoint(end, nodeBoxes, scale)]) {
-    if (!out.some((o) => o.x === n.x && o.y === n.y && o.w === n.w && o.h === n.h)) out.push(n)
-  }
-  return out
-}
-
 function aabbOverlap(a: Aabb, b: Aabb): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function nodeNameSet(component: FlowchartComponent): Set<string> {
+  const names = new Set<string>()
+  for (const n of component.nodes) {
+    const folded = n.label.replace(/<br\s*\/?>|\n/gi, " ").trim()
+    if (folded) names.add(folded)
+    for (const line of normalizeLabelLines(n.label)) {
+      if (line) names.add(line)
+    }
+  }
+  return names
+}
+
+function distPointToSeg(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const len2 = dx * dx + dy * dy
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+  t = Math.max(0, Math.min(1, t))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+}
+
+function minDistChipToPolyline(chip: Aabb, pts: { x: number; y: number }[]): number {
+  if (pts.length < 2) return Infinity
+  const samples = [
+    { x: chip.x, y: chip.y },
+    { x: chip.x + chip.w, y: chip.y },
+    { x: chip.x, y: chip.y + chip.h },
+    { x: chip.x + chip.w, y: chip.y + chip.h },
+    { x: chip.x + chip.w / 2, y: chip.y },
+    { x: chip.x + chip.w / 2, y: chip.y + chip.h },
+    { x: chip.x, y: chip.y + chip.h / 2 },
+    { x: chip.x + chip.w, y: chip.y + chip.h / 2 },
+  ]
+  let gap = Infinity
+  for (const p of samples) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      gap = Math.min(gap, distPointToSeg(p, pts[i]!, pts[i + 1]!))
+    }
+  }
+  return gap
 }
 
 /**
@@ -583,67 +624,103 @@ function longestSegment(points: { x: number; y: number }[]): {
 }
 
 function parkEdgeLabel(
-  x: number,
-  y: number,
+  midX: number,
+  midY: number,
   chipW: number,
   chipH: number,
-  edge: LayoutEdge,
   nodeBoxes: Aabb[],
   scale: number,
   horizontal: boolean,
-): { x: number; y: number } {
-  const connected = connectedNodeBoxes(edge, nodeBoxes, scale)
-  const hit = connected.length > 0 ? connected : nodeBoxes
+  ownStroke: { x: number; y: number }[],
+  otherStrokes: { x: number; y: number }[][],
+  arrowBoxes: Aabb[],
+  segA: { x: number; y: number },
+  segB: { x: number; y: number },
+): { x: number; y: number } | null {
   const chipAt = (cx: number, cy: number): Aabb => ({
     x: cx - chipW / 2,
     y: cy - chipH / 2,
     w: chipW,
     h: chipH,
   })
-  const overlaps = (cx: number, cy: number) => nodeBoxes.some((n) => aabbOverlap(chipAt(cx, cy), n))
-  const lineClear = horizontal
+  const arrowPad = (ARROW_SIZE + 4) * scale
+  let cx = midX
+  let cy = midY
+  if (horizontal) {
+    const lo = Math.min(segA.x, segB.x) + arrowPad + chipW / 2
+    const hi = Math.max(segA.x, segB.x) - arrowPad - chipW / 2
+    if (lo <= hi) cx = Math.min(hi, Math.max(lo, cx))
+  } else {
+    const lo = Math.min(segA.y, segB.y) + arrowPad + chipH / 2
+    const hi = Math.max(segA.y, segB.y) - arrowPad - chipH / 2
+    if (lo <= hi) cy = Math.min(hi, Math.max(lo, cy))
+  }
+  const offsets = horizontal
     ? [
-        { x, y: y - (LABEL_LINE_CLEAR + chipH / 2) },
-        { x, y: y + (LABEL_LINE_CLEAR + chipH / 2) },
+        { x: cx, y: cy - (LABEL_LINE_CLEAR + chipH / 2) },
+        { x: cx, y: cy + (LABEL_LINE_CLEAR + chipH / 2) },
       ]
     : [
-        { x: x - (LABEL_LINE_CLEAR + chipW / 2), y },
-        { x: x + (LABEL_LINE_CLEAR + chipW / 2), y },
+        { x: cx - (LABEL_LINE_CLEAR + chipW / 2), y: cy },
+        { x: cx + (LABEL_LINE_CLEAR + chipW / 2), y: cy },
       ]
-  const onLine = lineClear.find((c) => !overlaps(c.x, c.y))
-  if (onLine) return onLine
-  if (hit.length === 0) return lineClear[0] ?? { x, y }
-  const signs = [1, -1]
-  const candidates: { x: number; y: number }[] = [...lineClear]
-  if (horizontal) {
-    const top = Math.min(...hit.map((n) => n.y))
-    const bot = Math.max(...hit.map((n) => n.y + n.h))
-    for (const s of signs) {
-      candidates.push(
-        s < 0
-          ? { x, y: top - LABEL_NODE_CLEAR - chipH / 2 }
-          : { x, y: bot + LABEL_NODE_CLEAR + chipH / 2 },
-      )
+  const along = horizontal
+    ? [
+        { x: (Math.min(segA.x, segB.x) + Math.max(segA.x, segB.x)) / 2, y: cy },
+      ]
+    : [{ x: cx, y: (Math.min(segA.y, segB.y) + Math.max(segA.y, segB.y)) / 2 }]
+  const extra = along.flatMap((p) =>
+    horizontal
+      ? [
+          { x: p.x, y: p.y - (LABEL_LINE_CLEAR + chipH / 2) },
+          { x: p.x, y: p.y + (LABEL_LINE_CLEAR + chipH / 2) },
+        ]
+      : [
+          { x: p.x - (LABEL_LINE_CLEAR + chipW / 2), y: p.y },
+          { x: p.x + (LABEL_LINE_CLEAR + chipW / 2), y: p.y },
+        ],
+  )
+  const candidates = [...offsets, ...extra]
+  const scored: { x: number; y: number; other: number }[] = []
+  for (const c of candidates) {
+    const chip = chipAt(c.x, c.y)
+    if (nodeBoxes.some((n) => aabbOverlap(chip, n))) continue
+    if (arrowBoxes.some((a) => aabbOverlap(chip, a))) continue
+    const ownDist = minDistChipToPolyline(chip, ownStroke)
+    if (ownDist < 6 || ownDist > 10.5) continue
+    let other = Infinity
+    let blocked = false
+    for (const stroke of otherStrokes) {
+      const d = minDistChipToPolyline(chip, stroke)
+      if (d < 6) {
+        blocked = true
+        break
+      }
+      other = Math.min(other, d)
     }
-  } else {
-    const left = Math.min(...hit.map((n) => n.x))
-    const right = Math.max(...hit.map((n) => n.x + n.w))
-    for (const s of signs) {
-      candidates.push(
-        s < 0
-          ? { x: left - LABEL_NODE_CLEAR - chipW / 2, y }
-          : { x: right + LABEL_NODE_CLEAR + chipW / 2, y },
-      )
-    }
+    if (blocked) continue
+    scored.push({ x: c.x, y: c.y, other })
   }
-  return candidates.find((c) => !overlaps(c.x, c.y)) ?? candidates[0] ?? { x, y }
+  if (scored.length === 0) return null
+  scored.sort((a, b) => b.other - a.other)
+  return { x: scored[0]!.x, y: scored[0]!.y }
 }
 
-function computeEdgeLabel(edge: LayoutEdge, scale: number, nodeBoxes: Aabb[]): EdgeLabelVisual | null {
+function computeEdgeLabel(
+  edge: LayoutEdge,
+  scale: number,
+  nodeBoxes: Aabb[],
+  nodeNames: Set<string>,
+  ownStroke: { x: number; y: number }[],
+  otherStrokes: { x: number; y: number }[][],
+  arrowBoxes: Aabb[],
+): EdgeLabelVisual | null {
   if (!edge.label) return null
+  if (nodeNames.has(edge.label)) return null
   const { points } = edge
+  if (points.length < 2) return null
   const seg = longestSegment(points)
-  if (!seg) return null
+  if (!seg || seg.len < PATH_EPS) return null
 
   const mid = { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 }
   const horizontal = Math.abs(seg.b.x - seg.a.x) >= Math.abs(seg.b.y - seg.a.y)
@@ -669,11 +746,16 @@ function computeEdgeLabel(edge: LayoutEdge, scale: number, nodeBoxes: Aabb[]): E
     mid.y * scale,
     chipW,
     chipH,
-    edge,
     nodeBoxes,
     scale,
     horizontal,
+    ownStroke,
+    otherStrokes,
+    arrowBoxes,
+    { x: seg.a.x * scale, y: seg.a.y * scale },
+    { x: seg.b.x * scale, y: seg.b.y * scale },
   )
+  if (!parked) return null
   const x = parked.x
   const y = parked.y
   // The *un-margined* gap, centered on the same point as the chip/text —
@@ -717,7 +799,22 @@ function prepareFlow(component: FlowchartComponent, w: number): PreparedFlow {
     w: n.w * scale,
     h: n.h * scale,
   }))
-  const labels = layout.edges.map((edge) => computeEdgeLabel(edge, scale, nodeBoxes))
+  const names = nodeNameSet(component)
+  const strokes = layout.edges.map((e) => e.points.map((p) => ({ x: p.x * scale, y: p.y * scale })))
+  const arrows = layout.edges
+    .map((e) => arrowAabb(e.points, scale))
+    .filter((b): b is Aabb => b !== null)
+  const labels = layout.edges.map((edge, i) =>
+    computeEdgeLabel(
+      edge,
+      scale,
+      nodeBoxes,
+      names,
+      strokes[i]!,
+      strokes.filter((_, j) => j !== i),
+      arrows,
+    ),
+  )
   let minX = 0
   let minY = 0
   let maxX = layout.width * scale

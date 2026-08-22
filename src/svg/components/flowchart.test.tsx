@@ -776,7 +776,7 @@ describe("flowchart diamond label and edge-label clearance (ember p05 leftover)"
     }
   })
 
-  it("parks 数据采集 / 设备接入 edge-label chips off the diamond bbox", () => {
+  it("parks 数据采集 off the diamond bbox and drops the 设备接入 edge label as a node-name duplicate", () => {
     const { container } = svg(flowchart.render(emberZh, { x: 96, y: 228, w: 1088 }, ctx))
     const diamond = Array.from(container.querySelectorAll("polygon")).find(
       (p) => p.getAttribute("fill") === ctx.colors.surface,
@@ -788,7 +788,8 @@ describe("flowchart diamond label and edge-label clearance (ember p05 leftover)"
       (t) => t.getAttribute("fill") === ctx.colors.muted,
     )
     const contents = edgeLabels.map((t) => t.textContent ?? "")
-    expect(contents).toEqual(expect.arrayContaining(["数据采集", "设备接入"]))
+    expect(contents).toContain("数据采集")
+    expect(contents).not.toContain("设备接入")
 
     for (const t of edgeLabels) {
       const chip = t.previousElementSibling
@@ -1017,3 +1018,187 @@ describe("flowchart orthogonal rounded routing", () => {
     expect(a).toBe(b)
   })
 })
+
+// Gallery component--flowchart--zh: labels[0] reuses the diamond node name
+// 「席位开通」, so the c→d chip parked below the rhombus with no nearby
+// stroke. labels[1] 「用量采集」 sits on the bidirectional pair and covers
+// the arrowheads. Edge labels now omit node-name duplicates, draw only
+// when the edge has a real polyline, and stay 6-10px off their own stroke
+// clear of arrow tips.
+describe("flowchart edge labels: omit duplicates, stay off strokes and arrows", () => {
+  const galleryZh = {
+    type: "flowchart" as const,
+    direction: "LR" as const,
+    nodes: [
+      { id: "a", label: "需求确认", kind: "round" as const },
+      { id: "b", label: "方案设计" },
+      { id: "c", label: "席位开通", kind: "diamond" as const },
+      { id: "d", label: "权限配置" },
+      { id: "e", label: "验收交付", kind: "round" as const },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+      { from: "c", to: "d", label: "席位开通" },
+      { from: "c", to: "b", label: "用量采集" },
+      { from: "d", to: "e" },
+    ],
+  }
+
+  const BOX = { x: 96, y: 176, w: 1088 }
+
+  function mutedLabels(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("fill") === ctx.colors.muted,
+    )
+  }
+
+  function parsePath(d: string): { x: number; y: number }[] {
+    const pts: { x: number; y: number }[] = []
+    let x = 0
+    let y = 0
+    const re = /([MLHVQCSTAZ])([^MLHVQCSTAZ]*)/gi
+    for (const m of d.matchAll(re)) {
+      const cmd = m[1]!.toUpperCase()
+      const nums = m[2]!
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(Number)
+      if (cmd === "M" || cmd === "L") {
+        x = nums[0]!
+        y = nums[1]!
+        pts.push({ x, y })
+      } else if (cmd === "H") {
+        x = nums[0]!
+        pts.push({ x, y })
+      } else if (cmd === "V") {
+        y = nums[0]!
+        pts.push({ x, y })
+      } else if (cmd === "Q") {
+        x = nums[2]!
+        y = nums[3]!
+        pts.push({ x, y })
+      }
+    }
+    return pts
+  }
+
+  function distToSeg(
+    p: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) {
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const len2 = dx * dx + dy * dy
+    if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+    t = Math.max(0, Math.min(1, t))
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+  }
+
+  function chipNearEdgeDist(
+    chip: { x: number; y: number; w: number; h: number },
+    pts: { x: number; y: number }[],
+  ) {
+    const corners = [
+      { x: chip.x, y: chip.y },
+      { x: chip.x + chip.w, y: chip.y },
+      { x: chip.x, y: chip.y + chip.h },
+      { x: chip.x + chip.w, y: chip.y + chip.h },
+    ]
+    let gap = Infinity
+    for (const corner of corners) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        gap = Math.min(gap, distToSeg(corner, pts[i]!, pts[i + 1]!))
+      }
+    }
+    return gap
+  }
+
+  function aabbOverlap(
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  }
+
+  it("omits an edge label that repeats a node name (gallery zh 席位开通)", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).not.toContain("席位开通")
+    const nodeTexts = Array.from(container.querySelectorAll("g[data-flow-node] text")).map(
+      (t) => t.textContent ?? "",
+    )
+    expect(nodeTexts.join("")).toContain("席位开通")
+  })
+
+  it("keeps a distinct branch label on the reverse edge (用量采集)", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).toContain("用量采集")
+  })
+
+  it("sits 6-10px off its own stroke and misses every arrowhead", () => {
+    const { container } = svg(flowchart.render(galleryZh, BOX, ctx))
+    const label = mutedLabels(container).find((t) => t.textContent === "用量采集")
+    expect(label).toBeTruthy()
+    const chipEl = label!.previousElementSibling!
+    const chip = {
+      x: Number(chipEl.getAttribute("x")),
+      y: Number(chipEl.getAttribute("y")),
+      w: Number(chipEl.getAttribute("width")),
+      h: Number(chipEl.getAttribute("height")),
+    }
+    const paths = Array.from(container.querySelectorAll("path")).map((p) =>
+      parsePath(p.getAttribute("d") ?? ""),
+    )
+    const own = paths
+      .map((pts) => ({ pts, gap: chipNearEdgeDist(chip, pts) }))
+      .sort((a, b) => a.gap - b.gap)
+    expect(own[0]!.gap).toBeGreaterThanOrEqual(6)
+    expect(own[0]!.gap).toBeLessThanOrEqual(10.5)
+    for (const other of own.slice(1)) {
+      expect(other.gap).toBeGreaterThanOrEqual(6)
+    }
+    const arrows = Array.from(container.querySelectorAll("polygon")).filter(
+      (p) => p.getAttribute("fill") === ctx.colors.muted,
+    )
+    for (const arrow of arrows) {
+      const nums = (arrow.getAttribute("points") ?? "")
+        .trim()
+        .split(/[\s,]+/)
+        .map(Number)
+      const xs = nums.filter((_, i) => i % 2 === 0)
+      const ys = nums.filter((_, i) => i % 2 === 1)
+      const box = {
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        w: Math.max(...xs) - Math.min(...xs),
+        h: Math.max(...ys) - Math.min(...ys),
+      }
+      expect(aabbOverlap(chip, box)).toBe(false)
+    }
+  })
+
+  it("does not paint a label when the edge has no drawable polyline", () => {
+    const dangling = {
+      type: "flowchart" as const,
+      direction: "LR" as const,
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "a", to: "missing", label: "ghost" },
+      ],
+    }
+    const { container } = svg(flowchart.render(dangling, { x: 0, y: 0, w: 600 }, ctx))
+    const muted = mutedLabels(container).map((t) => t.textContent ?? "")
+    expect(muted).not.toContain("ghost")
+    expect(container.querySelectorAll("path").length).toBe(1)
+  })
+})
+
