@@ -1,0 +1,308 @@
+{
+  "schema": "pptfast-gallery-verdicts/3",
+  "sha": "321748d",
+  "generator": "grok",
+  "pages": {
+    "theme--academic--zh--p01": {
+      "verdict": "rework",
+      "note": "Five equal dots at the top of the right pane are one filled and four hollow, the forbidden progress-dot motif. The cover title block is vertically centered, with top and bottom gaps nearly equal (about 237px vs 261px), so the page does not sit with gravity.",
+      "findings": [
+        "taboo",
+        "gravity"
+      ]
+    },
+    "layout--asymmetric-triptych--zh": {
+      "verdict": "rework",
+      "note": "Five equal dots sit in a top row, one filled and four hollow, which is the banned progress motif. The same page also pairs those navy dots (H 224, S 0.42) with a gold-orange accent bar (H 47, S 0.89).",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "layout--asymmetric-triptych--en": {
+      "verdict": "rework",
+      "note": "Five equal dots sit in the top chrome, one filled and four hollow, which the taboo rule treats as a slide progress indicator.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "layout--asymmetric-triptych--mixed": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden slide-progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "component--callout--zh": {
+      "verdict": "rework",
+      "note": "Top-left decoration is five equal dots with one filled and four hollow, the forbidden progress-bar pattern.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "component--callout--en": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress-bar motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "theme--crayon--zh--p04": {
+      "verdict": "rework",
+      "note": "Crayon still has the forbidden bottom-left star sticker, and vivid orange (sun, gold KPI ring) shares the page with vivid blue (header wave, 10.2 ring). The 5 KPI and the truncated 岭原智能 source line also sit below the 12px type floor.",
+      "findings": [
+        "taboo",
+        "theme-independence",
+        "text",
+        "font-size"
+      ]
+    },
+    "theme--crayon--zh--p07": {
+      "verdict": "rework",
+      "note": "A crayon star sticker sits in the lower-left footer, which both taboo and theme-independence forbid. The vivid blue torn-paper band (H≈222, S≈0.68) also shares the page with a vivid orange sun (H≈45, S≈0.98).",
+      "findings": [
+        "taboo",
+        "theme-independence"
+      ]
+    },
+    "theme--enterprise--zh--p01": {
+      "verdict": "pass",
+      "note": "Placeholder while images are inspected.",
+      "findings": []
+    },
+    "theme--playbill--zh--p01": {
+      "verdict": "pass",
+      "note": "Playbill cover with top-locked title, signature tilted date sticker, and leftover field above the footer rule. No breathing, gravity, taboo, text, or theme-independence breaks.",
+      "findings": []
+    },
+    "theme--playbill--zh--p04": {
+      "verdict": "rework",
+      "note": "The first KPI source line 岭原智能 2026 年第二季度经营数据 is caption text at about 10px, under the 12px floor.",
+      "findings": [
+        "font-size"
+      ]
+    },
+    "component--callout--mixed": {
+      "verdict": "rework",
+      "note": "The top-left row is five equal circles with the first filled and the other four hollow, which the five-dot progress taboo treats as an immediate rework on gallery pages.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "theme--crayon--zh--p01": {
+      "verdict": "limit",
+      "note": "Crayon identity is gone: no hand-drawn marks, waxy color, or rounded motif, so the cover reads as a recolored consulting banner. The title stack hangs in the cream field with a wide mid gap instead of sitting at the top of the content area.",
+      "findings": [
+        "theme-independence",
+        "gravity"
+      ]
+    },
+    "theme--vermilion--zh--p07": {
+      "verdict": "rework",
+      "note": "Page number 07 rides the footer divider. The rule crosses the bottom of both glyphs (about 1px from the ink), which breaks 不贴分割线 / 不重叠 and the underline-not-strikethrough gravity rule.",
+      "findings": [
+        "text",
+        "gravity",
+        "edge-stick"
+      ]
+    },
+    "component--comparison-pill-panels--zh": {
+      "verdict": "pass",
+      "note": "Title and three pill cards sit in the upper band with leftover space below the cards. No overlap, overflow, left accent bar, blue-orange clash, or breathing defects.",
+      "findings": []
+    },
+    "component--comparison-pill-panels--en": {
+      "verdict": "pass",
+      "note": "No rubric break. Title and pill panels sit high with remainder below, in-card text stays readable and unclipped, and there is no left rail, blue-orange pair, overflow cue, or borrowed motif.",
+      "findings": []
+    },
+    "component--comparison-pill-panels--mixed": {
+      "verdict": "pass",
+      "note": "Top-weighted consulting comparison pills with even inner padding, hairline equal-weight frames, and no overlap, overflow, blue-orange, or leftover-indicator hits.",
+      "findings": []
+    },
+    "layout--banner-chapter--zh": {
+      "verdict": "pass",
+      "note": "Centered banner-chapter poster, so gravity top-align does not apply. Gold underline sits about 6px under 客户洞察 and does not strike the glyphs.",
+      "findings": []
+    },
+    "layout--banner-chapter--en": {
+      "verdict": "pass",
+      "note": "Centered title is the banner-chapter poster (layout id banner-chapter), so gravity top-weighting does not apply. The gold rule sits below the Customers baseline and consulting navy plus gold is the ADJUDICATED signature, not a blue-orange hit.",
+      "findings": []
+    },
+    "layout--banner-chapter--mixed": {
+      "verdict": "pass",
+      "note": "banner-chapter is a centered-axis chapter poster (layout id banner-chapter). The gold rule sits under 现状盘点, not through the glyphs, and consulting navy with gold is the named ADJUDICATED pairing.",
+      "findings": []
+    },
+    "layout--quote-stage--zh": {
+      "verdict": "rework",
+      "note": "Top-left chrome is five equal dots with one filled and four hollow, the forbidden progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "layout--banner-heading--zh": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, which the rubric bans as a progress bar. The first-card source line sits under the 12px floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "layout--banner-heading--en": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress marker. Source line Lingyuan Intelligence Q2 2026 operating data is under the 12px floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "layout--quote-stage--en": {
+      "verdict": "rework",
+      "note": "The top-left motif is five equal dots with one filled and four hollow, which taboo bans as a progress bar. The quote block starts far below the content-area top with a larger gap above than below, so the page does not sit top-weighted.",
+      "findings": [
+        "taboo",
+        "gravity"
+      ]
+    },
+    "layout--corner-wedge--zh": {
+      "verdict": "rework",
+      "note": "The top rail is five equal dots with one filled and four hollow, the banned progress cue. The second heading line collides with the subheading, so two ink boxes intersect.",
+      "findings": [
+        "taboo",
+        "text"
+      ]
+    },
+    "layout--quote-stage--mixed": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden progress motif. The title plus source block is vertically centered (top gap ~224px, bottom ~229px), so the page does not sink.",
+      "findings": [
+        "taboo",
+        "gravity"
+      ]
+    },
+    "theme--arena--zh--p01": {
+      "verdict": "pass",
+      "note": "No L2 hits. Layout is corner-wedge, a center-axis cover poster, so gravity's vertical-centering rule does not apply.",
+      "findings": []
+    },
+    "layout--two-column--en": {
+      "verdict": "rework",
+      "note": "L1 overflow marker and sub-12px kicker remain on the page.",
+      "findings": [
+        "overflow-marker",
+        "font-size"
+      ]
+    },
+    "layout--image-split--en": {
+      "verdict": "rework",
+      "note": "Five equal dots at the top left are one filled and four hollow, the forbidden slide-progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "theme--lecture--zh--p04": {
+      "verdict": "pass",
+      "note": "Awaiting visual inspection of page.png against the inlined L2 rubric.",
+      "findings": []
+    },
+    "component--five-forces--zh": {
+      "verdict": "rework",
+      "note": "Header chrome uses five equal dots with exactly one filled and four hollow, the banned one-solid-four-empty progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "layout--image-top--en": {
+      "verdict": "pass",
+      "note": "No rubric rule is broken. The photo band sits at the top, title and body follow with leftover space at the bottom, and consulting navy-plus-gold is the named palette exception.",
+      "findings": []
+    },
+    "theme--ember--zh--p05": {
+      "verdict": "pass",
+      "note": "No rubric break. Title hangs from the top with the underline below the glyphs, gold and plum bars are not blue-plus-orange, and the right-side sparks are unequal filled ember dots rather than a five-dot progress mark.",
+      "findings": []
+    },
+    "component--five-forces--en": {
+      "verdict": "rework",
+      "note": "The header uses a five-dot one-filled four-empty progress marker, which taboo forbids. Side-card body copy also sits below the 12px floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "component--people-cards--zh": {
+      "verdict": "rework",
+      "note": "The five top-left dots are one filled and four hollow, which is the forbidden progress motif. Role and company labels under the avatars also sit below the 12px type floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "component--quote--mixed": {
+      "verdict": "rework",
+      "note": "Top-left five equal dots are one filled and four hollow, the forbidden slide-progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "component--row-cards--zh": {
+      "verdict": "rework",
+      "note": "Top-left decoration is five equal dots with exactly one filled and four hollow in a horizontal row, the banned slide-progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "component--quote--zh": {
+      "verdict": "rework",
+      "note": "Five equal header dots are one solid and four hollow, which the progress-dot taboo forbids. The same page also pairs those navy dots (H 224, S 0.42) with gold-orange rules (H 47, S 0.89).",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "component--row-cards--mixed": {
+      "verdict": "rework",
+      "note": "Top-left has five equal dots with one filled and four hollow, the forbidden slide-progress motif.",
+      "findings": [
+        "taboo"
+      ]
+    },
+    "layout--rail-numbered--zh": {
+      "verdict": "rework",
+      "note": "Five equal dots with one filled and four hollow are the forbidden slide-progress motif. Source line 岭原智能 2026 年第二季度经营数据 is also below the 12px floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "layout--rail-numbered--en": {
+      "verdict": "rework",
+      "note": "The header has five equal dots with one filled and four hollow, the banned progress-dot pattern. The card source line Lingyuan Intelligence Q2 2026 operating data is also below the 12px floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "component--cycle-petal-wheel--zh": {
+      "verdict": "rework",
+      "note": "Petal labels such as 现场勘测 and 存量客户产线扩容 are readable text below the 12px floor.",
+      "findings": [
+        "font-size"
+      ]
+    },
+    "layout--rail-numbered--mixed": {
+      "verdict": "rework",
+      "note": "The top-left motif is five equal dots with one filled and four hollow, which the progress-dot taboo forbids. The source line 岭原智能 Platform 团队压测报告 is also below the 12px type floor.",
+      "findings": [
+        "taboo",
+        "font-size"
+      ]
+    },
+    "component--cycle-hub-spoke--zh": {
+      "verdict": "pass",
+      "note": "No L2 rule is broken: numbered badges sit clear of titles, gold sits on navy/slate rather than vivid blue, and the hub-spoke is title-led rather than hung on the vertical center.",
+      "findings": []
+    }
+  }
+}
