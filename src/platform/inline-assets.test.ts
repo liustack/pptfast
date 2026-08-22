@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { PptxIR } from "@/ir"
 import { inlinePptxAssets } from "./inline-assets"
 import { PptfastError } from "../errors"
+import { installPlatform } from "./registry"
 
 const RED_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -28,6 +29,7 @@ function ir(images: Record<string, { src: string }>): PptxIR {
 }
 
 afterEach(() => {
+  installPlatform({ fetch: undefined })
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -39,6 +41,20 @@ describe("inlinePptxAssets", () => {
     const out = await inlinePptxAssets(ir({ bg: { src: RED_PNG } }))
     expect(out.assets.images.bg.src).toBe(RED_PNG)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("uses platform.fetch when installed instead of global fetch", async () => {
+    const bytes = Uint8Array.from(atob(RED_PNG.split(",")[1]!), (c) => c.charCodeAt(0))
+    const platformFetch = vi.fn(
+      async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
+    )
+    const globalFetch = vi.fn()
+    installPlatform({ fetch: platformFetch })
+    vi.stubGlobal("fetch", globalFetch)
+    const out = await inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.png" } }))
+    expect(platformFetch).toHaveBeenCalled()
+    expect(globalFetch).not.toHaveBeenCalled()
+    expect(out.assets.images.hero?.src.startsWith("data:image/png;base64,")).toBe(true)
   })
 
   it("fetches http(s) assets and inlines them as data URLs", async () => {

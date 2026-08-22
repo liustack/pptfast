@@ -1,6 +1,6 @@
 // Ported from markpress src/update.ts (same author), minus its playwright
 // post-install step — pptfast has no browser dependency to refresh.
-import { execFile } from "node:child_process"
+import { runChild } from "./child"
 
 export const PACKAGE_NAME = "@liustack/pptfast"
 
@@ -46,16 +46,11 @@ export function compareVersions(left: string, right: string): number {
   return 0
 }
 
-export const runCommand: CommandRunner = (command, args) =>
-  new Promise((resolve, reject) => {
-    execFile(command, args, { encoding: "utf8" }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr.trim() || error.message))
-        return
-      }
-      resolve(stdout.trim())
-    })
-  })
+export const runCommand: CommandRunner = async (command, args) => {
+  const { code, stdout, stderr } = await runChild(command, args)
+  if (code !== 0) throw new Error(stderr.trim() || `exited ${code}`)
+  return stdout.trim()
+}
 
 export interface CheckForUpdateOptions {
   currentVersion: string

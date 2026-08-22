@@ -493,7 +493,8 @@ describe("runDoctor: images", () => {
     }
   })
 
-  it("probes a fake grok on PATH as found and disabled by default, without leaking secrets", async () => {
+  it.skipIf(process.platform === "win32")("probes a fake grok on PATH as found and disabled by default, without leaking secrets", async () => {
+    // Windows: findOnPath only tries PATHEXT, so an extensionless `grok` plus chmod 0755 is not a product bug.
     const home = await makeHome()
     const binDir = await mkdtemp(join(tmpdir(), "pptfast-doctor-bin-"))
     await writeFile(join(binDir, "grok"), "#!/bin/sh\nexit 0\n")
@@ -563,8 +564,8 @@ describe("runDoctor: images", () => {
     }
   })
 
-  it("warns when the config file is group/other-readable on POSIX", async () => {
-    if (typeof process.getuid !== "function") return
+  it.skipIf(process.platform === "win32")("warns when the config file is group/other-readable on POSIX", async () => {
+    // Windows has no POSIX permission bits, so chmod 0600 assertions are not a product bug.
     const home = await makeHome()
     try {
       const path = join(home, "config.json")

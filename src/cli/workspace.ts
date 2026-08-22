@@ -38,11 +38,11 @@
  * (AGENTS.md's layout rule: Node-only code never enters `src/index.ts`'s
  * dependency closure).
  */
-import { execFile } from "node:child_process"
 import { appendFile, mkdir, readFile, readdir, stat, unlink } from "node:fs/promises"
 import { basename, dirname, extname, join, resolve } from "node:path"
 import { PptfastError } from "../errors"
 import { slugify } from "../themes/brand-extract"
+import { runChild } from "./child"
 import { ASSETS_DIRNAME, assertSafeFileSegment } from "./deck-dir"
 
 /** The default artifact root's directory name, relative to the anchor. A
@@ -150,25 +150,18 @@ export interface GitResult {
 
 export type GitRunner = (args: string[], cwd: string) => Promise<GitResult | null>
 
-const runGitDefault: GitRunner = (args, cwd) =>
-  new Promise((res) => {
-    execFile("git", args, { cwd, encoding: "utf8" }, (error, stdout) => {
-      if (!error) {
-        res({ code: 0, stdout })
-        return
-      }
-      // execFile puts the exit status in `error.code` as a number, and a
-      // spawn failure's errno string (`"ENOENT"`) in the same field. The
-      // string case is "there is no git here", which is not a failure — it
-      // is one of the four outcomes below.
-      const code = (error as NodeJS.ErrnoException & { code?: number | string }).code
-      if (typeof code !== "number") {
-        res(null)
-        return
-      }
-      res({ code, stdout: stdout ?? "" })
-    })
-  })
+const runGitDefault: GitRunner = async (args, cwd) => {
+  try {
+    const { code, stdout } = await runChild("git", args, { cwd })
+    return { code, stdout }
+  } catch (error) {
+    // A spawn failure's errno string (`"ENOENT"`) is "there is no git here",
+    // which is not a failure — it is one of the four outcomes below.
+    const code = (error as NodeJS.ErrnoException).code
+    if (typeof code !== "number") return null
+    throw error
+  }
+}
 
 /**
  * What {@link ensureGitIgnored} did. Every variant is a normal outcome —

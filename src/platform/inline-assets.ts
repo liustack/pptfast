@@ -218,7 +218,7 @@ export async function inlinePptxAssets(ir: PptxIR): Promise<PptxIR> {
       }
       let dataUrl: string
       try {
-        const resp = await fetch(asset.src)
+        const resp = await (getPlatform().fetch ?? globalThis.fetch)(asset.src)
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}`)
         }

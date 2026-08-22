@@ -11,7 +11,16 @@ export default tseslint.config(
     // recommended config doesn't know about Node globals — declare the ones
     // scripts/docs-list.js actually uses instead of pulling in the `globals` package.
     files: ["scripts/**/*.js", "dsh/**/*.js"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly", Buffer: "readonly" } },
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        URL: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
   },
   {
     // `dsh/client.js` is the plugin's browser half — it runs in the DSH web

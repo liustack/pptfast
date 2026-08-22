@@ -1,4 +1,5 @@
 import { DOMParser as LinkedomDOMParser } from "linkedom"
+import { proxyFetch } from "../cli/proxy-fetch"
 import { findRemoteAssetRef, installPlatform, type RasterizedImage } from "./registry"
 import type * as Sharp from "sharp"
 
@@ -104,5 +105,6 @@ export function installNodePlatform(): void {
     domParser: LinkedomDOMParser as unknown as typeof DOMParser,
     recodeImageToPng: recodeWithSharp,
     rasterizeSvg: rasterizeWithSharp,
+    fetch: proxyFetch,
   })
 }

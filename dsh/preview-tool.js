@@ -78,11 +78,11 @@
 //  - http(s) assets, and local images in formats that need a recode (webp
 //    and friends): still fetched or read per run. See `inlineLocalImages`.
 
-import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { runChild } from './spawnHidden.js'
 
 /**
  * How many pages get their SVG inlined into the bundle.
@@ -916,27 +916,12 @@ function cliChildEnv() {
  * an app.
  */
 function runCli(cliPath, args, signal) {
-  return new Promise((resolve_, reject) => {
-    const child = spawn(resolveCliCommand(), [cliPath, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: cliChildEnv(),
-    })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (d) => {
-      stdout += d
-    })
-    child.stderr.on('data', (d) => {
-      stderr += d
-    })
-    const onAbort = () => child.kill()
-    signal?.addEventListener('abort', onAbort, { once: true })
-    child.on('error', reject)
-    child.on('close', (code) => {
-      signal?.removeEventListener('abort', onAbort)
-      if (code === 0) resolve_({ stdout, stderr })
-      else reject(new Error(stderr.trim() || stdout.trim() || `pptfast exited with code ${code}`))
-    })
+  return runChild(resolveCliCommand(), [cliPath, ...args], {
+    env: cliChildEnv(),
+    signal,
+  }).then(({ code, stdout, stderr }) => {
+    if (code === 0) return { stdout, stderr }
+    throw new Error(stderr.trim() || stdout.trim() || `pptfast exited with code ${code}`)
   })
 }
 

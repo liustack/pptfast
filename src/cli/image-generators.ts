@@ -4,13 +4,15 @@
  * Generation is invoked through an injected {@link ProcessRunner} so tests
  * never spawn the real CLIs.
  */
-import { execFile } from "node:child_process"
-import { constants } from "node:fs"
-import { access, copyFile, readdir, stat } from "node:fs/promises"
-import { delimiter, join } from "node:path"
+import { copyFile, readdir, stat } from "node:fs/promises"
+import { join } from "node:path"
 import { PptfastError } from "../errors"
 import { sniffImageFormat } from "../ir/asset-sniff"
+import { ChildTimeoutError, runChild } from "./child"
 import { GENERATOR_IDS, type GeneratorId } from "./image-config"
+import { findOnPath } from "./path-lookup"
+
+export { findOnPath }
 
 export const GENERATOR_PROBE_TIMEOUT_MS = 2000
 
@@ -46,26 +48,6 @@ const BIN_NAMES: Record<GeneratorId, readonly string[]> = {
   antigravity: ["antigravity", "agy"],
 }
 
-export async function findOnPath(bin: string, env: NodeJS.ProcessEnv): Promise<string | null> {
-  const dirs = (env.PATH ?? env.Path ?? "").split(delimiter).filter(Boolean)
-  const names =
-    process.platform === "win32"
-      ? (env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";").map((ext) => bin + ext.toLowerCase())
-      : [bin]
-  for (const dir of dirs) {
-    for (const name of names) {
-      const full = join(dir, name)
-      try {
-        await access(full, constants.X_OK)
-        return full
-      } catch {
-        // not here
-      }
-    }
-  }
-  return null
-}
-
 export async function locateGeneratorBin(id: GeneratorId, env: NodeJS.ProcessEnv): Promise<string | null> {
   for (const name of BIN_NAMES[id]) {
     const found = await findOnPath(name, env)
@@ -81,32 +63,19 @@ export function parseGeneratorVersion(stdout: string): string {
 }
 
 export async function defaultProcessRunner(req: ProcessRun): Promise<{ code: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      req.command,
-      req.args,
-      {
-        cwd: req.cwd,
-        timeout: req.timeoutMs,
-        env: req.env,
-        encoding: "utf8",
-        maxBuffer: 10 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          const err = error as NodeJS.ErrnoException & { killed?: boolean; code?: string | number }
-          if (err.killed) {
-            reject(new PptfastError(`image generator timed out after ${req.timeoutMs}ms`))
-            return
-          }
-          const code = typeof err.code === "number" ? err.code : 1
-          resolve({ code, stdout: stdout ?? "", stderr: stderr ?? "" })
-          return
-        }
-        resolve({ code: 0, stdout: stdout ?? "", stderr: stderr ?? "" })
-      },
-    )
-  })
+  try {
+    return await runChild(req.command, req.args, {
+      cwd: req.cwd,
+      env: req.env,
+      timeoutMs: req.timeoutMs,
+    })
+  } catch (error) {
+    if (error instanceof ChildTimeoutError) {
+      throw new PptfastError(`image generator timed out after ${req.timeoutMs}ms`)
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    return { code: 1, stdout: "", stderr: message }
+  }
 }
 
 export async function probeGenerators(opts: {

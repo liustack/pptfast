@@ -104,6 +104,14 @@ describe("resolveImageKeys whole-source", () => {
 })
 
 describe("runConfigSet", () => {
+  it.skipIf(process.platform === "win32")("writes the config file as mode 0600", async () => {
+    // Windows has no POSIX permission bits, so chmod 0600 is not a product bug.
+    const home = await tmpHome()
+    await runConfigSet("pexels.apiKey", "TESTPEXELSKEY99")
+    const { stat } = await import("node:fs/promises")
+    expect((await stat(join(home, "config.json"))).mode & 0o777).toBe(0o600)
+  })
+
   it("writes pexels.apiKey nested under images, mode 0600, and never echoes the value", async () => {
     const home = await tmpHome()
     const message = await runConfigSet("pexels.apiKey", "TESTPEXELSKEY99")
@@ -114,14 +122,10 @@ describe("runConfigSet", () => {
       images: { pexels: { apiKey: string } }
     }
     expect(parsed.images.pexels.apiKey).toBe("TESTPEXELSKEY99")
-    if (process.platform !== "win32") {
-      const { stat } = await import("node:fs/promises")
-      expect((await stat(path)).mode & 0o777).toBe(0o600)
-    }
   })
 
-  it("chmod 0600 even when overwriting a 0644 file", async () => {
-    if (process.platform === "win32") return
+  it.skipIf(process.platform === "win32")("chmod 0600 even when overwriting a 0644 file", async () => {
+    // Windows has no POSIX permission bits, so chmod 0600 is not a product bug.
     const home = await tmpHome()
     const path = join(home, "config.json")
     await writeFile(path, JSON.stringify({ theme: "consulting" }), { mode: 0o644 })
@@ -252,10 +256,6 @@ describe("generator config keys", () => {
     }
     expect(parsed.images.generators.grok.enabled).toBe(true)
     expect(typeof parsed.images.generators.grok.enabled).toBe("boolean")
-    if (process.platform !== "win32") {
-      const { stat } = await import("node:fs/promises")
-      expect((await stat(path)).mode & 0o777).toBe(0o600)
-    }
     const out = await runConfigShow()
     expect(out).toContain("images.generators.grok.enabled  true")
     expect(out).not.toContain("****")
@@ -293,10 +293,6 @@ describe("persistUserConfigValue", () => {
       images: { openverse: { clientId?: string } }
     }
     expect(parsed.images.openverse.clientId).toBe("OVCLIENTID99")
-    if (process.platform !== "win32") {
-      const { stat } = await import("node:fs/promises")
-      expect((await stat(path)).mode & 0o777).toBe(0o600)
-    }
     await persistUserConfigValue(["images", "openverse", "clientId"], "")
     const cleared = JSON.parse(await readFile(path, "utf8")) as {
       images: { openverse: { clientId?: string } }
