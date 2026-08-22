@@ -33,7 +33,7 @@ Issues are welcome any time. [Open one](https://github.com/liustack/pptfast/issu
 
 **⚡ Tell your AI what to cover, get the deck.** You bring the content, the engine handles layout, color, type size, and spacing. The same content renders the same deck every time, so there is nothing to redo and no luck involved.
 
-**✏️ A real deck, not a picture of one.** Every heading, bullet, and chart bar opens in PowerPoint for you to retype and restyle. Chart and table figures are the exception: to change the numbers, have your AI rebuild that page. 17 ready-made styles, and you can pull the colors and fonts out of a deck your company already uses.
+**✏️ A real deck, not a picture of one.** Every heading, bullet, and chart bar opens in PowerPoint for you to retype and restyle. Chart and table figures are the exception: to change the numbers, have your AI rebuild that page. 24 ready-made styles, and you can pull the colors and fonts out of a deck your company already uses.
 
 **🔌 Installs into the agent you already use.** One command puts pptfast into DeepSeek Harness, Claude Code, or any agent that reads a skill folder (Codex and friends), and it knows how to build a deck the moment it lands.
 

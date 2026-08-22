@@ -33,7 +33,7 @@
 
 **⚡ 跟 AI 说一句，PPT 就好了。** 你只管说要讲什么，版面、配色、字号、间距全由引擎排好。同一份内容做十遍是同一份，不用一遍遍重来碰运气。
 
-**✏️ 交出来的是真 PPT，不是一张图。** 每个标题、每条要点、每根柱子都能在 PowerPoint 里点开改字改色。图表和表格里的数字是例外，换数字让 AI 重做一版。17 套现成风格，也能把你公司现有 PPT 里的配色和字体抽出来直接用。
+**✏️ 交出来的是真 PPT，不是一张图。** 每个标题、每条要点、每根柱子都能在 PowerPoint 里点开改字改色。图表和表格里的数字是例外，换数字让 AI 重做一版。24 套现成风格，也能把你公司现有 PPT 里的配色和字体抽出来直接用。
 
 **🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
@@ -93,7 +93,7 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | `preview <target> [-o <dir>] [--html]` | 每页一张 SVG，外加一个自包含的审阅页。省略 `-o` 则写到 `.pptfast/<deck>/` |
 | `serve <target>` | 随改动自动刷新的实时预览，带批注面板 |
 | `audit <target>` | 几何审查：溢出、越界、低对比度、重叠 |
-| `themes` | 列出 21 套内置主题（22 个 id） |
+| `themes` | 列出 24 套内置主题（24 个 id） |
 | `doctor` | 体检这套安装：运行时、skill 副本、可选能力、自检渲染 |
 
 完整命令表见 [`docs/cli.zh-CN.md`](./docs/cli.zh-CN.md)。
