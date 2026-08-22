@@ -3,7 +3,7 @@
  * ProcessRunner is injectable so unit tests never spawn grok.
  */
 
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -74,6 +74,16 @@ function copyRubric(srcDir: string, destDir: string): { names: string[]; combine
   }
   const combined = `${chunks.join("\n\n")}\n`
   writeFileSync(join(destDir, "ALL.md"), combined)
+  const examplesSrc = join(srcDir, "examples")
+  if (existsSync(examplesSrc)) {
+    const examplesDest = join(destDir, "examples")
+    mkdirSync(examplesDest, { recursive: true })
+    for (const name of readdirSync(examplesSrc)) {
+      if (/\.(png|jpe?g)$/i.test(name)) {
+        copyFileSync(join(examplesSrc, name), join(examplesDest, name))
+      }
+    }
+  }
   return { names, combined }
 }
 
@@ -89,16 +99,26 @@ function buildPrompt(
       : `L1 findings:\n${l1.findings.map((f) => `- ${f.code}: ${f.message}`).join("\n")}`
   return [
     "You are auditing one pptfast gallery slide against a written rubric.",
-    "Read page.png in this working directory (and page-browser.png if present). Then output the JSON.",
+    "You must look at page.png first (and page-browser.png if present). Then output the JSON.",
+    'A note that says you did not look, "未看图", "awaiting visual inspection", or "Placeholder while inspecting" is never a valid pass.',
     hasBrowserPng ? "page-browser.png is a real-browser screenshot of the same SVG." : "",
     "The rubric is inlined below. Do not spend turns re-reading rubric files.",
     `Page id: ${page.id}`,
     `table=${page.table} subject=${page.subject} language=${page.language} theme=${page.theme} page=${page.page}`,
     l1Lines,
+    "L1 findings are clues, not the answer. Still look at the image.",
     "verdict must be pass, limit, or rework.",
     "Hit = rework or limit. Use rework when a rubric rule is clearly broken.",
     "Use limit when the page is suspicious but not a clear break.",
-    "findings: short English codes (taboo, gravity, text, breathing, theme-independence, or L1 codes).",
+    "Do not only stare at five-dot progress. A page with no five-dot motif can still be rework.",
+    "Check these five miss classes on every page:",
+    "1. Strikethrough vs underline (删除线): a horizontal gold or accent line through the title x-height is rework. A line below the baseline is a legal underline.",
+    "2. Overflow: English or CJK ink leaving its bar, card, or the 1280×720 page is rework. A card shell past the page bottom is also rework.",
+    "3. Overlap: title ink sitting on the subtitle ink is rework. Normal stacked lines with about 1.07em leading pass.",
+    "4. Chip radius: a square card with a fully-round inner pill is rework. A round card with a round pill passes. Vermilion seals are square.",
+    "5. Rotated type: if a date sticker is tilted, the letters must rotate the same way by a similar amount. Horizontal type on a tilted sticker, or rotation the opposite way, is rework.",
+    "Few-shot images under rubric/examples/ are planted defects. Those pages should score rework or limit.",
+    "findings: short English codes (taboo, gravity, text, breathing, theme-independence, strikethrough, overflow, overlap, radius, rotate, or L1 codes).",
     "note: one or two sentences naming the broken rule.",
     'source must be "l2". Extra fields confidence and rubricHits are allowed.',
     "",

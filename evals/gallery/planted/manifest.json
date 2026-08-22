@@ -1,0 +1,105 @@
+{
+  "note": "Standing L2 miss-class plants. Not gallery corpus.",
+  "entries": [
+    {
+      "id": "strikethrough-1",
+      "class": "strikethrough",
+      "sourcePageId": "layout--banner-chapter--zh",
+      "svg": "strikethrough-1.svg",
+      "png": "../rubric/examples/strikethrough-1.png",
+      "l1Expected": ["strikethrough"],
+      "l2Expected": "rework",
+      "l2Findings": ["strikethrough"]
+    },
+    {
+      "id": "strikethrough-2",
+      "class": "strikethrough",
+      "sourcePageId": "layout--banner-chapter--en",
+      "svg": "strikethrough-2.svg",
+      "png": "../rubric/examples/strikethrough-2.png",
+      "l1Expected": ["strikethrough"],
+      "l2Expected": "rework",
+      "l2Findings": ["strikethrough"]
+    },
+    {
+      "id": "overflow-1",
+      "class": "overflow",
+      "sourcePageId": "layout--image-top--en",
+      "svg": "overflow-1.svg",
+      "png": "../rubric/examples/overflow-1.png",
+      "l1Expected": ["overflow"],
+      "l2Expected": "rework",
+      "l2Findings": ["overflow"]
+    },
+    {
+      "id": "overflow-2",
+      "class": "overflow",
+      "sourcePageId": "theme--lecture--zh--p04",
+      "svg": "overflow-2.svg",
+      "png": "../rubric/examples/overflow-2.png",
+      "l1Expected": ["overflow"],
+      "l2Expected": "rework",
+      "l2Findings": ["overflow"]
+    },
+    {
+      "id": "overlap-1",
+      "class": "overlap",
+      "sourcePageId": "theme--arena--zh--p01",
+      "svg": "overlap-1.svg",
+      "png": "../rubric/examples/overlap-1.png",
+      "l1Expected": ["overlap"],
+      "l2Expected": "rework",
+      "l2Findings": ["overlap"]
+    },
+    {
+      "id": "overlap-2",
+      "class": "overlap",
+      "sourcePageId": "layout--corner-wedge--zh",
+      "svg": "overlap-2.svg",
+      "png": "../rubric/examples/overlap-2.png",
+      "l1Expected": ["overlap"],
+      "l2Expected": "rework",
+      "l2Findings": ["overlap"]
+    },
+    {
+      "id": "radius-1",
+      "class": "radius",
+      "sourcePageId": "component--comparison-pill-panels--zh",
+      "svg": "radius-1.svg",
+      "png": "../rubric/examples/radius-1.png",
+      "l1Expected": [],
+      "l2Expected": "rework",
+      "l2Findings": ["radius"]
+    },
+    {
+      "id": "radius-2",
+      "class": "radius",
+      "sourcePageId": "theme--vermilion--zh--p07",
+      "svg": "radius-2.svg",
+      "png": "../rubric/examples/radius-2.png",
+      "l1Expected": [],
+      "l2Expected": "rework",
+      "l2Findings": ["radius"]
+    },
+    {
+      "id": "rotate-1",
+      "class": "rotate",
+      "sourcePageId": "theme--playbill--zh--p01",
+      "svg": "rotate-1.svg",
+      "png": "../rubric/examples/rotate-1.png",
+      "l1Expected": [],
+      "l2Expected": "rework",
+      "l2Findings": ["rotate"]
+    },
+    {
+      "id": "rotate-2",
+      "class": "rotate",
+      "sourcePageId": "theme--playbill--zh--p01",
+      "svg": "rotate-2.svg",
+      "png": "../rubric/examples/rotate-2.png",
+      "l1Expected": [],
+      "l2Expected": "rework",
+      "l2Findings": ["rotate"]
+    }
+  ]
+}

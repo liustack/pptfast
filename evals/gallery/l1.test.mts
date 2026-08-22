@@ -9,6 +9,7 @@ import { installNodePlatform } from "@/platform/node"
 import { corpusAssets, layoutPage } from "./corpus/decks"
 import { LEXICONS } from "./corpus/lexicon"
 import { auditL1, classifyL1 } from "./l1"
+import { loadPlantedManifest, plantedSvg } from "./planted/load"
 
 await installNodePlatform()
 
@@ -151,6 +152,27 @@ describe("auditL1 planted defects", () => {
         `<text x="200" y="446" font-size="34">设备预测性维护</text>`,
     )
     expect(classifyL1(auditL1(svg))).toEqual(classifyL1(auditL1(svg)))
+  })
+})
+
+describe("planted L1 regression", () => {
+  it("hits every expected L1 code on planted pages that declare one", () => {
+    const { entries } = loadPlantedManifest()
+    const l1Entries = entries.filter((entry) => entry.l1Expected.length > 0)
+    expect(l1Entries.length).toBeGreaterThan(0)
+    for (const entry of l1Entries) {
+      const got = classifyL1(auditL1(plantedSvg(entry)))
+      for (const code of entry.l1Expected) {
+        expect(got, `${entry.id} should include ${code}, got ${got.join(",")}`).toContain(code)
+      }
+    }
+  })
+
+  it("does not require L1 hits on radius and rotate plants", () => {
+    const { entries } = loadPlantedManifest()
+    const visualOnly = entries.filter((entry) => entry.class === "radius" || entry.class === "rotate")
+    expect(visualOnly.length).toBeGreaterThanOrEqual(4)
+    expect(visualOnly.every((entry) => entry.l1Expected.length === 0)).toBe(true)
   })
 })
 

@@ -137,8 +137,14 @@ describe("judgeL2", () => {
     expect(args).toContain("16")
     expect(args).toContain("--no-subagents")
     expect(args).toContain("--json-schema")
+    const prompt = String(args[args.indexOf("-p") + 1] ?? "")
+    expect(prompt).toMatch(/page\.png/)
+    expect(prompt).toMatch(/strikethrough|删除线/)
+    expect(prompt).toMatch(/rubric\/examples/)
     expect(readFileSync(join(workdir, "page.png")).length).toBeGreaterThan(0)
     expect(readdirSync(join(workdir, "rubric")).some((f) => f.endsWith(".md"))).toBe(true)
+    const examplePngs = readdirSync(join(workdir, "rubric", "examples")).filter((f) => f.endsWith(".png"))
+    expect(examplePngs.length).toBeGreaterThanOrEqual(10)
     expect(verdict).toMatchObject({
       id: PAGE.id,
       verdict: "rework",

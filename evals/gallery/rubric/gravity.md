@@ -16,6 +16,12 @@
 
 ## 下划不是删除线
 
-标题、章节名与其装饰分割线的关系是下划：线在文字基线之下，不穿过字形。
+标题、章节名与其装饰分割线的关系是下划。线在文字基线之下，不穿过字形。
 
-判定：水平装饰线的 y 落入文字的 cap-height 到基线之间，把字划掉，记 `rework`（banner-chapter 黄线曾犯）。线贴着基线下方、与字不交，通过。
+看什么：水平装饰线的 y，对照标题从 cap-height 到基线的那一段。短金线也要看，不要因为线不够长就当成装饰放过。
+
+怎么算 rework：线的 y 落在 cap-height 与基线之间，把字划掉，记 `rework`。banner-chapter 的金线曾经犯过。线贴在基线下方、与字不相交，通过。
+
+正例：线在基线下方约 0.15em，字形完整，读起来仍是下划。
+
+反例：线穿过 cap-height 到基线，看起来像删除线。种植图 `rubric/examples/strikethrough-1.png` 与 `rubric/examples/strikethrough-2.png` 就是这种缺陷，应判 `rework` 或 `limit`。
