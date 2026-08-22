@@ -1,10 +1,10 @@
 import type { SvgTemplateProps } from "../types"
 import { pickEvidence } from "../../component-traits"
-import { renderEmphasisTspans } from "../../emphasis"
+import { renderEmphasisText } from "../../emphasis"
 import { heroCaption, heroSource, heroValue, statementAttribution } from "../minimal-shared"
 import { fitSvgLine, measureTextUnits } from "../../../lib/svg-text-layout"
 import { renderFittedEvidence, textColumnMaxWidth } from "../fitted-evidence"
-import { evidenceSource, firstEmphasisRun, fitHeroLine, fitSparseHeading, pad2 } from "./shared"
+import { evidenceSource, fitHeroLine, fitSparseHeading, pad2 } from "./shared"
 import { underlineYFromBaseline } from "../underline"
 
 /** consulting 稀排脸：结论先行、藏青巨数、白卡单证据。不画顶缘规矩线。 */
@@ -20,42 +20,36 @@ export function statement({ slide, ctx }: SvgTemplateProps) {
     fontFamily: fonts.heading,
     bold: true,
   })
-  const run = firstEmphasisRun(heading.lineSegs, {
-    originX: 96,
-    firstY: 366,
-    lineHeight: heading.lineHeight,
-    fontSize: heading.fontSize,
-    fontFamily: fonts.heading,
-    bold: true,
-  })
   const attr = statementAttribution(slide)
   return (
     <>
-      {run && (
-        <rect x={run.x} y={run.y - 44} width={run.w} height={56} fill={colors.accent} />
-      )}
       <text x={96} y={200} fontFamily={fonts.body} fontSize={18} fill={colors.muted} dominantBaseline="alphabetic">
         结论先行
       </text>
-      {heading.lines.map((line, i) => (
-        <text
-          key={i}
-          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
-          x={96}
-          y={366 + i * heading.lineHeight}
-          fontFamily={fonts.heading}
-          fontSize={heading.fontSize}
-          fontWeight="700"
-          fill={colors.primary}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(heading.lineSegs[i] ?? [{ text: line, emphasized: false }], {
+      {heading.lines.map((line, i) =>
+        renderEmphasisText(
+          heading.lineSegs[i] ?? [{ text: line, emphasized: false }],
+          {
             accent: colors.primary,
+            padFill: colors.accent,
             baseFill: colors.primary,
             fontWeight: "700",
-          })}
-        </text>
-      ))}
+            themeId: ctx.themeId,
+            measureWeight: { bold: true, fontFamily: fonts.heading },
+          },
+          <text
+            key={i}
+            data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
+            x={96}
+            y={366 + i * heading.lineHeight}
+            fontFamily={fonts.heading}
+            fontSize={heading.fontSize}
+            fontWeight="700"
+            fill={colors.primary}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
       {attr && (
         <text x={96} y={600} fontFamily={fonts.body} fontSize={18} fill={colors.muted} dominantBaseline="alphabetic">
           {attr}
@@ -136,24 +130,29 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
       <text x={224} y={300} fontFamily={fonts.heading} fontSize={26} fontWeight="700" fill={colors.primary} dominantBaseline="alphabetic">
         {`依据 ${pad2(index + 1)}`}
       </text>
-      {heading.lines.map((line, i) => (
-        <text
-          key={i}
-          x={224}
-          y={370 + i * heading.lineHeight}
-          fontFamily={fonts.heading}
-          fontSize={heading.fontSize}
-          fontWeight="400"
-          fill={colors.primary}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(heading.lineSegs[i] ?? [{ text: line, emphasized: false }], {
+      {heading.lines.map((line, i) =>
+        renderEmphasisText(
+          heading.lineSegs[i] ?? [{ text: line, emphasized: false }],
+          {
             accent: colors.primary,
+            padFill: colors.accent,
             baseFill: colors.primary,
             fontWeight: "400",
-          })}
-        </text>
-      ))}
+            themeId: ctx.themeId,
+            measureWeight: { bold: false, fontFamily: fonts.heading },
+          },
+          <text
+            key={i}
+            x={224}
+            y={370 + i * heading.lineHeight}
+            fontFamily={fonts.heading}
+            fontSize={heading.fontSize}
+            fontWeight="400"
+            fill={colors.primary}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
       {note && (
         <text x={224} y={428} fontFamily={fonts.body} fontSize={note.fontSize} fill={colors.muted} dominantBaseline="alphabetic">
           {note.text}

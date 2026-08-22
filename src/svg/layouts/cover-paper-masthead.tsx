@@ -5,7 +5,7 @@ import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { trackingPx } from "./minimal-shared"
 import { accessibleInk, metaInk } from "../ink"
 import { showsDocumentMeta } from "../document-meta"
-import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
+import { parseEmphasis, renderEmphasisText, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
 
 /**
  * paper-masthead cover layout（2026-08-22 封面还原第一波，新表达）：
@@ -147,25 +147,30 @@ export function PaperMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {title.lines.map((line, i) => (
-        <text
-          key={i}
-          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
-          x={TITLE_X}
-          y={TITLE_Y + i * TITLE_LINE_HEIGHT}
-          fontFamily={fonts.heading}
-          fontSize={title.fontSize}
-          fontWeight="700"
-          fill={titleInk}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(lineSegs[i] ?? [{ text: line, emphasized: false }], {
+      {title.lines.map((line, i) =>
+        renderEmphasisText(
+          lineSegs[i] ?? [{ text: line, emphasized: false }],
+          {
             accent: colors.accent,
+            padFill: colors.accent,
             baseFill: titleInk,
             fontWeight: "700",
-          })}
-        </text>
-      ))}
+            themeId: ctx.themeId,
+            measureWeight: { bold: true, fontFamily: fonts.heading },
+          },
+          <text
+            key={i}
+            data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
+            x={TITLE_X}
+            y={TITLE_Y + i * TITLE_LINE_HEIGHT}
+            fontFamily={fonts.heading}
+            fontSize={title.fontSize}
+            fontWeight="700"
+            fill={titleInk}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
 
       {yearFits &&
         glyphs.map((ch, i) => (

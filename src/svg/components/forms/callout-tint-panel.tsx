@@ -1,5 +1,5 @@
 import { Icon } from "../../icons"
-import { renderEmphasisTspans } from "../../emphasis"
+import { renderEmphasisText } from "../../emphasis"
 import { accessibleInk } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
@@ -65,20 +65,27 @@ export function renderTintPanel(
         fill={panel}
       />
       <Icon name={iconName(component)} x={PAD_X} y={iconY} size={ICON_SIZE} color={iconColor} />
-      {laid.lineSegments.map((segments, i) => (
-        <text
-          key={i}
-          x={textX}
-          y={top + i * laid.lineHeight + laid.fontSize}
-          fontFamily={ctx.fonts.body}
-          fontSize={laid.fontSize}
-          fontWeight={bold ? "700" : undefined}
-          fill={ink}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(segments, { accent: ctx.colors.accent, baseFill: ink })}
-        </text>
-      ))}
+      {laid.lineSegments.map((segments, i) =>
+        renderEmphasisText(
+          segments,
+          {
+            accent: ctx.colors.accent,
+            baseFill: ink,
+            themeId: ctx.themeId,
+            measureWeight: { bold, fontFamily: ctx.fonts.body },
+          },
+          <text
+            key={i}
+            x={textX}
+            y={top + i * laid.lineHeight + laid.fontSize}
+            fontFamily={ctx.fonts.body}
+            fontSize={laid.fontSize}
+            fontWeight={bold ? "700" : undefined}
+            fill={ink}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
     </g>
   )
 }

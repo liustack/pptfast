@@ -9,7 +9,7 @@ import { measureComponent, renderComponent } from "../components"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
 import { tryContentHeadingTreatment } from "../heading-treatments/render"
@@ -307,18 +307,25 @@ function renderStackedContent(
       ))}
 
       {/* Subheading: accent so-what sentence below the heading */}
-      {subheading && (
-        <text
-          x="56"
-          y={subheadingY}
-          fontFamily={ctx.fonts.heading}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: ctx.colors.text,
+            padFill: ctx.colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x="56"
+            y={subheadingY}
+            fontFamily={ctx.fonts.heading}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Content components (was a foreignObject) */}
       <SvgContent
@@ -525,19 +532,26 @@ export function StackedPosterContent(props: SvgTemplateProps) {
       ))}
 
       {/* Subheading: centered accent so-what sentence below the title */}
-      {subheading && (
-        <text
-          x={CENTER_X}
-          y={subheadingY}
-          textAnchor="middle"
-          fontFamily={ctx.fonts.heading}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: ctx.colors.text,
+            padFill: ctx.colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x={CENTER_X}
+            y={subheadingY}
+            textAnchor="middle"
+            fontFamily={ctx.fonts.heading}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Hero slot */}
       {renderPosterSlot(slide.components[0], heroRect, ctx)}

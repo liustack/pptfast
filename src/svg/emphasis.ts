@@ -1,5 +1,12 @@
 import React from "react"
-import { fitSvgLine, truncateToUnits, type TextWeightHint } from "../lib/svg-text-layout"
+import {
+  fitSvgLine,
+  measureTextUnits,
+  truncateToUnits,
+  type TextWeightHint,
+} from "../lib/svg-text-layout"
+import { resolveComponentForm } from "./components/form-assignments"
+import { formLegibleInk } from "./components/forms/legibility"
 
 /** One run of text with its emphasis state, in source (unmarked) text order. */
 export interface EmphasisSegment {
@@ -72,6 +79,159 @@ export function renderEmphasisTspans(
     seg.emphasized
       ? React.createElement("tspan", { key: i, fill: opts.accent, fontWeight: opts.fontWeight ?? "600" }, seg.text)
       : React.createElement("tspan", { key: i, fill: opts.baseFill }, seg.text),
+  )
+}
+
+export type EmphasisFormId = "tint" | "pad"
+
+export interface EmphasisLineRender {
+  pads: React.ReactNode
+  tspans: React.ReactNode
+}
+
+export function resolveEmphasisForm(themeId: string | undefined): EmphasisFormId {
+  return resolveComponentForm("emphasis", themeId)?.form === "pad" ? "pad" : "tint"
+}
+
+/**
+ * Renders one already-fitted emphasis line. The default tint branch delegates
+ * to `renderEmphasisTspans` unchanged. A theme-assigned pad branch derives run
+ * offsets and widths with the same `measureTextUnits` weight hint its caller
+ * used for fitting, then returns foreground rectangles separately so callers
+ * can place them immediately before their existing `<text>` element.
+ */
+export function renderEmphasisLine(
+  segments: EmphasisSegment[],
+  opts: {
+    accent: string
+    padFill?: string
+    baseFill: string
+    fontSize: number
+    x: number
+    baselineY: number
+    themeId?: string
+    fontWeight?: string
+    measureWeight?: TextWeightHint
+    textAnchor?: "start" | "middle" | "end"
+  },
+): EmphasisLineRender {
+  const form = resolveEmphasisForm(opts.themeId)
+  if (form === "tint" || !segments.some((segment) => segment.emphasized && segment.text.length > 0)) {
+    return {
+      pads: null,
+      tspans: renderEmphasisTspans(segments, {
+        accent: opts.accent,
+        baseFill: opts.baseFill,
+        fontWeight: opts.fontWeight,
+      }),
+    }
+  }
+
+  const widths = segments.map(
+    (segment) => measureTextUnits(segment.text, opts.measureWeight) * opts.fontSize,
+  )
+  const xPadding = opts.fontSize * 0.1
+  const lineWidth = widths.reduce((sum, width) => sum + width, 0)
+  const startX =
+    opts.textAnchor === "middle"
+      ? opts.x - lineWidth / 2
+      : opts.textAnchor === "end"
+        ? opts.x - lineWidth
+        : opts.x
+  const height = opts.fontSize * 1.1
+  const y = opts.baselineY - opts.fontSize * 0.85
+  const padFill = opts.padFill ?? opts.accent
+  let cursorX = startX
+  const textXs: number[] = []
+  const pads = segments.flatMap((segment, index) => {
+    const width = widths[index] ?? 0
+    textXs[index] = cursorX
+    const rect =
+      segment.emphasized && segment.text.length > 0
+        ? [
+            React.createElement("rect", {
+              key: index,
+              x: cursorX - xPadding,
+              y,
+              width: width + xPadding * 2,
+              height,
+              fill: padFill,
+              "data-emphasis-pad": "",
+            }),
+          ]
+        : []
+    cursorX += width
+    return rect
+  })
+  const padInk = formLegibleInk(opts.baseFill, padFill, opts.fontSize)
+  const tspans = segments.map((segment, index) => {
+    const x = textXs[index] ?? startX
+    return segment.emphasized
+      ? React.createElement(
+          "tspan",
+          {
+            key: index,
+            x,
+            fill: padInk,
+            fontWeight: opts.fontWeight ?? "600",
+            textAnchor: "start",
+            "data-emphasis-pad-fill": padFill,
+          },
+          segment.text,
+        )
+      : React.createElement(
+          "tspan",
+          { key: index, x, fill: opts.baseFill, textAnchor: "start" },
+          segment.text,
+        )
+  })
+  return {
+    pads,
+    tspans,
+  }
+}
+
+/**
+ * Minimal-consumer wrapper around `renderEmphasisLine`. The caller supplies
+ * its existing text element, preserving that element's attribute order and
+ * therefore the tint branch's serialized bytes. The helper reads only the
+ * numeric line geometry needed for pad placement, clones the text with the
+ * generated tspans, and puts every pad before that clone.
+ */
+export function renderEmphasisText(
+  segments: EmphasisSegment[],
+  opts: {
+    accent: string
+    padFill?: string
+    baseFill: string
+    themeId?: string
+    fontWeight?: string
+    measureWeight?: TextWeightHint
+  },
+  textElement: React.ReactElement<React.SVGProps<SVGTextElement>>,
+): React.ReactElement {
+  const x = Number(textElement.props.x ?? 0)
+  const baselineY = Number(textElement.props.y)
+  const fontSize = Number(textElement.props.fontSize)
+  if (![x, baselineY, fontSize].every(Number.isFinite)) {
+    throw new Error("emphasis text requires numeric x, y, and fontSize")
+  }
+  const textAnchor =
+    textElement.props.textAnchor === "middle" || textElement.props.textAnchor === "end"
+      ? textElement.props.textAnchor
+      : "start"
+  const rendered = renderEmphasisLine(segments, {
+    ...opts,
+    x,
+    baselineY,
+    fontSize,
+    textAnchor,
+  })
+  return React.createElement(
+    React.Fragment,
+    { key: textElement.key },
+    rendered.pads,
+    React.cloneElement(textElement, undefined, rendered.tspans),
   )
 }
 

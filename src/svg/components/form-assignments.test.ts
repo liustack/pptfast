@@ -10,8 +10,8 @@ import {
 // lookup contract, independent of any component renderer: missing /
 // unknown / unassigned pairs stay undefined so today's default face is
 // unchanged. campaign × cycle is hub_spoke (first-listed wins), never
-// petal_wheel. 65 rows (41 prior + 24 callout). classroom is listed
-// on callout like every other canonical theme.
+// petal_wheel. 66 rows (41 prior + 24 callout + 1 emphasis). classroom
+// is listed on callout like every other canonical theme.
 
 type AssignmentRow = {
   componentType: string
@@ -21,6 +21,7 @@ type AssignmentRow = {
 }
 
 const ASSIGNMENTS: AssignmentRow[] = [
+  { componentType: "emphasis", themeId: "consulting", form: "pad" },
   {
     componentType: "icon_cards",
     themeId: "terra",
@@ -300,6 +301,7 @@ const ASSIGNMENTS: AssignmentRow[] = [
 ]
 
 const FORM_COMPONENT_TYPES = [
+  "emphasis",
   "icon_cards",
   "cycle",
   "numbered_cards",
@@ -312,6 +314,11 @@ const FORM_COMPONENT_TYPES = [
 ] as const
 
 describe("resolveComponentForm", () => {
+  it("assigns the consulting emphasis primitive to pad and leaves other themes unassigned", () => {
+    expect(resolveComponentForm("emphasis", "consulting")).toEqual({ form: "pad" })
+    expect(resolveComponentForm("emphasis", "academic")).toBeUndefined()
+  })
+
   describe("unassigned / missing themeId → undefined", () => {
     it("resolveComponentForm(icon_cards, undefined) → undefined", () => {
       expect(resolveComponentForm("icon_cards", undefined)).toBeUndefined()
@@ -401,13 +408,13 @@ describe("resolveComponentForm", () => {
     })
   })
 
-  it("assignment count is 65 (sum of assignedThemeIds across the 9 component types)", () => {
+  it("assignment count is 66 (sum across the 10 assigned primitive and component types)", () => {
     const total = FORM_COMPONENT_TYPES.reduce(
       (n, componentType) => n + assignedThemeIds(componentType).length,
       0,
     )
-    expect(total).toBe(65)
-    expect(ASSIGNMENTS).toHaveLength(65)
+    expect(total).toBe(66)
+    expect(ASSIGNMENTS).toHaveLength(66)
   })
 })
 

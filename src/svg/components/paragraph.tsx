@@ -1,6 +1,7 @@
 import type { Component } from "@/ir"
+import { Fragment } from "react"
 import { layoutSvgText } from "../../lib/svg-text-layout"
-import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
+import { parseEmphasis, renderEmphasisLine, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
 import type { RenderDef, SvgComponent } from "./types"
 
 type ParagraphComponent = Extract<Component, { type: "paragraph" }>
@@ -50,26 +51,39 @@ export const paragraph: SvgComponent<ParagraphComponent> = {
 
     return (
       <g transform={`translate(${box.x},${box.y})`} data-truncated={truncated ? "1" : undefined}>
-        {visible.map((segments, i) => (
-          <text
-            key={i}
-            x="0"
-            y={i * l.lineHeight + l.fontSize}
-            fontFamily={ctx.fonts.body}
-            fontSize={l.fontSize}
-            fill={ctx.colors.text}
-            dominantBaseline="alphabetic"
-          >
-            {renderEmphasisTspans(segments, { accent: ctx.colors.accent, baseFill: ctx.colors.text })}
-            {/* The ellipsis is not decoration: `data-truncated` means "cut
-                short with an ellipsis" to both `deck-audit.ts`'s own message
-                and `docs/cli.md`, and without a visible mark the reader has
-                no way to know the tail is missing. Appended as its own run
-                on the last visible line so it survives whatever emphasis
-                spans that line happens to end with. */}
-            {truncated && i === visible.length - 1 ? <tspan fill={ctx.colors.text}>…</tspan> : null}
-          </text>
-        ))}
+        {visible.map((segments, i) => {
+          const baselineY = i * l.lineHeight + l.fontSize
+          const emphasis = renderEmphasisLine(segments, {
+            accent: ctx.colors.accent,
+            baseFill: ctx.colors.text,
+            fontSize: l.fontSize,
+            x: 0,
+            baselineY,
+            themeId: ctx.themeId,
+          })
+          return (
+            <Fragment key={i}>
+              {emphasis.pads}
+              <text
+                x="0"
+                y={baselineY}
+                fontFamily={ctx.fonts.body}
+                fontSize={l.fontSize}
+                fill={ctx.colors.text}
+                dominantBaseline="alphabetic"
+              >
+                {emphasis.tspans}
+                {/* The ellipsis is not decoration: `data-truncated` means "cut
+                    short with an ellipsis" to both `deck-audit.ts`'s own message
+                    and `docs/cli.md`, and without a visible mark the reader has
+                    no way to know the tail is missing. Appended as its own run
+                    on the last visible line so it survives whatever emphasis
+                    spans that line happens to end with. */}
+                {truncated && i === visible.length - 1 ? <tspan fill={ctx.colors.text}>…</tspan> : null}
+              </text>
+            </Fragment>
+          )
+        })}
       </g>
     )
   },

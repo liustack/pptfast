@@ -21,10 +21,38 @@ import type { Component, PptxIR, Slide } from "@/ir"
 import { FULL_BODY_TYPES } from "@/svg/component-traits"
 import { LAYOUT_REGISTRY, type LayoutDefinition } from "@/svg/layouts/registry"
 import { COMPONENT_BUILDERS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
-import type { Lexicon } from "./lexicon"
+import type { LanguageId, Lexicon } from "./lexicon"
 import { THEME_CONTENT_SLOTS, buildThemeSlot } from "./theme-slots"
 
 const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/images")
+
+const CONSULTING_EMPHASIS_PHRASES: Record<
+  LanguageId,
+  { readonly cover: string; readonly heading: string; readonly bullet: string }
+> = {
+  zh: { cover: "业务评审", heading: "新签", bullet: "九成一" },
+  en: { cover: "Business Review", heading: "new business", bullet: "91%" },
+  mixed: { cover: "Kubernetes 托管", heading: "90 秒", bullet: "12 分钟" },
+}
+
+function emphasizePhrase(source: string, phrase: string): string {
+  if (!source.includes(phrase)) {
+    throw new Error(`gallery emphasis phrase ${JSON.stringify(phrase)} is absent from ${JSON.stringify(source)}`)
+  }
+  return source.replace(phrase, `**${phrase}**`)
+}
+
+function consultingLead(component: Component, slotIndex: number, lex: Lexicon): Component {
+  if (slotIndex !== 1) return component
+  if (component.type !== "bullets") {
+    throw new Error("consulting gallery p04 must lead with bullets")
+  }
+  const phrase = CONSULTING_EMPHASIS_PHRASES[lex.id].bullet
+  return {
+    ...component,
+    items: component.items.map((item, index) => (index === 0 ? emphasizePhrase(item, phrase) : item)),
+  }
+}
 
 function fixtureJpegDataUri(id: string): string {
   const bytes = readFileSync(join(FIXTURE_DIR, `${id}.jpg`))
@@ -99,19 +127,26 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
   if (!slots || slots.length !== 7) {
     throw new Error(`theme table has no 7-slot assignment for ${themeId}`)
   }
+  const emphasis = themeId === "consulting" ? CONSULTING_EMPHASIS_PHRASES[lex.id] : undefined
   const content: Slide[] = slots.map((spec, i) => {
-    const component = buildThemeSlot(spec, lex)
+    const built = buildThemeSlot(spec, lex)
+    const component = emphasis ? consultingLead(built, i, lex) : built
     const extra = thickenThemeContent(themeId, i, lex)
     return {
       type: "content" as const,
-      heading: lex.headings[i]!,
+      heading: emphasis && i === 0 ? emphasizePhrase(lex.headings[i]!, emphasis.heading) : lex.headings[i]!,
       components: [component, ...extra.extra],
       ...(extra.layout ? { layout: extra.layout } : {}),
       ...(component.type === "data_table" ? { footnote: lex.sources[0]!.label } : {}),
     }
   })
   const slides: Slide[] = [
-    { type: "cover", heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] },
+    {
+      type: "cover",
+      heading: emphasis ? emphasizePhrase(lex.deckTitle, emphasis.cover) : lex.deckTitle,
+      subheading: lex.deckSubtitle,
+      components: [],
+    },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
     ...content,
     { type: "ending", heading: lex.chapters[5]!, subheading: lex.verdicts.positive, components: [] },

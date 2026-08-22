@@ -5,7 +5,13 @@ import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-
 import { accessibleInk, blendOver, metaInk, readableOn } from "../ink"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
-import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
+import {
+  parseEmphasis,
+  renderEmphasisText,
+  resolveEmphasisForm,
+  sliceEmphasisForLines,
+  stripEmphasis,
+} from "../emphasis"
 
 /**
  * header-band cover layout（2026-08-22 封面还原第一波，新表达）：
@@ -79,7 +85,7 @@ export function HeaderBandCover({ ir, slide, ctx }: SvgTemplateProps) {
 
   let waveX: number | null = null
   let waveY: number | null = null
-  lineSegs.forEach((segs, i) => {
+  if (resolveEmphasisForm(ctx.themeId) === "tint") lineSegs.forEach((segs, i) => {
     if (waveX !== null) return
     let x = TITLE_X
     for (const seg of segs) {
@@ -160,25 +166,30 @@ export function HeaderBandCover({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {title.lines.map((line, i) => (
-        <text
-          key={i}
-          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
-          x={TITLE_X}
-          y={TITLE_Y + i * TITLE_LINE_HEIGHT}
-          fontFamily={fonts.heading}
-          fontSize={title.fontSize}
-          fontWeight="700"
-          fill={titleInk}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(lineSegs[i] ?? [{ text: line, emphasized: false }], {
+      {title.lines.map((line, i) =>
+        renderEmphasisText(
+          lineSegs[i] ?? [{ text: line, emphasized: false }],
+          {
             accent,
+            padFill: colors.accent,
             baseFill: titleInk,
             fontWeight: "700",
-          })}
-        </text>
-      ))}
+            themeId: ctx.themeId,
+            measureWeight: { bold: true, fontFamily: fonts.heading },
+          },
+          <text
+            key={i}
+            data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
+            x={TITLE_X}
+            y={TITLE_Y + i * TITLE_LINE_HEIGHT}
+            fontFamily={fonts.heading}
+            fontSize={title.fontSize}
+            fontWeight="700"
+            fill={titleInk}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
 
       {waveX !== null && waveY !== null && (
         <path

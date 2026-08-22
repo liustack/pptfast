@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { readableOn } from "../ink"
+import { contrastRatio, readableOn, requiredContrastRatio } from "../ink"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { tryContentHeadingTreatment } from "./render"
 import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "../components/types"
@@ -132,6 +133,26 @@ describe("tryContentHeadingTreatment null cases", () => {
 })
 
 describe("ghost_index consulting", () => {
+  it("renders a measured pad behind marked title text", () => {
+    const { treated, colors, fonts } = withChapter("consulting", { heading: EMPHASIZED })
+    const root = rootOf(treated!.chrome)
+    const title = textContaining(root, "算法团队的迭代节奏")
+    const pad = rects(root).find((rect) => rect.getAttribute("fill") === colors.accent)!
+    const emphasized = Array.from(title.querySelectorAll("tspan")).find(
+      (span) => span.textContent === "算法团队的迭代节奏",
+    )!
+
+    expect(pad).toBeTruthy()
+    expect(title.textContent).not.toContain("**")
+    expect(Number(pad.getAttribute("height"))).toBeCloseTo(42 * 1.1, 6)
+    const runWidth =
+      measureTextUnits("算法团队的迭代节奏", { bold: true, fontFamily: fonts.heading }) * 42
+    expect(Number(pad.getAttribute("width"))).toBeCloseTo(runWidth + 2 * 42 * 0.1, 6)
+    expect(contrastRatio(emphasized.getAttribute("fill")!, colors.accent)).toBeGreaterThanOrEqual(
+      requiredContrastRatio(42),
+    )
+  })
+
   it("title-only: ghost bleed index + title geometry", () => {
     const { treated, colors } = withChapter("consulting")
     expect(treated).not.toBeNull()
@@ -159,6 +180,23 @@ describe("ghost_index consulting", () => {
     expect(num(sub, "y")).toBe(172)
     expect(num(sub, "font-size")).toBe(18)
     expect(sub.getAttribute("fill")).toBe(colors.muted)
+  })
+
+  it("renders a pad for a marked subheading without leaking markers", () => {
+    const markedSubheading = "先看**关键判断**，再展开证据"
+    const { treated, colors } = withChapter("consulting", { subheading: markedSubheading })
+    const root = rootOf(treated!.chrome)
+    const sub = textContaining(root, "关键判断")
+    const emphasized = Array.from(sub.querySelectorAll("tspan")).find(
+      (span) => span.textContent === "关键判断",
+    )!
+    const pad = root.querySelector('[data-emphasis-pad=""]')!
+
+    expect(sub.textContent).not.toContain("**")
+    expect(pad.getAttribute("fill")).toBe(colors.accent)
+    expect(contrastRatio(emphasized.getAttribute("fill")!, colors.accent)).toBeGreaterThanOrEqual(
+      requiredContrastRatio(18),
+    )
   })
 
   it("no-title: mini-index, contentRect y=64 h=576, no heading text", () => {

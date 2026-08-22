@@ -2,7 +2,7 @@ import type { Component } from "@/ir"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import {
   parseEmphasis,
-  renderEmphasisTspans,
+  renderEmphasisText,
   sliceEmphasisForLines,
   stripEmphasis,
   truncateEmphasisSegments,
@@ -139,7 +139,7 @@ function lay(
   const textW = Math.max(1, w - tx)
   // bold-metrics fix (2026-07-24): every line renders `fontWeight="600"` on
   // its outer `<text>` below (the *base*, non-emphasized weight — emphasis
-  // spans go bolder still, 700, via `renderEmphasisTspans`, but that's not
+  // spans go bolder still, 700, via `renderEmphasisText`, but that's not
   // this component's exemption case: unlike a layout subheading whose
   // *unmarked* text defaults to Regular and only `**marked**` runs go bold,
   // every character of this component's line is already bold before
@@ -215,25 +215,30 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
             color={tone}
           />
         )}
-        {lineSegments.map((segments, i) => (
-          <text
-            key={i}
-            data-truncated={lineTruncated[i] ? "1" : undefined}
-            x={tx}
-            y={textTopY + i * g.lineHeight + g.fontSize}
-            fontFamily={ctx.fonts.body}
-            fontSize={g.fontSize}
-            fontWeight="600"
-            fill={ctx.colors.text}
-            dominantBaseline="alphabetic"
-          >
-            {renderEmphasisTspans(segments, {
+        {lineSegments.map((segments, i) =>
+          renderEmphasisText(
+            segments,
+            {
               accent: tone,
+              padFill: ctx.colors.accent,
               baseFill: ctx.colors.text,
               fontWeight: "700",
-            })}
-          </text>
-        ))}
+              themeId: ctx.themeId,
+              measureWeight: { bold: true, fontFamily: ctx.fonts.body },
+            },
+            <text
+              key={i}
+              data-truncated={lineTruncated[i] ? "1" : undefined}
+              x={tx}
+              y={textTopY + i * g.lineHeight + g.fontSize}
+              fontFamily={ctx.fonts.body}
+              fontSize={g.fontSize}
+              fontWeight="600"
+              fill={ctx.colors.text}
+              dominantBaseline="alphabetic"
+            />,
+          ),
+        )}
       </g>
     )
   },

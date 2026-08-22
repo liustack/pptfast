@@ -5,7 +5,7 @@ import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { fitEmphasisLine, renderEmphasisText } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../branding-geometry"
 import { goldenTopCap } from "../layout"
@@ -274,18 +274,25 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       ))}
 
       {/* Subheading: accent so-what sentence below the banner */}
-      {subheading && (
-        <text
-          x={BANNER_X}
-          y={subheadingY}
-          fontFamily={fonts.body}
-          fontSize={subheading.fontSize}
-          fill={subheadingFill}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
-        </text>
-      )}
+      {subheading &&
+        renderEmphasisText(
+          subheading.segments,
+          {
+            accent: colors.text,
+            padFill: colors.accent,
+            baseFill: subheadingFill,
+            fontWeight: "700",
+            themeId: ctx.themeId,
+          },
+          <text
+            x={BANNER_X}
+            y={subheadingY}
+            fontFamily={fonts.body}
+            fontSize={subheading.fontSize}
+            fill={subheadingFill}
+            dominantBaseline="alphabetic"
+          />,
+        )}
 
       {/* Content components below the banner (was a divider + foreignObject) */}
       <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />

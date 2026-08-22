@@ -1,4 +1,4 @@
-import { renderEmphasisTspans } from "../../emphasis"
+import { renderEmphasisText } from "../../emphasis"
 import { accessibleInk } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
@@ -61,19 +61,26 @@ export function renderLeadWord(
       >
         {lead}
       </text>
-      {laid.lineSegments.map((segments, i) => (
-        <text
-          key={i}
-          x={indent}
-          y={top + i * laid.lineHeight + laid.fontSize}
-          fontFamily={ctx.fonts.body}
-          fontSize={laid.fontSize}
-          fill={ink}
-          dominantBaseline="alphabetic"
-        >
-          {renderEmphasisTspans(segments, { accent: ctx.colors.accent, baseFill: ink })}
-        </text>
-      ))}
+      {laid.lineSegments.map((segments, i) =>
+        renderEmphasisText(
+          segments,
+          {
+            accent: ctx.colors.accent,
+            baseFill: ink,
+            themeId: ctx.themeId,
+            measureWeight: { fontFamily: ctx.fonts.body },
+          },
+          <text
+            key={i}
+            x={indent}
+            y={top + i * laid.lineHeight + laid.fontSize}
+            fontFamily={ctx.fonts.body}
+            fontSize={laid.fontSize}
+            fill={ink}
+            dominantBaseline="alphabetic"
+          />,
+        ),
+      )}
     </g>
   )
 }
