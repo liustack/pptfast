@@ -65,11 +65,14 @@ function sha(svg: string): string {
   return createHash("sha256").update(svg).digest("hex")
 }
 
+// Recaptured for the three-layer depth contract. All 378 hashes move because
+// the marked layer groups are now part of the serialized SVG contract. The
+// same matrix remains a byte nail for every later change.
 const fixture = JSON.parse(
   readFileSync(new URL("./__fixtures__/unassigned-bytes.json", import.meta.url), "utf-8"),
 ) as { pages: Record<string, string> }
 
-describe("unassigned heading bytes stay pinned to the pre-change fixture", () => {
+describe("unassigned heading bytes stay pinned to the depth-contract fixture", () => {
   const pages: Record<string, string> = {}
 
   for (const theme of UNASSIGNED) {
