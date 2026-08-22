@@ -78,6 +78,10 @@ describe("deckSlug", () => {
   })
 })
 
+function asPosix(p: string): string {
+  return p.split("\\").join("/").replace(/^[A-Za-z]:/, "")
+}
+
 describe("resolveWorkspaceLocation (anchor rules)", () => {
   it("anchors at cwd when there is no project config", () => {
     const loc = resolveWorkspaceLocation({
@@ -85,9 +89,9 @@ describe("resolveWorkspaceLocation (anchor rules)", () => {
       target: "/tmp/bare/hello.json",
       isDir: false,
     })
-    expect(loc.anchor).toBe("/tmp/bare")
-    expect(loc.root).toBe("/tmp/bare/.pptfast")
-    expect(loc.dir).toBe("/tmp/bare/.pptfast/hello")
+    expect(asPosix(loc.anchor)).toBe("/tmp/bare")
+    expect(asPosix(loc.root)).toBe("/tmp/bare/.pptfast")
+    expect(asPosix(loc.dir)).toBe("/tmp/bare/.pptfast/hello")
     expect(loc.slug).toBe("hello")
     expect(loc.configured).toBe(false)
   })
@@ -99,9 +103,9 @@ describe("resolveWorkspaceLocation (anchor rules)", () => {
       target: "/tmp/proj/nested/hello.json",
       isDir: false,
     })
-    expect(loc.anchor).toBe("/tmp/proj")
-    expect(loc.root).toBe("/tmp/proj/.pptfast")
-    expect(loc.dir).toBe("/tmp/proj/.pptfast/hello")
+    expect(asPosix(loc.anchor)).toBe("/tmp/proj")
+    expect(asPosix(loc.root)).toBe("/tmp/proj/.pptfast")
+    expect(asPosix(loc.dir)).toBe("/tmp/proj/.pptfast/hello")
   })
 
   it("resolves a relative outDir against the config file's directory, not cwd", () => {
@@ -112,8 +116,8 @@ describe("resolveWorkspaceLocation (anchor rules)", () => {
       target: "/tmp/proj/team-deck",
       isDir: true,
     })
-    expect(loc.root).toBe("/tmp/proj/artifacts")
-    expect(loc.dir).toBe("/tmp/proj/artifacts/team-deck")
+    expect(asPosix(loc.root)).toBe("/tmp/proj/artifacts")
+    expect(asPosix(loc.dir)).toBe("/tmp/proj/artifacts/team-deck")
     expect(loc.configured).toBe(true)
   })
 
@@ -125,7 +129,7 @@ describe("resolveWorkspaceLocation (anchor rules)", () => {
       target: "/tmp/proj/hello.json",
       isDir: false,
     })
-    expect(loc.root).toBe("/var/out")
+    expect(asPosix(loc.root)).toBe("/var/out")
     expect(loc.configured).toBe(true)
   })
 })
@@ -223,7 +227,8 @@ describe("ensureGitIgnored (the four holes)", () => {
     await expect(stat(join(dir, ".git"))).rejects.toThrow()
   })
 
-  it("read-only .git / append failure: degrades to failed, does not throw", async () => {
+  it.skipIf(process.platform === "win32")("read-only .git / append failure: degrades to failed, does not throw", async () => {
+    // Windows has no POSIX permission bits, so chmod 0o444 is not a product bug.
     const repo = await trackedTmp()
     await execFile("git", ["init", "-q"], { cwd: repo })
     // git init already created info/exclude. Writing an existing file needs
@@ -328,7 +333,8 @@ describe("prepareWorkspaceDir", () => {
     expect(notes).toEqual([])
   })
 
-  it("turns a read-only workspace into a PptfastError that names the three ways out", async () => {
+  it.skipIf(process.platform === "win32")("turns a read-only workspace into a PptfastError that names the three ways out", async () => {
+    // Windows has no POSIX permission bits, so chmod 0o555 on a directory is not a product bug.
     const cwd = await trackedTmp()
     await chmod(cwd, 0o555)
     const loc = location({

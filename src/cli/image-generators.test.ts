@@ -62,7 +62,8 @@ function writesDest(runs: ProcessRun[]): ProcessRunner {
   }
 }
 
-describe("runImagesGenerate", () => {
+describe.skipIf(process.platform === "win32")("runImagesGenerate", () => {
+  // Windows: findOnPath only tries PATHEXT, so an extensionless `grok` plus chmod 0755 is not a product bug.
   it("errors when none are enabled, lists found-but-disabled enable commands, and does not spawn", async () => {
     await tmpHome()
     await fakeBin("grok")
