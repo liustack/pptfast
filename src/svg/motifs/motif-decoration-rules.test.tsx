@@ -54,7 +54,7 @@ function irOf(theme: string, slide: Slide): PptxIR {
     version: "4",
     filename: "x.pptx",
     theme: { id: theme },
-    meta: { date: "2026-07-15", organization: "Lingyuan" },
+    meta: { date: "2026-07-15", organization: "CloudSeek" },
     assets: { images: {} },
     slides: [slide],
   } as unknown as PptxIR

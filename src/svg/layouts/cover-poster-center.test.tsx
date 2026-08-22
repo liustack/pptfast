@@ -132,7 +132,7 @@ describe("PosterCenterCover", () => {
 })
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "岭原智能",
+  organization: "云觅科技",
   authors: [{ name: "陈砚清", role: "首席技术官" }],
   date: "2026 年 7 月",
   confidentiality: "internal",
@@ -174,11 +174,11 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
     const { root, tokens } = renderCover("stage")
     expect(bar(root).getAttribute("fill")).toBe(tokens.colors.primary)
     const texts = Array.from(root.querySelectorAll("text"))
-    const kickers = texts.filter((t) => t.textContent === "岭原智能" && t.getAttribute("y") !== texts.find((x) => (x.textContent ?? "").includes("岭原智能") && Number(x.getAttribute("y")) >= 600)?.getAttribute("y"))
-    const meta = texts.find((t) => (t.textContent ?? "").includes("岭原智能") && Number(t.getAttribute("y")) >= 600)!
+    const kickers = texts.filter((t) => t.textContent === "云觅科技" && t.getAttribute("y") !== texts.find((x) => (x.textContent ?? "").includes("云觅科技") && Number(x.getAttribute("y")) >= 600)?.getAttribute("y"))
+    const meta = texts.find((t) => (t.textContent ?? "").includes("云觅科技") && Number(t.getAttribute("y")) >= 600)!
     expect(meta.getAttribute("text-anchor")).toBe("middle")
     expect(meta.getAttribute("x")).toBe("640")
-    expect(kickers.every((k) => Number(k.getAttribute("y")) >= 600) || texts.filter((t) => t.textContent === "岭原智能").length === 1).toBe(true)
+    expect(kickers.every((k) => Number(k.getAttribute("y")) >= 600) || texts.filter((t) => t.textContent === "云觅科技").length === 1).toBe(true)
   })
 
   it("campaign knobs: kicker present, bar fill accent, meta start + left", () => {
@@ -186,7 +186,7 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
     const { root, tokens, ctx } = renderCover("campaign", knobs)
     expect(bar(root).getAttribute("fill")).toBe(tokens.colors.accent)
     const kicker = Array.from(root.querySelectorAll("text")).find(
-      (t) => t.textContent === "岭原智能" && Number(t.getAttribute("y")) < 280,
+      (t) => t.textContent === "云觅科技" && Number(t.getAttribute("y")) < 280,
     )!
     expect(kicker).toBeTruthy()
     expect(kicker.getAttribute("fill")).toBe(
@@ -204,7 +204,7 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
 
   it("insight knobs: no bottom meta at y650, org appears once at top", () => {
     const { root } = renderCover("insight", { metaPlacement: "top" })
-    const orgRuns = Array.from(root.querySelectorAll("text")).filter((t) => (t.textContent ?? "").includes("岭原智能"))
+    const orgRuns = Array.from(root.querySelectorAll("text")).filter((t) => (t.textContent ?? "").includes("云觅科技"))
     expect(orgRuns).toHaveLength(1)
     expect(Number(orgRuns[0]!.getAttribute("y"))).toBeLessThan(100)
     expect(orgRuns[0]!.getAttribute("y")).toBe("56")
@@ -214,7 +214,7 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
 
   it("luxe knobs: meta end-anchored right, below the frame, clear of the logo box", () => {
     const { root } = renderCover("luxe", { metaPlacement: "bottom-right" })
-    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("岭原智能"))!
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("云觅科技"))!
     expect(meta.getAttribute("text-anchor")).toBe("end")
     expect(meta.getAttribute("x")).toBe("1208")
     const y = Number(meta.getAttribute("y"))
@@ -227,7 +227,7 @@ describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () =>
 
   it("museum knobs: meta at top", () => {
     const { root } = renderCover("museum", { metaPlacement: "top" })
-    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("岭原智能"))!
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("云觅科技"))!
     expect(Number(meta.getAttribute("y"))).toBeLessThan(100)
     expect(meta.getAttribute("y")).toBe("56")
     expect(meta.getAttribute("text-anchor")).toBe("start")

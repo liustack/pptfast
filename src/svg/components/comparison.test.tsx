@@ -441,7 +441,7 @@ describe("pill_panels form", () => {
     type: "comparison" as const,
     columns: ["稳妥线：单线试点", "进取线：全线并行"],
     rows: [
-      { label: "节奏", cells: ["先押一条产线，九十天出对照数据", "三条线同月接入，共享一套模型底座"] },
+      { label: "节奏", cells: ["先押一家客户，九十天出对照数据", "三条线同月接入，共享一套模型底座"] },
       { label: "代价", cells: ["慢一个季度，但每一步都有数", "前期投入翻倍，回本提前两个月"] },
     ],
   }
@@ -468,7 +468,7 @@ describe("pill_panels form", () => {
     })
     const title0 = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === twoCol.columns[0])
     expect(title0?.getAttribute("fill")).toBe(readableOn(themeCtx.colors.accent))
-    expect(container.textContent).toContain("先押一条产线，九十天出对照数据")
+    expect(container.textContent).toContain("先押一家客户，九十天出对照数据")
     expect(container.textContent).toContain("节奏")
   })
 

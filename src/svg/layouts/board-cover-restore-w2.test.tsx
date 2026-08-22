@@ -8,7 +8,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 const COVER: Slide = {
   type: "cover",
-  heading: "岭原智能 2026 年第二季度业务评审",
+  heading: "云觅科技 2026 年第二季度业务评审",
   subheading: "增长质量与下半年投入方向",
   components: [],
 } as Slide
@@ -33,7 +33,7 @@ function ir(themeId: string): PptxIR {
     theme: { id: themeId },
     branding: "full",
     meta: {
-      organization: "岭原智能 · 战略与运营部",
+      organization: "云觅科技 · 战略与运营部",
       authors: [{ name: "陈砚清", role: "首席技术官" }],
       date: "2026 年 7 月",
       confidentiality: "internal",

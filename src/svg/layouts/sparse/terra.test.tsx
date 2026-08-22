@@ -63,8 +63,8 @@ describe("terra sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降",
-      footnote: "试点产线 · 90 天 · 现场实测",
+      subheading: "订阅续约率同比回升",
+      footnote: "试点客户 · 90 天 · 现场实测",
       components: [],
     } as Slide
     const { root } = render(

@@ -68,7 +68,7 @@ describe("stage sparse faces", () => {
 
   it("statement attribution stays inside the page on a long source line", () => {
     const long =
-      "试点产线九十天运行数据表明非计划停机从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
+      "试点客户九十天运行数据表明席位净流失从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
     const slide: Slide = {
       type: "content",
       layout: "statement",
@@ -106,7 +106,7 @@ describe("stage sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "试点产线 · 90 天",
+      subheading: "试点客户 · 90 天",
       components: [],
     } as Slide
     const { root } = render(
@@ -122,7 +122,7 @@ describe("stage sparse faces", () => {
     const pct = Array.from(hero.querySelectorAll("tspan")).find((t) => t.textContent === "%")
     expect(pct?.getAttribute("font-size")).toBe("150")
     expect(pct?.getAttribute("fill")).toBe(ctx.colors.accent)
-    expect(root.textContent).toContain("试点产线")
+    expect(root.textContent).toContain("试点客户")
   })
 
   it("pull-quote sandwiches the line between two border hairlines", () => {

@@ -9,10 +9,10 @@ import { PullQuoteContent } from "../content-pull-quote"
 import { StatHeroContent } from "../content-stat-hero"
 import type { PptxIR, Slide } from "@/ir"
 
-const VERSE = "设备不会突然坏，只是没人听它说话。"
+const VERSE = "席位不会突然掉，只是没人看它沉默。"
 const QUOTE = "最贵的停机，是没人预料到的那一次。"
 const LUXE_GOLD = "#C6A15B"
-const BAKED_COLOPHON = "丙午夏岭原"
+const BAKED_COLOPHON = "丙午夏云觅"
 
 function ir(slides: Slide[], organization?: string): PptxIR {
   return {
@@ -40,20 +40,20 @@ describe("ink sparse faces", () => {
   it("statement sets CJK vertically from the right, with a vermilion opener", () => {
     const slide: Slide = { type: "content", layout: "statement", heading: VERSE, components: [] } as Slide
     const { markup, root } = render(
-      <StatementContent ir={ir([slide], "岭原智能")} slide={slide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir([slide], "云觅科技")} slide={slide} index={0} ctx={ctx} />,
     )
     expect(() => assertSubset(root)).not.toThrow()
     expect(markup).not.toContain("writing-mode")
     const opener = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "18")
     expect(opener?.getAttribute("x")).toBe("1042")
     expect(opener?.getAttribute("fill")).toBe(ctx.colors.accent)
-    const first = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "设")
+    const first = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "席")
     expect(first?.getAttribute("x")).toBe("1000")
     expect(first?.getAttribute("y")).toBe("150")
     expect(Number(first?.getAttribute("font-size"))).toBe(52)
     expect(first?.getAttribute("fill")).toBe(ctx.colors.primary)
     expect(Array.from(root.querySelectorAll("text")).some((t) => t.textContent === "，")).toBe(false)
-    const org = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "岭")
+    const org = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "云")
     expect(org?.getAttribute("x")).toBe("180")
     const emptySeal = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "34")
     expect(emptySeal?.getAttribute("stroke")).toBe(ctx.colors.accent)
@@ -71,15 +71,15 @@ describe("ink sparse faces", () => {
     const slide: Slide = {
       type: "content",
       layout: "statement",
-      heading: "设备不会突然坏，只是没人**听它说话**",
+      heading: "席位不会突然掉，只是没人**看它沉默**",
       components: [],
     } as Slide
     const { root } = render(
       <StatementContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
     )
-    const listen = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "听")
+    const listen = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "看")
     expect(listen?.getAttribute("fill")).toBe(ctx.colors.accent)
-    const first = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "设")
+    const first = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "席")
     expect(first?.getAttribute("fill")).toBe(ctx.colors.primary)
   })
 
@@ -114,7 +114,7 @@ describe("ink sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降 · 九十日为期",
+      subheading: "订阅续约率同比回升 · 九十日为期",
       components: [],
     } as Slide
     const { markup, root } = render(

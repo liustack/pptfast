@@ -11,7 +11,7 @@ import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "../components/types"
 
 const HEADING = "算法团队的迭代节奏与业务预期存在落差"
-const SUB = "设备预测性维护业务的增长质量与下半年投入方向"
+const SUB = "工作区席位订阅业务的增长质量与下半年投入方向"
 const CHAPTER = "增长战略"
 const EMPHASIZED = "**算法团队的迭代节奏**与业务预期存在落差"
 

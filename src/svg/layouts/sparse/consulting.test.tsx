@@ -11,8 +11,8 @@ import { measureTextUnits } from "../../../lib/svg-text-layout"
 import { underlineYFromBaseline } from "../underline"
 import type { PptxIR, Slide } from "@/ir"
 
-const VERSE = "预测性维护值得**全线推开**，而且应该从今天开始。"
-const VERSE_PLAIN = "预测性维护值得全线推开，而且应该从今天开始。"
+const VERSE = "工作区订阅值得**全线推开**，而且应该从今天开始。"
+const VERSE_PLAIN = "工作区订阅值得全线推开，而且应该从今天开始。"
 const LUXE_GOLD = "#C6A15B"
 
 function ir(slides: Slide[]): PptxIR {
@@ -56,7 +56,7 @@ describe("consulting sparse faces", () => {
     expect(kicker.getAttribute("fill")).toBe(ctx.colors.muted)
     expect(kicker.getAttribute("letter-spacing")).toBeNull()
     const heading = Array.from(root.querySelectorAll("text")).find((t) =>
-      (t.textContent ?? "").includes("预测性维护"),
+      (t.textContent ?? "").includes("工作区订阅"),
     )!
     expect(heading.getAttribute("x")).toBe("96")
     expect(heading.getAttribute("y")).toBe("366")
@@ -69,7 +69,7 @@ describe("consulting sparse faces", () => {
     const pad = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("height") === "56")
     expect(pad?.getAttribute("fill")).toBe(ctx.colors.accent)
     expect(pad?.getAttribute("y")).toBe("322")
-    expect(markup.indexOf("<rect")).toBeLessThan(markup.indexOf("预测性维护"))
+    expect(markup.indexOf("<rect")).toBeLessThan(markup.indexOf("工作区订阅"))
     expect(markup).toContain("试点复盘纪要")
     expect(markup).not.toContain("依据见后三页")
     expect(markup).not.toContain(LUXE_GOLD)
@@ -89,8 +89,8 @@ describe("consulting sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降",
-      footnote: "试点产线 90 天 · 2026 Q2 运行数据",
+      subheading: "订阅续约率同比回升",
+      footnote: "试点客户 90 天 · 2026 Q2 运行数据",
       components: [],
     } as Slide
     const { markup, root } = render(
@@ -114,7 +114,7 @@ describe("consulting sparse faces", () => {
     )
     expect(bar?.getAttribute("height")).toBe("10")
     expect(bar?.getAttribute("fill")).toBe(ctx.colors.accent)
-    expect(markup).toContain("非计划停机时长下降")
+    expect(markup).toContain("订阅续约率同比回升")
     expect(markup).not.toContain(LUXE_GOLD)
   })
 

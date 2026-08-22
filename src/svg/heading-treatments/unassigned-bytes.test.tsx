@@ -37,7 +37,7 @@ const LAYOUTS = [
 ] as const
 
 const HEADING = "算法团队的迭代节奏与业务预期存在落差"
-const SUB = "设备预测性维护业务的增长质量与下半年投入方向"
+const SUB = "工作区席位订阅业务的增长质量与下半年投入方向"
 const CHAPTER = "增长战略"
 
 function deck(theme: string, slides: Slide[]): PptxIR {

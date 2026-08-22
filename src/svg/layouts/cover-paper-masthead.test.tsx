@@ -8,8 +8,8 @@ import { contrastRatio, requiredContrastRatio } from "../ink"
 import { PaperMastheadCover, layoutDef } from "./cover-paper-masthead"
 import type { PptxIR, Slide } from "@/ir"
 
-const HEADING = "岭原智能季度评审"
-const SUBHEADING = "设备预测性维护业务的增长质量与下半年投入方向"
+const HEADING = "云觅科技季度评审"
+const SUBHEADING = "工作区席位订阅业务的增长质量与下半年投入方向"
 
 function slide(heading = HEADING): Slide {
   return { type: "cover", heading, subheading: SUBHEADING, components: [] } as Slide
@@ -28,7 +28,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}, s: Slide = slide()): Ppt
 }
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "LINGYUAN INTELLIGENCE · Q2 REVIEW",
+  organization: "CLOUDSEEK COLLABORATION · Q2 REVIEW",
   authors: [{ name: "陈砚清", role: "首席技术官" }],
   date: "2026-07",
   version: "v1.0",
@@ -78,7 +78,7 @@ describe("cover-paper-masthead — board geometry", () => {
   })
 
   it("emphasized run uses accent", () => {
-    const { root, tokens } = renderCover("runway", slide("岭原智能季度**评审**"))
+    const { root, tokens } = renderCover("runway", slide("云觅科技季度**评审**"))
     expect(Array.from(root.querySelectorAll("tspan")).some((t) => t.getAttribute("fill") === tokens.colors.accent)).toBe(true)
   })
 })

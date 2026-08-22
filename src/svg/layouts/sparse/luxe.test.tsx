@@ -143,7 +143,7 @@ describe("luxe sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机 · 九十日",
+      subheading: "席位净流失 · 九十日",
       components: [],
     } as Slide
     const { root } = render(

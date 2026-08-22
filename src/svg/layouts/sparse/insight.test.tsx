@@ -85,7 +85,7 @@ describe("insight sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "-43%",
-      subheading: "非计划停机 · 环比",
+      subheading: "席位净流失 · 环比",
       footnote: "PILOT LINE · 90D WINDOW",
       components: [],
     } as Slide

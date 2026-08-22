@@ -89,7 +89,7 @@ describe("TwoColumnContent", () => {
               // what makes a full-width restack miss the content rect, so
               // the page stays two-column and wrapping has to keep the
               // fourth value.
-              source: "Lingyuan Intelligence Q2 2026 operating data",
+              source: "CloudSeek Collaboration Q2 2026 operating data",
             },
             { value: "91", unit: "%", label: "Renewal rate", delta: "up" as const },
             { value: "88", unit: "%", label: "Prediction accuracy", delta: "up" as const },
