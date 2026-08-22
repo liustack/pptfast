@@ -198,6 +198,8 @@ export interface JudgeL2Input {
   run?: ProcessRunner
   grokBin?: string
   rubricDir?: string
+  /** Default true. Planted replay turns this off so unit tests never launch a browser. */
+  playwright?: boolean
 }
 
 export async function judgeL2(input: JudgeL2Input): Promise<L2Verdict> {
@@ -211,7 +213,7 @@ export async function judgeL2(input: JudgeL2Input): Promise<L2Verdict> {
   writeFileSync(join(workdir, "page.png"), png)
 
   let playwrightSkip: string | undefined
-  const crowded = input.l1.findings.some((f) => CROWDED.has(f.code))
+  const crowded = input.playwright !== false && input.l1.findings.some((f) => CROWDED.has(f.code))
   if (crowded) {
     const browser = await maybePlaywrightPng(input.svg)
     if (browser.png) writeFileSync(join(workdir, "page-browser.png"), browser.png)

@@ -21,6 +21,7 @@ Options:
   -h, --help          show this help
 
 L2 is skipped (the run still succeeds) when CI=true, --l1-only is set, or grok is not on PATH.
+Planted miss-class fixtures are replayed before the live audit. A planted miss fails the process.
 Live corpus findings are written to the report and do not fail the process.
 `
 

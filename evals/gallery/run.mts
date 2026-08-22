@@ -20,6 +20,7 @@ import { auditL1 } from "./l1"
 import { judgeL2, l2SkipReason, VERDICT_SCHEMA_NAME } from "./l2"
 import type { GalleryPageMeta, L2Verdict } from "./l2"
 import { buildMatrix } from "./matrix"
+import { replayPlanted } from "./planted/replay"
 import { renderMatrix, type Manifest, type ManifestPage } from "./render"
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)))
@@ -131,6 +132,16 @@ async function main(): Promise<void> {
   })
   if (skip) console.log(`evals:gallery: skipping L2 (${skip})`)
   else console.log(`evals:gallery: L2 via ${grokBin}`)
+
+  const planted = await replayPlanted({
+    skipL2: skip,
+    grokBin: grokBin ?? undefined,
+  })
+  if (planted.l2 === "skipped") {
+    console.log(`evals:gallery: planted L1 ok, L2 skipped (${planted.reason})`)
+  } else {
+    console.log(`evals:gallery: planted replay ok (${planted.l2Hits}/${planted.l2Wanted})`)
+  }
 
   console.log(`evals:gallery: auditing ${selected.length} page(s) (${mode})`)
 
