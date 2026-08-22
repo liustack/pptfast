@@ -236,7 +236,7 @@ describe("QuoteStageContent", () => {
       type: "content",
       layout: "quote-stage",
       heading: "竞品在中小客户市场的价格压力",
-      components: [{ type: "citation", sources: [{ label: "[1] 岭原智能 2026 年第二季度经营数据" }] }],
+      components: [{ type: "citation", sources: [{ label: "[1] 云觅科技 2026 年第二季度经营数据" }] }],
     } as Slide
     const { root } = render(<QuoteStageContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "800")
@@ -260,7 +260,7 @@ describe("QuoteStageContent", () => {
       type: "content",
       layout: "quote-stage",
       heading: "Competitors are pricing below cost in the mid-market",
-      components: [{ type: "citation", sources: [{ label: "[1] Lingyuan Intelligence Q2 2026 operating data" }] }],
+      components: [{ type: "citation", sources: [{ label: "[1] CloudSeek Collaboration Q2 2026 operating data" }] }],
     } as Slide
     const { root } = render(<QuoteStageContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "800")

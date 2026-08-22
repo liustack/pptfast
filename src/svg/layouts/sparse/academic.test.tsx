@@ -78,8 +78,8 @@ describe("academic sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降",
-      footnote: "试点产线 90 天窗口",
+      subheading: "订阅续约率同比回升",
+      footnote: "试点客户 90 天窗口",
       components: [],
     } as Slide
     const { markup, root } = render(
@@ -101,7 +101,7 @@ describe("academic sparse faces", () => {
     expect(hair?.getAttribute("y1")).toBe("448")
     expect(hair?.getAttribute("stroke")).toBe(ctx.colors.accent)
     expect(markup).not.toContain("图 4.2")
-    expect(markup).toContain("试点产线 90 天窗口")
+    expect(markup).toContain("试点客户 90 天窗口")
   })
 
   it("statement stamps 证明见后三页。 and uses sectionName as the kicker", () => {

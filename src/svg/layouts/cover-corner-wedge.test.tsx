@@ -10,7 +10,7 @@ import { CornerWedgeCover, layoutDef } from "./cover-corner-wedge"
 import type { PptxIR, Slide } from "@/ir"
 
 const HEADING_ARENA = "巅峰之夜"
-const HEADING_EMBER = "岭原智能 2026 年第二季度业务评审"
+const HEADING_EMBER = "云觅科技 2026 年第二季度业务评审"
 const SUBHEADING = "八强出炉 · 决赛日程与观赛指南"
 
 function slide(heading: string): Slide {
@@ -29,7 +29,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}, s: Slide): PptxIR {
 }
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "岭原电竞 · 赛事运营部",
+  organization: "云觅电竞 · 赛事运营部",
   authors: [{ name: "陈砚清", role: "首席技术官" }],
 }
 
@@ -90,7 +90,7 @@ describe("cover-corner-wedge — board geometry", () => {
   })
 
   it("title box and the wedge AABB do not intersect, and a wrapped title clears its subtitle", () => {
-    const heading = "岭原智能 2026 年第二季度业务评审"
+    const heading = "云觅科技 2026 年第二季度业务评审"
     const { root } = renderCover("arena", slide(heading), {
       textAnchor: "middle",
       wedgePeakY: 340,

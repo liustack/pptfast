@@ -8,8 +8,8 @@ import { contrastRatio, requiredContrastRatio } from "../ink"
 import { VerdictIndexCover, layoutDef } from "./cover-verdict-index"
 import type { PptxIR, Slide } from "@/ir"
 
-const HEADING = "预测性维护增长优质，下半年应加倍投入交付侧"
-const SUBHEADING = "岭原智能 2026 年第二季度业务评审 · 三个论据支撑，附敏感性分析"
+const HEADING = "工作区订阅增长优质，下半年应加倍投入交付侧"
+const SUBHEADING = "云觅科技 2026 年第二季度业务评审 · 三个论据支撑，附敏感性分析"
 const ITEMS = ["续约率 96%，增长来自存量客户加购", "交付排期已到 11 月，产能是唯一瓶颈", "竞对交付口碑走弱，窗口期约两个季度"]
 
 function slide(heading = HEADING, extras: Partial<Slide> = {}): Slide {
@@ -28,7 +28,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}, s: Slide = slide()): Ppt
 }
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "岭原智能 · 战略与运营部",
+  organization: "云觅科技 · 战略与运营部",
   authors: [{ name: "陈砚清", role: "首席技术官" }],
   version: "v1.0",
 }
@@ -55,7 +55,7 @@ describe("cover-verdict-index — board geometry", () => {
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700" && t.getAttribute("x") === "96")
     expect(headings[0]?.getAttribute("y")).toBe("316")
     expect(Number(headings[0]?.getAttribute("font-size"))).toBeGreaterThanOrEqual(50)
-    expect(headings.map((t) => t.textContent).join("")).toContain("预测性维护")
+    expect(headings.map((t) => t.textContent).join("")).toContain("工作区订阅")
     const fills = new Set(Array.from(root.querySelectorAll("[fill]")).map((el) => el.getAttribute("fill")))
     expect(fills.has(tokens.colors.primary) || [...fills].some((f) => f === tokens.colors.text || f === tokens.colors.muted)).toBe(true)
     expect(root.innerHTML).not.toMatch(/#F5C518/i)

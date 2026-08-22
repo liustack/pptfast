@@ -39,7 +39,7 @@ describe("vermilion sparse faces", () => {
   it("statement is a centered red line between gold doubles, with org · date at the end", () => {
     const slide: Slide = { type: "content", layout: "statement", heading: VERSE, components: [] } as Slide
     const { markup, root } = render(
-      <StatementContent ir={ir([slide], { organization: "岭原智能", date: "2026-08" })} slide={slide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir([slide], { organization: "云觅科技", date: "2026-08" })} slide={slide} index={0} ctx={ctx} />,
     )
     expect(() => assertSubset(root)).not.toThrow()
     const heading = Array.from(root.querySelectorAll("text")).find((t) =>
@@ -55,8 +55,8 @@ describe("vermilion sparse faces", () => {
     expect(lines.some((l) => l.getAttribute("y1") === "150" && l.getAttribute("stroke-width") === "2")).toBe(true)
     expect(lines.some((l) => l.getAttribute("y1") === "564")).toBe(true)
     expect(lines.every((l) => l.getAttribute("stroke") === ctx.colors.accent)).toBe(true)
-    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("岭原智能"))!
-    expect(meta.textContent).toBe("岭原智能 · 2026-08")
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("云觅科技"))!
+    expect(meta.textContent).toBe("云觅科技 · 2026-08")
     expect(meta.getAttribute("x")).toBe("1040")
     expect(meta.getAttribute("text-anchor")).toBe("end")
     expect(markup).not.toContain("二〇二六")
@@ -97,7 +97,7 @@ describe("vermilion sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降 · 试点产线九十日",
+      subheading: "订阅续约率同比回升 · 试点客户九十日",
       components: [],
     } as Slide
     const { root } = render(

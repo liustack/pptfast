@@ -26,7 +26,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}): PptxIR {
 }
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "Lingyuan Institutional Review",
+  organization: "CloudSeek Institutional Review",
   date: "2026-08-22",
   confidentiality: "internal",
   version: "v1",
@@ -63,7 +63,7 @@ describe("cover-institutional-block — board geometry", () => {
 
     const texts = Array.from(root.querySelectorAll("text"))
     const kicker = texts.find((t) => Number(t.getAttribute("y")) === 96)!
-    expect(kicker.textContent).toBe("LINGYUAN INSTITUTIONAL REVIEW")
+    expect(kicker.textContent).toBe("CLOUDSEEK INSTITUTIONAL REVIEW")
     expect(kicker.getAttribute("x")).toBe("84")
     expect(kicker.getAttribute("font-weight")).toBe("700")
 

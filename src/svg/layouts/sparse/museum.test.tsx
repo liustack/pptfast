@@ -39,7 +39,7 @@ describe("museum sparse faces", () => {
   it("statement is a centered wall label with an accent hairline and org/date footer", () => {
     const chapter: Slide = { type: "chapter", heading: "第二展厅 · 预测", components: [] } as Slide
     const slide: Slide = { type: "content", layout: "statement", heading: VERSE, components: [] } as Slide
-    const doc = ir([chapter, slide], { organization: "岭原智能藏", date: "2026" })
+    const doc = ir([chapter, slide], { organization: "云觅科技藏", date: "2026" })
     const { markup, root } = render(
       <StatementContent ir={doc} slide={slide} index={1} ctx={ctx} />,
     )
@@ -60,7 +60,7 @@ describe("museum sparse faces", () => {
     expect(rule?.getAttribute("x1")).toBe("600")
     expect(rule?.getAttribute("x2")).toBe("680")
     expect(rule?.getAttribute("stroke")).toBe(ctx.colors.accent)
-    expect(markup).toContain("岭原智能藏")
+    expect(markup).toContain("云觅科技藏")
     expect(markup).toContain("2026")
     expect(markup).not.toContain(LUXE_GOLD)
     expect(markup).not.toContain(BOARD_TEXT)
@@ -71,7 +71,7 @@ describe("museum sparse faces", () => {
       type: "content",
       layout: "one-evidence",
       heading: "工单平均提前 **6.5 天**",
-      subheading: "试点产线 90 天 · 217 张工单",
+      subheading: "试点客户 90 天 · 217 张工单",
       components: [],
     } as Slide
     const { markup, root } = render(
@@ -113,7 +113,7 @@ describe("museum sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降 · 90 天",
+      subheading: "订阅续约率同比回升 · 90 天",
       components: [],
     } as Slide
     const { root } = render(

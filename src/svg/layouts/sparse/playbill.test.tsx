@@ -12,7 +12,7 @@ import type { PptxIR, Slide } from "@/ir"
 const VERSE = "设备不会突然坏，只是没人**听**它说话。"
 const VERSE_PLAIN = "设备不会突然坏，只是没人听它说话。"
 const LUXE_GOLD = "#C6A15B"
-const PLACEHOLDER = "产线现场图"
+const PLACEHOLDER = "客户现场图"
 
 function ir(slides: Slide[]): PptxIR {
   return {
@@ -38,7 +38,7 @@ describe("playbill sparse faces", () => {
   const ctx = buildCtx(resolveStyle("playbill"), {})
 
   it("statement is three-line heavy type with an accent run and a closer bar", () => {
-    const chapter: Slide = { type: "chapter", heading: "预测性维护 · 开演", components: [] } as Slide
+    const chapter: Slide = { type: "chapter", heading: "工作区订阅 · 开演", components: [] } as Slide
     const slide: Slide = { type: "content", layout: "statement", heading: VERSE, components: [] } as Slide
     const { markup, root } = render(
       <StatementContent ir={ir([chapter, slide])} slide={slide} index={1} ctx={ctx} />,
@@ -58,7 +58,7 @@ describe("playbill sparse faces", () => {
     expect(bar?.getAttribute("y")).toBe("610")
     expect(bar?.getAttribute("width")).toBe("1088")
     expect(bar?.getAttribute("fill")).toBe(ctx.colors.text)
-    expect(markup).toContain("预测性维护")
+    expect(markup).toContain("工作区订阅")
     expect(markup).not.toContain(LUXE_GOLD)
     expect(root.querySelector("polygon")).toBeNull()
   })
@@ -79,7 +79,7 @@ describe("playbill sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "-43%",
-      subheading: "非计划停机 · 试点 90 天",
+      subheading: "席位净流失 · 试点 90 天",
       components: [],
     } as Slide
     const { root } = render(
@@ -105,7 +105,7 @@ describe("playbill sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "-43%",
-      subheading: "非计划停机 · 试点 90 天",
+      subheading: "席位净流失 · 试点 90 天",
       components: [],
     } as Slide
     const { root } = render(
@@ -130,7 +130,7 @@ describe("playbill sparse faces", () => {
     const slide: Slide = {
       type: "content",
       layout: "mono-bleed",
-      heading: "凌晨两点的巡检，以后交给传感器",
+      heading: "凌晨两点的会议，以后交给工作区",
       components: [],
     } as Slide
     const { markup, root } = render(

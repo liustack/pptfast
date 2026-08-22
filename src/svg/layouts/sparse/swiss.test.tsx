@@ -84,7 +84,7 @@ describe("swiss sparse faces", () => {
 
   it("stat-hero is a 360px left numeral with a padded page index", () => {
     const slides: Slide[] = [
-      { type: "content", layout: "stat-hero", heading: "43%", subheading: "非计划停机时长下降", footnote: "试点产线 · 90 天 · 2026 Q2", components: [] } as Slide,
+      { type: "content", layout: "stat-hero", heading: "43%", subheading: "订阅续约率同比回升", footnote: "试点客户 · 90 天 · 2026 Q2", components: [] } as Slide,
       { type: "content", heading: "x", components: [] } as Slide,
       { type: "content", heading: "y", components: [] } as Slide,
     ]

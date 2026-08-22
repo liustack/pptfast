@@ -43,7 +43,7 @@ describe("lecture sparse faces", () => {
       type: "content",
       layout: "statement",
       heading: VERSE,
-      components: [{ type: "paragraph", text: "预测性维护开课第一句" }],
+      components: [{ type: "paragraph", text: "工作区订阅开课第一句" }],
     } as Slide
     const { markup, root } = render(
       <StatementContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
@@ -61,14 +61,14 @@ describe("lecture sparse faces", () => {
     const arc = root.querySelector("path")
     expect(arc?.getAttribute("stroke")).toBe(ctx.colors.accent)
     expect(arc?.getAttribute("stroke-width")).toBe("4")
-    expect(markup).toContain("预测性维护开课第一句")
+    expect(markup).toContain("工作区订阅开课第一句")
     expect(markup).not.toContain(LUXE_GOLD)
     expect(markup).not.toContain(BOARD_TEXT)
   })
 
   it("statement attribution fits inside the page instead of running past x=1280", () => {
     const long =
-      "试点产线九十天运行数据表明非计划停机从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
+      "试点客户九十天运行数据表明席位净流失从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
     const slide: Slide = {
       type: "content",
       layout: "statement",
@@ -98,7 +98,7 @@ describe("lecture sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长下降",
+      subheading: "订阅续约率同比回升",
       components: [],
     } as Slide
     const { root } = render(
@@ -120,7 +120,7 @@ describe("lecture sparse faces", () => {
       type: "content",
       layout: "one-evidence",
       heading: "维护工单平均提前 **6.5 天** 生成",
-      subheading: "试点产线 90 天 · 全部 217 张工单",
+      subheading: "试点客户 90 天 · 全部 217 张工单",
       footnote: "来源：2026 Q2 运行数据",
       components: [],
     } as Slide

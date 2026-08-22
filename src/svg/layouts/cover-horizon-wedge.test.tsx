@@ -8,8 +8,8 @@ import { contrastRatio, requiredContrastRatio } from "../ink"
 import { HorizonWedgeCover, layoutDef } from "./cover-horizon-wedge"
 import type { PptxIR, Slide } from "@/ir"
 
-const HEADING = "岭原智能 2026 年第二季度业务评审"
-const SUBHEADING = "设备预测性维护业务的增长质量与下半年投入方向"
+const HEADING = "云觅科技 2026 年第二季度业务评审"
+const SUBHEADING = "工作区席位订阅业务的增长质量与下半年投入方向"
 
 function slide(heading = HEADING): Slide {
   return { type: "cover", heading, subheading: SUBHEADING, components: [] } as Slide
@@ -27,7 +27,7 @@ function ir(themeId: string, meta: PptxIR["meta"] = {}): PptxIR {
 }
 
 const FULL_META: PptxIR["meta"] = {
-  organization: "岭原智能 · 战略与运营部",
+  organization: "云觅科技 · 战略与运营部",
   authors: [{ name: "陈砚清", role: "首席技术官" }],
 }
 

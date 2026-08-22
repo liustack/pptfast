@@ -45,7 +45,7 @@ import type { StyleTokens } from "./tokens";
  *     `#4A5C6E` 6.03:1 与松绿 `#66754F` 4.35:1 是同一张表里的冷调对照。
  *   - `fonts.heading` SimSun 衬线 → 雅黑无衬线：设计板的组内互检明写
  *     「heritage 衬线、其余 sans」，vermilion 封面样例的巨号标题也是无衬线
- *     （只有「岭原智能文件」那行引首用楷体）。附带收益：雅黑有精确字宽表
+ *     （只有「云觅科技文件」那行引首用楷体）。附带收益：雅黑有精确字宽表
  *     （`hasExactWidthTable`），vermilion 因此退出 `definitions.test.ts` 的
  *     `nonExactHeadingBuiltins` 豁免集合，标题排版从保守包络回到精确测量。
  *

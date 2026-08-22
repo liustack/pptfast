@@ -232,7 +232,7 @@ describe("vert_timeline form", () => {
     milestones: [
       { date: "2024-01", title: "接传感", desc: "两周布点，电工班只管接电走线。" },
       { date: "2024-06", title: "试运行", desc: "告警只进班组群，误报按周复盘。" },
-      { date: "2024-12", title: "全接管", desc: "纸质巡检表留档三个月后退役。", highlight: true },
+      { date: "2024-12", title: "全接管", desc: "纸质周报表留档三个月后退役。", highlight: true },
     ],
   }
 

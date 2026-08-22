@@ -42,7 +42,7 @@ describe("arena sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机 · 降幅",
+      subheading: "席位净流失 · 降幅",
       components: [],
     } as Slide
     const { markup, root } = render(
@@ -64,7 +64,7 @@ describe("arena sparse faces", () => {
     expect(hero.getAttribute("font-weight")).toBe("700")
     expect(hero.getAttribute("fill")).toBe(ctx.colors.accent)
     const caption = Array.from(root.querySelectorAll("text")).find((t) =>
-      (t.textContent ?? "").includes("非计划停机"),
+      (t.textContent ?? "").includes("席位净流失"),
     )!
     expect(caption.getAttribute("y")).toBe("570")
     expect(caption.getAttribute("letter-spacing")).toBeNull()

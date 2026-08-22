@@ -271,7 +271,7 @@ describe("one-evidence evidence vs assertion partition", () => {
       type: "content",
       layout: "one-evidence",
       heading: PARTITION_CLAIM,
-      subheading: "试点产线 90 天 · 217 张工单",
+      subheading: "试点客户 90 天 · 217 张工单",
       components: [BAR_CHART],
     } as Slide
     const { root } = render(

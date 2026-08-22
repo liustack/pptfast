@@ -266,7 +266,7 @@ describe("layoutContentFit", () => {
           value: "102k",
           unit: "units",
           label: "Connected equipment",
-          source: "Lingyuan Intelligence Q2 2026 operating data",
+          source: "CloudSeek Collaboration Q2 2026 operating data",
         },
         { value: "91", unit: "%", label: "Renewal rate" },
         { value: "88", unit: "%", label: "Prediction accuracy" },

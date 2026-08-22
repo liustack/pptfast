@@ -143,7 +143,7 @@ describe("memo sparse faces", () => {
       type: "content",
       layout: "stat-hero",
       heading: "43%",
-      subheading: "非计划停机时长，试点产线 90 天",
+      subheading: "席位净流失时长，试点客户 90 天",
       components: [],
     } as Slide
     const { markup, root } = render(

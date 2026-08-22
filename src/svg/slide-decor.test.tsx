@@ -61,12 +61,12 @@ describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
       type: "content",
       heading: "x",
       components: [],
-      decor: { kind: "corner_tag", text: "巡检专刊" },
+      decor: { kind: "corner_tag", text: "季报专刊" },
     }
     const { container } = svg(
       <SlideDecor ir={deck([tagged])} slide={tagged} index={0} ctx={ctx} />,
     )
-    expect(container.textContent).toContain("巡检专刊")
+    expect(container.textContent).toContain("季报专刊")
 
     const untagged: Slide = { ...tagged, decor: { kind: "corner_tag" } }
     const { container: c2 } = svg(
