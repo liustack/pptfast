@@ -45,6 +45,42 @@ describe("FullSlideSvg", () => {
     expect(container.textContent).toContain("年度战略回顾")
   })
 
+  it("emits one bg, mid, and fg group in fixed paint order", () => {
+    const doc: PptxIR = { ...ir([contentSlide]), branding: "full" }
+    const { container } = render(<FullSlideSvg ir={doc} slide={contentSlide} index={0} />)
+    const groups = Array.from(container.querySelectorAll("svg > g[data-depth]"))
+
+    expect(groups.map((group) => group.getAttribute("data-depth"))).toEqual(["bg", "mid", "fg"])
+    expect(container.querySelector("[data-decor]")?.closest("[data-depth]")?.getAttribute("data-depth")).toBe(
+      "mid",
+    )
+    expect(container.querySelector("[data-archetype]")?.closest("[data-depth]")?.getAttribute("data-depth")).toBe(
+      "fg",
+    )
+    expect(groups[2]!.querySelector('line[y1="664"]')).not.toBeNull()
+  })
+
+  it("routes a layout-owned ghost chapter number to mid without moving the heading out of fg", () => {
+    const chapter: Slide = {
+      type: "chapter",
+      heading: "第一部分：市场洞察",
+      layout: "masthead-chapter",
+      components: [],
+    }
+    const doc = ir([chapter])
+    const { container } = render(<FullSlideSvg ir={doc} slide={chapter} index={0} />)
+    const ghost = Array.from(container.querySelectorAll("text")).find(
+      (text) => text.textContent === "01" && Number(text.getAttribute("font-size")) >= 160,
+    )
+    const heading = Array.from(container.querySelectorAll("text")).find((text) =>
+      text.textContent?.includes("第一部分：市场洞察"),
+    )
+
+    expect(container.querySelector('[data-archetype="masthead-chapter"]')).not.toBeNull()
+    expect(ghost?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("mid")
+    expect(heading?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("fg")
+  })
+
   it("renders content components for a content slide (omitted branding draws no footer)", () => {
     const doc = ir([contentSlide])
     const { container } = render(

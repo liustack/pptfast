@@ -295,15 +295,6 @@ export interface LayoutDefinition {
    */
   paintsOwnBackground?: boolean
   /**
-   * Emit the theme motif *after* this layout, so decoration can sit on a
-   * field the layout itself just painted. The default order is motif then
-   * layout: motifs stay behind type. A lower-right wedge covers that
-   * behind-layer, so sparks riding the hypotenuse would vanish inside the
-   * fill. Opt in only for layouts whose board construction puts motif
-   * pieces on a layout-painted face.
-   */
-  motifOverLayout?: boolean
-  /**
    * Heading-overflow hard-error parameters (quote-stage wave, T2 fix round —
    * `.issues/2026-07-28-quote-stage/task-2-report.md`'s fix-report addendum):
    * when set, `ir-quality.ts`'s `checkSlide` runs `fitHeadingLines(slide
