@@ -117,9 +117,9 @@
       "color": "1xpulzu"
     },
     "theme--campaign--zh--p04": {
-      "hash": "1fmif4x",
-      "geometry": "1fd6e9q",
-      "color": "mkir6p"
+      "hash": "11sxfiz",
+      "geometry": "koqqvr",
+      "color": "wqm9vr"
     },
     "theme--campaign--zh--p05": {
       "hash": "wlwrnn",
@@ -242,9 +242,9 @@
       "color": "55nmcb"
     },
     "theme--consulting--zh--p09": {
-      "hash": "1tjmj4q",
-      "geometry": "1us2buq",
-      "color": "1609mf7"
+      "hash": "rv38en",
+      "geometry": "1sbs5r2",
+      "color": "1crl09l"
     },
     "theme--consulting--zh--p10": {
       "hash": "1slku98",
@@ -542,9 +542,9 @@
       "color": "zf0lst"
     },
     "theme--insight--zh--p09": {
-      "hash": "13hbqdx",
-      "geometry": "1mm817q",
-      "color": "1no2va1"
+      "hash": "55bhry",
+      "geometry": "gvuv2y",
+      "color": "1vvj071"
     },
     "theme--insight--zh--p10": {
       "hash": "xzurdw",
@@ -792,9 +792,9 @@
       "color": "1kt54pw"
     },
     "theme--museum--zh--p09": {
-      "hash": "1b3ms97",
-      "geometry": "1f36nbn",
-      "color": "1huqhlr"
+      "hash": "yjp1w6",
+      "geometry": "1ocwcrc",
+      "color": "m1k3ha"
     },
     "theme--museum--zh--p10": {
       "hash": "1x6w2c9",
@@ -992,9 +992,9 @@
       "color": "195gkyw"
     },
     "theme--stage--zh--p09": {
-      "hash": "1t1arpo",
-      "geometry": "1lqw4sv",
-      "color": "2qxosv"
+      "hash": "1a4agdr",
+      "geometry": "ttsx9n",
+      "color": "es5yht"
     },
     "theme--stage--zh--p10": {
       "hash": "106cnr",
@@ -1192,9 +1192,9 @@
       "color": "nyeum0"
     },
     "theme--vermilion--zh--p09": {
-      "hash": "77ddha",
-      "geometry": "19xd5s0",
-      "color": "rks0sb"
+      "hash": "1ogp495",
+      "geometry": "1i8lyqy",
+      "color": "kea2y9"
     },
     "theme--vermilion--zh--p10": {
       "hash": "1jfwfav",
@@ -2337,19 +2337,19 @@
       "color": "6gmk7k"
     },
     "component--architecture--zh": {
-      "hash": "98o1yv",
-      "geometry": "1gphi59",
-      "color": "108287p"
+      "hash": "1i67qe4",
+      "geometry": "khe1hp",
+      "color": "1k3vtpj"
     },
     "component--architecture--en": {
-      "hash": "wseie4",
-      "geometry": "1i0mbak",
-      "color": "17sl70w"
+      "hash": "10ap9ub",
+      "geometry": "1c8eltq",
+      "color": "2lxxvk"
     },
     "component--architecture--mixed": {
-      "hash": "mratdy",
-      "geometry": "1cme9gu",
-      "color": "108287p"
+      "hash": "oswxts",
+      "geometry": "18zpo2z",
+      "color": "1k3vtpj"
     },
     "component--bmc--zh": {
       "hash": "qby1la",
@@ -3251,20 +3251,20 @@
       "geometry": "1td6op7",
       "color": "zdf8px"
     },
-    "density--architecture--zh": {
-      "hash": "1beu84i",
-      "geometry": "cs42ng",
-      "color": "1gu5xbx"
+    "component--architecture-layer-stack--zh": {
+      "hash": "nihgee",
+      "geometry": "1352zni",
+      "color": "r1tc0q"
     },
-    "density--architecture--en": {
-      "hash": "17mbtgv",
-      "geometry": "1rejtcn",
-      "color": "1p5b49k"
+    "component--architecture-layer-stack--en": {
+      "hash": "12ev8ds",
+      "geometry": "13ccwng",
+      "color": "mo9d2d"
     },
-    "density--architecture--mixed": {
-      "hash": "1d2vkgf",
-      "geometry": "1pdtral",
-      "color": "1gu5xbx"
+    "component--architecture-layer-stack--mixed": {
+      "hash": "z0eiec",
+      "geometry": "lmhwca",
+      "color": "r1tc0q"
     },
     "density--bullets--zh": {
       "hash": "rgcxp8",

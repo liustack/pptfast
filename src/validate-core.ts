@@ -194,7 +194,7 @@ function describeQualityIssue(issue: QualityIssue): string {
     case "architecture_overflow":
       return `architecture diagram has too many layers (over ${CAPACITY.architecture.warnLayers}) — trim it or split into multiple slides`
     case "architecture_count_overflow":
-      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — most would silently drop behind a "+N …" marker rather than render, trim it substantially or split into multiple slides`
+      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — split it into multiple slides`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     case "chart_axes_ignored": {

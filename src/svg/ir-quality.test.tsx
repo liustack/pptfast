@@ -938,11 +938,7 @@ describe("checkIrQuality", () => {
       expect(issues.find((i) => i.code === "architecture_count_overflow")!.severity).toBe("error")
     })
 
-    // Lower bracket anchor (carried-items wave's own new fixture, scaled down
-    // from comparison/citation's 300 to respect architecture's own much
-    // coarser per-layer cost — 150 is already an absurd count of system
-    // layers for one diagram, yet must still land gracefully).
-    it("does NOT report for 150 layers (must land gracefully, not be hard-rejected)", () => {
+    it("reports for 150 layers (past the geometric ceiling, must split)", () => {
       const ir = makeIR([
         {
           type: "content",
@@ -950,7 +946,7 @@ describe("checkIrQuality", () => {
           components: [{ type: "architecture", layers: architectureLayers(150) }],
         },
       ])
-      expect(codes(checkIrQuality(ir))).not.toContain("architecture_count_overflow")
+      expect(codes(checkIrQuality(ir))).toContain("architecture_count_overflow")
     })
 
     it("reports for 20000 layers (clearly pathological, must reject)", () => {

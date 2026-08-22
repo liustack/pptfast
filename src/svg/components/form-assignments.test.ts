@@ -10,7 +10,7 @@ import {
 // lookup contract, independent of any component renderer: missing /
 // unknown / unassigned pairs stay undefined so today's default face is
 // unchanged. campaign × cycle is hub_spoke (first-listed wins), never
-// petal_wheel. 72 rows (65 prior + 7 flowchart). classroom is listed
+// petal_wheel. 77 rows (72 prior + 5 architecture). classroom is listed
 // on callout like every other canonical theme.
 
 type AssignmentRow = {
@@ -339,6 +339,36 @@ const ASSIGNMENTS: AssignmentRow[] = [
     form: "typed_nodes",
     knobs: { highlightFirst: true, radius: "soft" },
   },
+  {
+    componentType: "architecture",
+    themeId: "consulting",
+    form: "layer_stack",
+    knobs: { highlightFirst: true },
+  },
+  {
+    componentType: "architecture",
+    themeId: "swiss",
+    form: "layer_stack",
+    knobs: { radius: "square", nodeFill: "none" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "academic",
+    form: "layer_stack",
+    knobs: { radius: "square", nodeFill: "none" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "tech",
+    form: "layer_stack",
+    knobs: { radius: "square" },
+  },
+  {
+    componentType: "architecture",
+    themeId: "museum",
+    form: "layer_stack",
+    knobs: { nodeStroke: "border" },
+  },
 ]
 
 const FORM_COMPONENT_TYPES = [
@@ -352,6 +382,7 @@ const FORM_COMPONENT_TYPES = [
   "image_grid",
   "callout",
   "flowchart",
+  "architecture",
 ] as const
 
 describe("resolveComponentForm", () => {
@@ -448,13 +479,13 @@ describe("resolveComponentForm", () => {
     })
   })
 
-  it("assignment count is 72 (sum of assignedThemeIds across the 10 component types)", () => {
+  it("assignment count is 77 (sum of assignedThemeIds across the 11 component types)", () => {
     const total = FORM_COMPONENT_TYPES.reduce(
       (n, componentType) => n + assignedThemeIds(componentType).length,
       0,
     )
-    expect(total).toBe(72)
-    expect(ASSIGNMENTS).toHaveLength(72)
+    expect(total).toBe(77)
+    expect(ASSIGNMENTS).toHaveLength(77)
   })
 })
 

@@ -380,21 +380,11 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   }
 
   // comparison_overflow/citation_overflow/architecture_overflow +
-  // their _count_overflow error tiers (carried-items wave): P0 hardening's
-  // family sweep gave these three vertical-stacking components (comparison/
-  // citation/architecture) a render-time box.h cap + data-dropped marker,
-  // the same "graceful landing" fix bullets.tsx got — but, unlike bullets,
-  // zero pre-render editorial signal, so a weak model saw no warning before
-  // content silently dropped behind a "+N …" marker. Same dual-threshold
-  // *shape* as bullets_overflow/bullets_count_overflow above (warn at a
-  // budget, error at an extreme ceiling), but unlike bullets_overflow (a
-  // per-pacing PACING_BUDGETS number) both thresholds here come from
-  // CAPACITY (capacity.ts) — these three have no pacing table of their own,
-  // so both are flat and pacing-independent, the same shape
-  // bullet_item_overflow/bullets_count_overflow already use. See
-  // CAPACITY.comparison/.citation/.architecture's own derivation comments
-  // (capacity.ts) for the box-geometry arithmetic (warn) and two-sided
-  // bracketing (error).
+  // their _count_overflow error tiers. comparison/citation still fold at
+  // render with a data-dropped marker. architecture no longer folds: the
+  // count ceiling is a validate hard stop. Same dual-threshold shape as
+  // bullets (warn at a budget, error at a ceiling). Thresholds come from
+  // CAPACITY (capacity.ts).
   for (const component of slide.components) {
     if (component.type === "comparison") {
       pushItemCountOverflow(issues, index, component.rows.length, {
@@ -420,8 +410,8 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         errorThreshold: CAPACITY.architecture.errorLayers,
         warnCode: "architecture_overflow",
         errorCode: "architecture_count_overflow",
-        warnMessage: `架构层数过多（>${CAPACITY.architecture.warnLayers}层），极端版式下可能被截断显示，建议精简或拆页`,
-        errorMessage: `架构层数远超合理上限（>${CAPACITY.architecture.errorLayers}），"优雅截断"已不再是诚实描述——请精简内容或拆分为多页`,
+        warnMessage: `架构层数过多（>${CAPACITY.architecture.warnLayers}层），建议精简或拆页`,
+        errorMessage: `架构层数远超合理上限（>${CAPACITY.architecture.errorLayers}），请拆分为多页`,
       })
     }
   }

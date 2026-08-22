@@ -2,8 +2,8 @@
  * Render-side component form assignment table. Forms are not IR: one
  * theme + one component maps to at most one form, looked up here and
  * ignored by renderers until a later commit wires dispatch. campaign ×
- * cycle is hub_spoke (first-listed wins), never petal_wheel. 72 rows
- * (65 prior + 7 flowchart). classroom is listed on callout like every
+ * cycle is hub_spoke (first-listed wins), never petal_wheel. 77 rows
+ * (72 prior + 5 architecture). classroom is listed on callout like every
  * other canonical theme.
  */
 
@@ -26,6 +26,7 @@ export const COMPONENT_FORMS = [
   "hanging_bare",
   "lead_word",
   "typed_nodes",
+  "layer_stack",
 ] as const
 
 export type ComponentFormId = (typeof COMPONENT_FORMS)[number]
@@ -312,6 +313,28 @@ const ASSIGNMENTS: Record<string, Record<string, FormAssignment>> = {
     insight: {
       form: "typed_nodes",
       knobs: { highlightFirst: true, radius: "soft" },
+    },
+  },
+  architecture: {
+    consulting: {
+      form: "layer_stack",
+      knobs: { highlightFirst: true },
+    },
+    swiss: {
+      form: "layer_stack",
+      knobs: { radius: "square", nodeFill: "none" },
+    },
+    academic: {
+      form: "layer_stack",
+      knobs: { radius: "square", nodeFill: "none" },
+    },
+    tech: {
+      form: "layer_stack",
+      knobs: { radius: "square" },
+    },
+    museum: {
+      form: "layer_stack",
+      knobs: { nodeStroke: "border" },
     },
   },
 }

@@ -69,7 +69,7 @@ export const THEME_TABLE_REQUIRED_SURFACES = [
   "chart:dumbbell",
   "chart:scatter",
   "chart:gauge",
-  // 18 forms
+  // 19 forms
   "form:icon_columns",
   "form:badge_cards",
   "form:outline_grid",
@@ -88,6 +88,7 @@ export const THEME_TABLE_REQUIRED_SURFACES = [
   "form:hanging_bare",
   "form:lead_word",
   "form:typed_nodes",
+  "form:layer_stack",
 ] as const
 
 export type ThemeChartType =

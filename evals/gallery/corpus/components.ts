@@ -483,6 +483,7 @@ export const FORM_VARIANTS: readonly FormVariant[] = [
   { id: "timeline · vertical nodes", theme: "stage", build: (lex) => COMPONENT_BUILDERS.timeline!(lex) },
   { id: "image_grid · numbered photos", theme: "museum", build: (lex) => COMPONENT_BUILDERS.image_grid!(lex) },
   { id: "flowchart · typed nodes", theme: "swiss", build: (lex) => COMPONENT_BUILDERS.flowchart!(lex) },
+  { id: "architecture · layer stack", theme: "consulting", build: (lex) => COMPONENT_BUILDERS.architecture!(lex) },
 ]
 
 /** Icons for the full-load cards, cycled. One per card, none repeated. */
@@ -501,18 +502,6 @@ const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as 
  * ordinary corpus at the top of this file stays ordinary.
  */
 export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
-  // 4 layers. architecture.tsx `LAYER_H + GAP = 84`. CAPACITY.warnLayers=3
-  // is the 277px worst-case editorial number, not consulting's taller
-  // content rect. Probe on consulting densityPage. 5 layers marks on en.
-  architecture: (lex) => ({
-    type: "architecture",
-    direction: "top_down",
-    layers: [...lex.chapters, ...lex.stages].slice(0, 4).map((title, i) => ({
-      title,
-      items: slice(lex.labels, 4, i * 4),
-    })),
-  }),
-
   // 9 items. bullets.tsx height-budget visible count. Probe on consulting
   // densityPage. 10 items marks on en.
   bullets: (lex) => ({

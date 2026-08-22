@@ -21,10 +21,8 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 // though each component's own value set differs, exactly like those two
 // already differ from each other) is additive and optional: omitted (or
 // `"top_down"`) is byte-identical to today's behavior, `"bottom_up"` flips
-// which end of `layers` paints at the bottom of the stack without changing
-// which layers a `box.h` overflow truncates (truncation still keeps
-// `layers[0..N)` and drops the tail, regardless of direction — only the
-// vertical *painting* order flips).
+// which end of `layers` paints at the bottom of the stack. Overflow is a
+// validate gate (`CAPACITY.architecture`), not a render-time fold.
 //
 // No `order`-style alias added despite it being a plausible synonym: this
 // codebase's alias tables are evidence-driven (see data-table.ts's own

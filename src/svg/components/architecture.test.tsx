@@ -97,10 +97,9 @@ describe("architecture component", () => {
       ctx,
     )
     expect(h3).toBeGreaterThan(h2)
-    // 3 layers should be exactly 50% more height than 2 layers
-    // measure = n*(72+12) - 12 => 2 layers = 156, 3 layers = 240
-    expect(h2).toBe(2 * (72 + 12) - 12)
-    expect(h3).toBe(3 * (72 + 12) - 12)
+    // Flush layer-stack: n * 64, no inter-layer gap.
+    expect(h2).toBe(2 * 64)
+    expect(h3).toBe(3 * 64)
   })
 
   it("shrinks an overlong layer title to fit the reserved title column", () => {
@@ -167,7 +166,7 @@ describe("architecture component", () => {
       const rects = Array.from(container.querySelectorAll("rect"))
       expect(rects[0].getAttribute("y")).toBe("0")
       expect(rects[rects.length - 1].getAttribute("y")).toBe(
-        String((layers.length - 1) * (72 + 12)),
+        String((layers.length - 1) * 64),
       )
     })
 
@@ -197,11 +196,11 @@ describe("architecture component", () => {
       // layers[0] ("Presentation") is the first rect emitted (DOM order
       // still follows array order), but its y must now be the bottom-most
       // slot instead of 0.
-      expect(rects[0].getAttribute("y")).toBe(String((layers.length - 1) * (72 + 12)))
+      expect(rects[0].getAttribute("y")).toBe(String((layers.length - 1) * 64))
       expect(rects[rects.length - 1].getAttribute("y")).toBe("0")
     })
 
-    it("bottom_up keeps the same layers[0..N) truncation policy under box.h overflow (drops the tail, not the foundation)", () => {
+    it("bottom_up still paints every layer, including the tail, with no data-dropped fold", () => {
       const manyLayers = Array.from({ length: 10 }, (_, i) => ({
         title: `Layer ${i}`,
         items: ["x"],
@@ -218,12 +217,9 @@ describe("architecture component", () => {
         (t) => t.getAttribute("fill") === ctx.colors.primary,
       )
       const titles = texts.map((t) => t.textContent)
-      // Same head-kept/tail-dropped policy as top_down: Layer 0 (the
-      // "foundation" of a bottom-up ladder) must still be visible.
       expect(titles).toContain("Layer 0")
-      expect(titles).not.toContain("Layer 9")
-      const dropped = container.querySelector("[data-dropped]")
-      expect(dropped).toBeTruthy()
+      expect(titles).toContain("Layer 9")
+      expect(container.querySelector("[data-dropped]")).toBeNull()
     })
   })
 
@@ -239,39 +235,28 @@ describe("architecture component", () => {
     expect(g?.getAttribute("transform")).toBe("translate(80,100)")
   })
 
-  // P0 hardening (robustness deep-review D1, family-sweep sibling of
-  // bullets.tsx): `layers` has no schema ceiling and each layer costs a
-  // fixed LAYER_H+GAP px regardless of content.
-  describe("box.h-aware vertical cap (graceful landing)", () => {
-    const manyLayers = Array.from({ length: 100 }, (_, i) => ({
+  // Overflow is a validate gate, not a render-time fold. box.h no longer
+  // slices layers or stamps data-dropped.
+  describe("no render-time fold", () => {
+    const manyLayers = Array.from({ length: 8 }, (_, i) => ({
       title: `Layer ${i}`,
       items: ["x"],
     }))
     const manyComponent = { type: "architecture" as const, layers: manyLayers }
 
-    it("caps rendered layers to what box.h can hold, marks the drop, and never draws a rect past the box", () => {
-      const box = { x: 0, y: 0, w: 1120, h: 300 }
+    it("paints every layer even when box.h is smaller than the stack, with no data-dropped marker", () => {
+      const box = { x: 0, y: 0, w: 1120, h: 120 }
       const { container } = svg(architecture.render(manyComponent, box, ctx))
       const rects = Array.from(container.querySelectorAll("rect"))
-      expect(rects.length).toBeGreaterThan(0)
-      expect(rects.length).toBeLessThan(manyLayers.length)
-      for (const rect of rects) {
-        const y = Number(rect.getAttribute("y"))
-        const h = Number(rect.getAttribute("height"))
-        expect(y + h).toBeLessThanOrEqual(box.h)
-      }
-
-      const dropped = container.querySelector("[data-dropped]")
-      expect(dropped).toBeTruthy()
-      const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
-      expect(hiddenCount + rects.length).toBe(manyLayers.length)
-      expect((dropped!.textContent ?? "").trim()).toBe("")
+      expect(rects.length).toBe(manyLayers.length)
+      expect(container.querySelector("[data-dropped]")).toBeNull()
+      expect(container.innerHTML).not.toMatch(/\+\d+/)
     })
 
-    it("still renders at least one layer even when box.h is far smaller than a single layer", () => {
+    it("still renders every layer even when box.h is far smaller than a single layer", () => {
       const box = { x: 0, y: 0, w: 1120, h: 5 }
       const { container } = svg(architecture.render(manyComponent, box, ctx))
-      expect(container.querySelectorAll("rect").length).toBeGreaterThanOrEqual(1)
+      expect(container.querySelectorAll("rect").length).toBe(manyLayers.length)
     })
 
     it("is a byte-identical no-op when box.h is omitted", () => {
@@ -299,3 +284,41 @@ describe("architecture component", () => {
     })
   })
 })
+
+describe("architecture layer-stack", () => {
+  it("labels each row L1, L2, L3 from the left in mono", () => {
+    const { container } = svg(
+      architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+    )
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+    expect(texts).toEqual(expect.arrayContaining(["L1", "L2", "L3"]))
+    const l1 = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "L1")
+    expect(l1?.getAttribute("font-family")).toBe(ctx.fonts.mono)
+    expect(Number(l1?.getAttribute("x"))).toBeLessThan(80)
+  })
+
+  it("puts the layer title in the middle band and items on the right", () => {
+    const { container } = svg(
+      architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+    )
+    const title = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "Presentation")
+    const items = Array.from(container.querySelectorAll("text")).find((t) => t.textContent?.includes("React"))
+    expect(title).toBeTruthy()
+    expect(items).toBeTruthy()
+    expect(Number(title!.getAttribute("x"))).toBeGreaterThan(Number(
+      Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "L1")!.getAttribute("x"),
+    ))
+    expect(Number(items!.getAttribute("x"))).toBeGreaterThan(Number(title!.getAttribute("x")))
+  })
+
+  it("draws hairline separators between layers, not a leftover +N marker", () => {
+    const { container } = svg(
+      architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+    )
+    expect(container.querySelectorAll("line").length).toBe(2)
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+    const markup = container.innerHTML
+    expect(markup).not.toMatch(/\+\d+/)
+  })
+})
+
