@@ -88,11 +88,12 @@ describe("explicit seed: revision stability", () => {
     // documents for its own seed): declaring beat "anchor" on p-2 flips
     // p-2's own raw pick from "rail-numbered" to "bento-panel" for this seed
     // — neither id is in "anchor"'s own tendency set (banner-heading/
-    // stacked-poster/side-highlight/split-band, `BEAT_TENDENCIES`,
+    // stacked-poster/split-band, `BEAT_TENDENCIES`,
     // layout-selection.ts — `split-band` joined by the content-layout
-    // expansion wave's own T3 task), so this isn't beat directly favoring
-    // the new pick. It's the standard weighted-interval-sampling effect:
-    // boosting banner-heading/stacked-poster/side-highlight/split-band's own
+    // expansion wave's own T3 task, side-highlight later retired), so this
+    // isn't beat directly favoring the new pick. It's the standard
+    // weighted-interval-sampling effect: boosting
+    // banner-heading/stacked-poster/split-band's own
     // weight (each now max(1,3)=3, up from strategy-only 1) shifts where
     // every other id's interval boundary falls for the same hash, the same
     // "changing one candidate's weight can flip a different candidate's

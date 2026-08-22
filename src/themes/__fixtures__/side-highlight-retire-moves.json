@@ -1,0 +1,1451 @@
+{
+  "consulting": {},
+  "enterprise": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "academic": {
+    "1": {
+      "2": {
+        "from": "two-column",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "narrow-column",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "two-column",
+        "to": "bento-panel"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "rail-numbered"
+      }
+    }
+  },
+  "insight": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "quiet-frame",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "campaign": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "quiet-frame",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "classroom": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "ink": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "tech": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "runway": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "stacked-poster"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    }
+  },
+  "journal": {
+    "1": {
+      "2": {
+        "from": "two-column",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "narrow-column",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "two-column",
+        "to": "bento-panel"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "rail-numbered"
+      }
+    }
+  },
+  "luxe": {
+    "1": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "bento-panel",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "quiet-frame",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "asymmetric-triptych",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "bento-panel",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "quiet-frame",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "side-highlight",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "quiet-frame"
+      }
+    }
+  },
+  "heritage": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "pulse": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "terra": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "ember": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "vermilion": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "split-band",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "crayon": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "quiet-frame",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "arena": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "split-band",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "side-highlight",
+        "to": "two-column"
+      }
+    }
+  },
+  "museum": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "stage": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "quiet-frame",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "side-highlight",
+        "to": "two-column"
+      }
+    }
+  },
+  "lecture": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "side-highlight",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "bento-panel",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "bento-panel",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "bento-panel"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "quiet-frame",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "bento-panel",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "quiet-frame",
+        "to": "narrow-column"
+      }
+    }
+  },
+  "swiss": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "stacked-poster",
+        "to": "two-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "narrow-column",
+        "to": "two-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "split-band",
+        "to": "banner-heading"
+      }
+    }
+  },
+  "memo": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "narrow-column",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "two-column",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "two-column",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  },
+  "playbill": {
+    "1": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "3": {
+      "3": {
+        "from": "split-band",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "banner-heading",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "rail-numbered",
+        "to": "split-band"
+      },
+      "5": {
+        "from": "bento-panel",
+        "to": "two-column"
+      }
+    }
+  }
+}

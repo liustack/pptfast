@@ -135,12 +135,13 @@ describe("THEME_DEFINITIONS", () => {
     "stacked-poster",
     "bento-panel",
     "tone-adaptive-content",
-    // P1 variety wave, task 4: content pool 7 -> 10.
-    "side-highlight",
+    // P1 variety wave, task 4: content pool 7 -> 10. side-highlight later
+    // retired.
     "asymmetric-triptych",
     "quiet-frame",
     // content-layout expansion wave, task T2. Gallery r2 D10 retired
-    // image-lead-split. Auto-selectable content pool is 11.
+    // image-lead-split. This change retires side-highlight. Auto-selectable
+    // content pool is 10.
     "split-band",
   ]
   // Gallery r2 D20: framed themes do not sample banner-heading / split-band /
@@ -151,11 +152,11 @@ describe("THEME_DEFINITIONS", () => {
     "rail-numbered",
     "bento-panel",
     "tone-adaptive-content",
-    "side-highlight",
     "asymmetric-triptych",
     "quiet-frame",
   ]
-  // Gallery r2 E22: consulting drops side-highlight. Playbill keeps FULL_CONTENT.
+  // Gallery r2 E22: consulting used an explicit named list without
+  // side-highlight. That id is now globally retired. Playbill keeps FULL_CONTENT.
   const CONSULTING_CONTENT = [
     "narrow-column",
     "two-column",
@@ -214,7 +215,7 @@ describe("THEME_DEFINITIONS", () => {
     expect(THEME_DEFINITIONS.stage.layoutTendencies).toEqual({
       cover: ["poster-center"],
       chapter: ["constellation-chapter", "tone-adaptive-chapter"],
-      content: ["quiet-frame", "side-highlight"],
+      content: ["quiet-frame", "asymmetric-triptych"],
       ending: ["masthead-ending", "fashion-ending"],
     })
     expect(THEME_DEFINITIONS.lecture.layoutTendencies).toEqual({

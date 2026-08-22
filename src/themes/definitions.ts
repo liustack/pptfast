@@ -178,16 +178,17 @@ const FRAMED_CONTENT_LAYOUTS: readonly string[] = [
   "rail-numbered",
   "bento-panel",
   "tone-adaptive-content",
-  "side-highlight",
   "asymmetric-triptych",
   "quiet-frame",
 ]
 
 /**
- * Gallery r2 E22: consulting only drops `side-highlight` (its 176px primary
- * chrome reads as a right vertical card). Playbill keeps the full auto
- * content pool. consulting's content tendencies (`banner-heading` /
- * `split-band`) stay inside this set.
+ * Gallery r2 E22: consulting used an explicit named list so it would not
+ * sample `side-highlight` (its 176px primary chrome reads as a right
+ * vertical card). That id is now globally retired. The named list stays
+ * (do not switch consulting back to `FULL_LAYOUTS.content`). Playbill keeps
+ * the full auto content pool. consulting's content tendencies
+ * (`banner-heading` / `split-band`) stay inside this set.
  */
 const CONSULTING_CONTENT_LAYOUTS: readonly string[] = [
   "narrow-column",
@@ -283,9 +284,10 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 一起撤销：两个主题重测后的 accent-ink 对比度分别是 8.19:1/6.65:1，
  * `auditDeck` 复核零 low-contrast 发现。W4 当时的终态是十三主题不折不扣的
  * {@link FULL_LAYOUTS} 全集。Gallery r2（2026-08-22）在 content 轴重新收窄：
- * D10 退订 image-lead-split 后自动池 11。D20 把 lecture / luxe 换成
- * `FRAMED_CONTENT_LAYOUTS`。E22 把 consulting 换成
- * `CONSULTING_CONTENT_LAYOUTS`。其余主题的 content 仍是全集。
+ * D10 退订 image-lead-split 后自动池 11。随后 side-highlight 退订，自动池
+ * 10。D20 把 lecture / luxe 换成 `FRAMED_CONTENT_LAYOUTS`。E22 把
+ * consulting 换成 `CONSULTING_CONTENT_LAYOUTS`（显式名单，id 全局退订后
+ * 仍保持名单）。其余主题的 content 仍是全集。
  */
 /**
  * classroom 自己的结构身份（theme-structure-allocation wave）。四轴是
@@ -477,13 +479,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       //   `narrative/index.ts` 明确「从不出现在任何 strategy 的
       //   identityTendencies 里」的万金油 id，在任何叙事下都拿满额边际权重，
       //   也是把 insight 从盲序列上撬开的那一个。
-      // - content `bento-panel` + `side-highlight`：六格拼盘 + 正文栏右缘常驻
-      //   primary 面板，正是彭博终端那两栏。tight 那一档要的就是这个密度，
-      //   两个 id 都不在 `briefing` 的 content 偏好里。
+      // - content `bento-panel` + `asymmetric-triptych`：六格拼盘 + 主栏加
+      //   两块次级面板，tight 档要的密度。两个 id 都不在 `briefing` 的
+      //   content 偏好里。
       // - ending `constellation-ending` 追加：居中「Thank you.」+ accent 句号 +
       //   短签名条，干脆自信，与居中海报式的 `poster-ending` 同属居中收尾。
       chapter: ["poster-chapter", "tone-adaptive-chapter"],
-      content: ["bento-panel", "side-highlight"],
+      content: ["bento-panel", "asymmetric-triptych"],
       ending: ["poster-ending", "constellation-ending"],
     },
   },
@@ -751,12 +753,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // - chapter `fashion-chapter` + `rail-chapter`：满版强调色断章接笔刷的
       //   斜势，居中巨标压整版色是舞台正面。两个 id 都不在 briefing 的
       //   chapter 偏好里。
-      // - content `stacked-poster` + `side-highlight`：主视觉压顶加常驻高亮栏。
-      //   两个 id 都不在 briefing 的 content 偏好里。
+      // - content `stacked-poster` + `split-band`：主视觉压顶加通栏色带，重拳
+      //   配对。两个 id 都不在 briefing 的 content 偏好里。
       // - ending `fashion-ending` + `constellation-ending`：满版收官加签名条。
       //   两个 id 都不在 briefing 的 ending 偏好里。
       chapter: ["fashion-chapter", "rail-chapter"],
-      content: ["stacked-poster", "side-highlight"],
+      content: ["stacked-poster", "split-band"],
       ending: ["fashion-ending", "constellation-ending"],
     },
   },
@@ -1168,12 +1170,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // 覆盖本条目上方「chapter / ending 不声明」的旧裁剪。
       // - chapter `banner-chapter` + `fashion-chapter`：两式满版（整版紫黑压
       //   白字、满版电光绿）。两个 id 都不在 briefing 的 chapter 偏好里。
-      // - content `split-band` + `side-highlight`：通栏头带加常驻侧栏，正是
-      //   HUD 的读法。两个 id 都不在 briefing 的 content 偏好里。
+      // - content `split-band` + `asymmetric-triptych`：通栏头带加三区拼板，
+      //   HUD 密度。两个 id 都不在 briefing 的 content 偏好里。
       // - ending `fashion-ending` + `banner-ending`：满版收官加联系页。后者
       //   与 briefing 重合，真实边际来自满版收官。
       chapter: ["banner-chapter", "fashion-chapter"],
-      content: ["split-band", "side-highlight"],
+      content: ["split-band", "asymmetric-triptych"],
       ending: ["fashion-ending", "banner-ending"],
     },
   },
@@ -1232,12 +1234,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // chapter / content / ending 走分配表软倾向。layouts 收窄仍待设计板。
       // - chapter `constellation-chapter` + `tone-adaptive-chapter`：空场只留
       //   一枚序号或一枚水印。前者与 briefing 重合，真实边际来自万金油水印。
-      // - content `quiet-frame` + `side-highlight`：留白框加常驻侧栏。两个 id
-      //   都不在 briefing 的 content 偏好里。
+      // - content `quiet-frame` + `asymmetric-triptych`：留白框加三区拼板，
+      //   airy 档。两个 id 都不在 briefing 的 content 偏好里。
       // - ending `masthead-ending` + `fashion-ending`：居中报头加满版黑场收官。
       //   前者与 briefing 重合，真实边际来自满版收官。
       chapter: ["constellation-chapter", "tone-adaptive-chapter"],
-      content: ["quiet-frame", "side-highlight"],
+      content: ["quiet-frame", "asymmetric-triptych"],
       ending: ["masthead-ending", "fashion-ending"],
     },
   },

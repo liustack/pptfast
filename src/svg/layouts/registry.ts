@@ -118,7 +118,6 @@ import { layoutDef as contentBannerHeading } from "./content-banner-heading"
 import { layoutDef as contentStackedPoster } from "./content-stacked-poster"
 import { layoutDef as contentBentoPanel } from "./content-bento-panel"
 import { layoutDef as contentToneAdaptiveContent } from "./content-tone-adaptive-content"
-import { layoutDef as contentSideHighlight } from "./content-side-highlight"
 import { layoutDef as contentAsymmetricTriptych } from "./content-asymmetric-triptych"
 import { layoutDef as contentQuietFrame } from "./content-quiet-frame"
 import { layoutDef as contentSplitBand } from "./content-split-band"
@@ -163,8 +162,10 @@ export type SlotName =
   | "rail"
   | "meta"
   | "decor"
-  // P1 variety wave, task 4 (content-pool expansion): side-highlight's
-  // persistent frame panel, asymmetric-triptych's three body regions.
+  // P1 variety wave, task 4 (content-pool expansion): the retired
+  // side-highlight's persistent frame panel, plus asymmetric-triptych's
+  // three body regions. `panel` is unused after that retirement, kept
+  // like `aside` as a first-class slot name.
   | "panel"
   | "lead"
   | "top"
@@ -537,13 +538,13 @@ const ENDING_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
 //     bento-panel's true geometric ceiling and stays for documentation and
 //     for any future pacing tier looser than 5, but no deck can reach it
 //     through today's gate.
-//   - side-highlight/asymmetric-triptych/quiet-frame (task 4's three new
-//     layouts): 4, the same flat single-stack default every layout
-//     but bento-panel already carries — none of the three's own body
-//     column/region ever exceeds the pool's existing narrowest single-stack
-//     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-layout
-//     number is warranted (each file's own composition-sketch header
-//     derives this explicitly, not just asserts it).
+//   - asymmetric-triptych/quiet-frame (task 4's remaining layouts after
+//     side-highlight retired): 4, the same flat single-stack default every
+//     layout but bento-panel already carries — neither body's region exceeds
+//     the pool's existing narrowest single-stack width (880px,
+//     `narrow-column`'s `COLUMN_W`), so no new per-layout number is
+//     warranted (each file's own composition-sketch header derives this
+//     explicitly, not just asserts it).
 //   - image-lead-split (task T1): body 4 too, and visual 1 — its 435px text
 //     column is narrower than every other layout's own single-stack
 //     column, but still wider than the pool's already-audited narrowest
@@ -593,7 +594,6 @@ const CONTENT_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [contentStackedPoster.id]: contentStackedPoster,
   [contentBentoPanel.id]: contentBentoPanel,
   [contentToneAdaptiveContent.id]: contentToneAdaptiveContent,
-  [contentSideHighlight.id]: contentSideHighlight,
   [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
   [contentQuietFrame.id]: contentQuietFrame,
   [contentSplitBand.id]: contentSplitBand,
@@ -626,7 +626,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 52 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 51 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

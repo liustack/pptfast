@@ -142,14 +142,14 @@ export interface StrategyDefinition {
    * was originally proposed here on the same "frame, not argument" theory
    * above, but the wave's final review refuted that specific claim with
    * in-file evidence: `split-band`'s defining feature, a full-bleed
-   * (x=0, w=1280) `colors.primary` header band, is a strictly stronger
-   * version of the exact "bold opaque color block" idiom `side-highlight`
-   * already earns `showcase.layoutTendencies` membership for (see that
-   * entry's own comment below), and showcase's identity picks
-   * (`fashion-masthead`/`fashion-chapter`/`fashion-ending`) are themselves
-   * built from full-bleed color blocks — visual weight *is* showcase's
-   * rhetorical register, not a register-neutral frame choice. `split-band`
-   * is listed in `showcase.layoutTendencies` below instead of here.
+   * (x=0, w=1280) `colors.primary` header band, is the "bold opaque color
+   * block" idiom that earns `showcase.layoutTendencies` membership (the
+   * retired `side-highlight` panel used to share that register), and
+   * showcase's identity picks (`fashion-masthead`/`fashion-chapter`/
+   * `fashion-ending`) are themselves built from full-bleed color blocks —
+   * visual weight *is* showcase's rhetorical register, not a
+   * register-neutral frame choice. `split-band` is listed in
+   * `showcase.layoutTendencies` below instead of here.
    *
    * **Historical note (corrected P1 variety wave, task 3):** this field's
    * doc comment used to claim cover/chapter/ending stayed uniformly sampled
@@ -385,19 +385,13 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // normalization.
     tendencies: ["image-split", "image-top", "image-bottom", "image-annotate", "image_grid", "kpi_cards"],
     // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）+
-    // 常驻高亮色块（side-highlight，P1 variety wave task 4：content 池扩容
-    // 优先落给代表性不足的 showcase，此前仅 2 项。一块不透明主色高亮面板
-    // 是这个池子里视觉冲击力最直接的新表达，与 showcase 的门面页选型
-    // poster-center/fashion-masthead/fashion-chapter/fashion-ending 同一
-    // 「大胆色块」气质）+ 满版色块通栏（split-band，content-layout
-    // expansion wave task T3 final-review correction：`split-band` 的
-    // header 是一块贯穿整页宽度（x=0, w=1280）的不透明 colors.primary 通栏，
-    // 是 side-highlight 那块「常驻高亮面板」同一套「大胆色块」表达的更强
-    // 版本——不再侧边而是通栏，视觉冲击力只增不减。showcase 自己的门面页
-    // 选型（fashion-masthead 的满版主色块+强调色带、fashion-chapter/
-    // fashion-ending 的满版强调色块）本身就是这套「满版色块」气质，
-    // split-band 是这套气质在 content 页上的自然延伸，不是勉强凑数）。
-    layoutTendencies: ["stacked-poster", "bento-panel", "side-highlight", "split-band"],
+    // 满版色块通栏（split-band：header 是一块贯穿整页宽度（x=0, w=1280）
+    // 的不透明 colors.primary 通栏，覆盖「大胆不透明色块」这一档。
+    // showcase 自己的门面页选型（fashion-masthead 的满版主色块+强调色带、
+    // fashion-chapter/fashion-ending 的满版强调色块）本身就是这套「满版
+    // 色块」气质，split-band 是这套气质在 content 页上的自然延伸。
+    // 原 side-highlight 常驻侧栏已退订）。
+    layoutTendencies: ["stacked-poster", "bento-panel", "split-band"],
     // Identity tendencies: showcase's cover/chapter/ending want the same
     // glossy, visual-impact-first punch as its content picks.
     // - cover `poster-center`: fully centered, no kicker, a single bottom

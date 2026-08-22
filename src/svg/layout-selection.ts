@@ -96,11 +96,6 @@ type PageBeat = NonNullable<Slide["beat"]>
  *   - `stacked-poster` — its non-degrade path routes component 1 into a
  *     dedicated `hero` slot (capacity 1): poster-scale single-subject
  *     treatment, the most visually loud body geometry in the content pool.
- *   - `side-highlight` (P1 variety wave, task 4) — a persistent, opaque
- *     `colors.primary` panel runs the page's full content height,
- *     unconditionally, regardless of `slide.components` — the same "loud,
- *     unmissable page identity" register as the two members above, just
- *     asserted beside the body instead of above or inside it.
  *   - `split-band` (content-layout expansion wave, task T3 —
  *     `.issues/2026-07-26-content-archetypes/plan.md`) — its full-bleed
  *     `header` band *is* the heading treatment (a filled `colors.primary`
@@ -108,7 +103,8 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     1184 content margins the way even `banner-heading`'s own assertion
  *     banner is) — the same "banner rect is the heading" identity that
  *     already earns `banner-heading` its anchor membership, just escalated
- *     to genuinely full-bleed.
+ *     to genuinely full-bleed. (The retired `side-highlight` panel used
+ *     to share this "loud opaque color block" register beside the body.)
  * - **dense** (many discrete items, high information density):
  *   - `bento-panel` — the only content layout whose `body` capacity is 6
  *     (every other is 4): a multi-cell grid sized to hold the most, not the
@@ -148,7 +144,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  * to read as beat-neutral as well.
  */
 const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
-  anchor: ["banner-heading", "stacked-poster", "side-highlight", "split-band"],
+  anchor: ["banner-heading", "stacked-poster", "split-band"],
   dense: ["bento-panel", "two-column", "rail-numbered", "asymmetric-triptych"],
   breathing: ["narrow-column", "quiet-frame"],
 }

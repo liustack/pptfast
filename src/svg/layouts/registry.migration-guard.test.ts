@@ -37,7 +37,7 @@ const fixture = JSON.parse(
 ) as { order: string[]; registry: Record<string, Record<string, unknown>> }
 
 /** Layouts retired after the capture. Compare the rest, skip these ids. */
-const RETIRED_LAYOUT_IDS = new Set(["image-lead-split"])
+const RETIRED_LAYOUT_IDS = new Set(["image-lead-split", "side-highlight"])
 
 /** `live`, cut down to the keys `captured` has — nothing else is this guard's business. */
 function capturedFieldsOf(live: Record<string, unknown>, captured: Record<string, unknown>) {

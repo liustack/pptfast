@@ -51,12 +51,13 @@ const CONTENT_LAYOUT_IDS = [
   "stacked-poster",
   "bento-panel",
   "tone-adaptive-content",
-  // P1 variety wave, task 4: content pool 7 -> 10.
-  "side-highlight",
+  // P1 variety wave, task 4: content pool 7 -> 10. side-highlight later
+  // retired.
   "asymmetric-triptych",
   "quiet-frame",
   // content-layout expansion wave, task T2. Gallery r2 D10 retired
-  // image-lead-split. Auto-selectable content pool is 11.
+  // image-lead-split. This change retires side-highlight. Auto-selectable
+  // content pool is 10.
   "split-band",
 ]
 
@@ -120,8 +121,7 @@ describe("resolveLayoutId", () => {
       if (tendencyIds.includes(picked)) tendencyHits++
     }
     // 3 ids at weight 3 (=9) vs 7 ids (10-3=7) at weight 1 (=7) over the
-    // full 10-id content pool (P1 variety wave, task 4: 7 -> 10 — pyramid's
-    // own 3-member set is unchanged, only the pool denominator grew):
+    // full 10-id content pool (side-highlight retired after D10's 11):
     // expected tendency share = 9/16 = 0.5625. Wide bounds (not a tight
     // equality) — this is a distribution smoke test proving the weighting
     // is wired in, `weightedPickBySeed`'s own test owns the precise ratio
@@ -185,10 +185,10 @@ describe("resolveLayoutId", () => {
     // instructional's own layoutTendencies (rail-numbered/two-column/
     // asymmetric-triptych, P1 variety wave task 4) share zero members with
     // beat "anchor"'s tendency set (banner-heading/stacked-poster/
-    // side-highlight, same task, layout-selection.ts's BEAT_TENDENCIES) —
+    // split-band, layout-selection.ts's BEAT_TENDENCIES) —
     // an isolated pairing so this test measures the beat layer's own pull,
     // not strategy spillover onto the same ids.
-    const anchorIds = ["banner-heading", "stacked-poster", "side-highlight"]
+    const anchorIds = ["banner-heading", "stacked-poster", "split-band"]
     const N = 600
     let anchorHits = 0
     for (let i = 0; i < N; i++) {
@@ -206,7 +206,7 @@ describe("resolveLayoutId", () => {
     }
     // Weights over the full 10-id pool: rail-numbered/two-column/
     // asymmetric-triptych=3 each (strategy only, 9 total), banner-heading/
-    // stacked-poster/side-highlight=3 each (beat only, 9 total),
+    // stacked-poster/split-band=3 each (beat only, 9 total),
     // bento-panel/narrow-column/tone-adaptive-content/quiet-frame=1 each (4
     // total) — total weight 22, anchor-tendency share = 9/22 ≈ 0.409.
     // Without the beat layer (see the "narrative weighting" test above) the
@@ -246,8 +246,8 @@ describe("resolveLayoutId", () => {
     }
     // Weights: bento-panel/banner-heading/two-column=3 each (strategy only,
     // 9 total), narrow-column/quiet-frame=3 each (beat only, 6 total),
-    // rail-numbered/stacked-poster/tone-adaptive-content/side-highlight/
-    // asymmetric-triptych=1 each (5 total) — total weight 20, combined
+    // rail-numbered/stacked-poster/tone-adaptive-content/asymmetric-triptych/
+    // split-band=1 each (5 total) — total weight 20, combined
     // breathing share = 6/20 = 0.3, each member individually = 3/20 = 0.15.
     // Both members must show real, comparable lift — a single-member set
     // would have one candidate carrying the whole 0.3 alone.
@@ -277,10 +277,10 @@ describe("resolveLayoutId", () => {
       )!
       if (picked === "banner-heading") hits++
     }
-    // Weights over the full 10-id pool (P1 variety wave, task 4) under max
+    // Weights over the full 10-id pool (side-highlight retired) under max
     // composition: banner-heading=max(3,3)=3 (shared member), bento-panel/
     // two-column=max(3,1)=3 each (strategy only), stacked-poster/
-    // side-highlight=max(1,3)=3 each (beat only), narrow-column/
+    // split-band=max(1,3)=3 each (beat only), narrow-column/
     // rail-numbered/tone-adaptive-content/asymmetric-triptych/quiet-frame=
     // max(1,1)=1 each (5 ids) — total 3×5 + 1×5 = 20, banner-heading share
     // = 3/20 = 0.15 exactly. Bounds set around that value and, deliberately,
@@ -313,13 +313,13 @@ describe("resolveLayoutId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max, 11-id auto pool after D10 (image-lead-split
-    // retired): narrow-column=3, quiet-frame=3, stacked-poster=3, the
-    // remaining 8 ids at 1 — total 17, share 3/17 ≈ 0.176. Bounds set with
-    // margin on both sides of that point estimate for N=5000 sampling noise.
+    // Weights under Math.max, 10-id auto pool after side-highlight retired:
+    // narrow-column=3, quiet-frame=3, stacked-poster=3, the remaining 7 ids
+    // at 1 — total 16, share 3/16 = 0.1875. Bounds set with margin on both
+    // sides of that point estimate for N=5000 sampling noise.
     const share = narrowColumnHits / N
-    expect(share).toBeGreaterThan(0.11)
-    expect(share).toBeLessThan(0.19)
+    expect(share).toBeGreaterThan(0.14)
+    expect(share).toBeLessThan(0.23)
     // Explicitly below what the old multiplicative formula would give
     // (narrow-column=3×3=9 against a pool whose shared/beat-only members
     // also square). The regression this fix round closes.
@@ -1142,18 +1142,18 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Gallery r2 D10 retired image-lead-split and shrank the auto pool.
-    // Seed 0 is the first academic 2-page fixture where page 0 and page 1's
-    // raw pick both land on `rail-numbered`, so the redraw still fires.
+    // side-highlight retirement shrank the auto pool 11 -> 10. Seed 1 is
+    // the first academic 2-page fixture where page 0 and page 1's raw pick
+    // both land on `narrow-column`, so the redraw still fires.
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 0 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 1 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
-    expect(resolveEffectiveLayoutId(ir, slides[0], 0)).toBe("rail-numbered")
+    expect(resolveEffectiveLayoutId(ir, slides[0], 0)).toBe("narrow-column")
 
     // Page 1: the actual point of this test. Render parity on the one page
     // where the swap-to-runner-up branch is live.
@@ -1171,7 +1171,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      0,
+      1,
       "1",
       undefined,
       resolveIrStrategy(ir),
@@ -1181,11 +1181,12 @@ describe("render parity with FullSlideSvg", () => {
     )
     // The raw pick collides with page 0's own resolved id — this is the
     // actual collision the redraw exists to break.
-    expect(unswappedRawPick).toBe("rail-numbered")
+    expect(unswappedRawPick).toBe("narrow-column")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "two-column".
+    // branch, not some other code path, is what produced
+    // "tone-adaptive-content".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("two-column")
+    expect(resolved).toBe("tone-adaptive-content")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the layout branch is correctly skipped both sides)", () => {
