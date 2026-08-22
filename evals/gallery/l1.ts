@@ -59,6 +59,7 @@ const OVERFLOW_MARKER = /\+\d+\s*(…|\.{3}|more|项)/i
 const OVERFLOW_MARKER_ZH = /另有\s*\d+\s*项/
 const VERTICAL_WM = /^(tb|tb-rl|vertical-rl|vertical-lr)$/i
 const LATIN = /[A-Za-z]/
+const PUNCT_ONLY = /^[\s"'“”‘’「」『』（）()[\]【】…·•、，。！？：:;,.!?/-]+$/
 
 function parseRoot(markup: string): Element {
   const Parser = getPlatform().domParser ?? globalThis.DOMParser
@@ -314,7 +315,7 @@ function findStrikethrough(geo: Geometry, findings: L1Finding[]): void {
 }
 
 function findInkOverlap(geo: Geometry, findings: L1Finding[]): void {
-  const inks = geo.texts.filter((t) => !t.decor && t.content)
+  const inks = geo.texts.filter((t) => !t.decor && t.content && !PUNCT_ONLY.test(t.content))
   for (let i = 0; i < inks.length; i++) {
     const a = inkBox(inks[i]!)
     const areaA = Math.max(0, a.right - a.left) * Math.max(0, a.bottom - a.top)

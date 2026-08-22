@@ -97,6 +97,14 @@ describe("auditL1 planted defects", () => {
     expect(codes(svg)).toContain("overlap")
   })
 
+  it("does not flag a hanging quotation mark against the first glyph as overlap", () => {
+    const svg = wrap(
+      `<text x="96" y="200" font-size="48">“</text>` +
+        `<text x="110" y="200" font-size="24">我们不是在卖算法，是在卖一条产线少停一次机。</text>`,
+    )
+    expect(codes(svg)).not.toContain("overlap")
+  })
+
   it("does not flag stacked 70px lines at y=360 and y=435 as overlap", () => {
     const svg = wrap(
       `<text x="200" y="360" font-size="70" font-weight="700">岭原智能 2026</text>` +
