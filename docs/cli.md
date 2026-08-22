@@ -27,7 +27,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> [-o <dir>] [--html] [--no-git-ignore]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages. Without `-o`, writes `<project>/.pptfast/<deck>/` |
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes |
-| `migrate <input> -o <output>` | Convert a v3 IR file to v4, rewrite chrome to branding or a retired theme id onto classroom, or convert a `deck.plan.json` project directory to `deck.spec.json`. Deterministic, no model call |
+| `migrate <input> -o <output>` | Convert a v3 IR file to v4, rewrite chrome to branding, bloom to classroom, or logo_wall to image_grid, or convert a `deck.plan.json` project directory to `deck.spec.json`. Deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
 | `config set <key> [value]` / `config show` | Store Pexels/Pixabay/Openverse credentials and generator switches in `$PPTFAST_HOME/config.json`. Omit the value for an apiKey or clientSecret to enter it hidden. `show` masks secrets and labels `(file)` / `(env)` |
 | `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | Search Pexels, then Pixabay if keyed, then Openverse (cc0/pdm). Prints attribution lines |
@@ -53,8 +53,8 @@ Six checks:
 - **out-of-bounds** — anything past the page edge.
 - **low-contrast** — the WCAG luminance ratio between text and its resolved background.
 - **overlap** — two components' regions substantially colliding.
-- **content-truncated** — text the renderer had to cut short with an ellipsis to fit.
-- **content-dropped** — a card list trimmed to what fits (the slide shows a "+N …" line), or a whole component the page had no room for and left out with nothing on the page to say so.
+- **content-truncated** — text the renderer had to cut short with an ellipsis to fit (`data-truncated="1"`).
+- **content-dropped** — a card list trimmed to what fits, or a whole component the page had no room for. The renderer stamps silent `data-dropped` (page-level also `data-dropped-silent`). The slide does not show "+N …".
 
 Audit is advisory, not a hard gate. `validate` already rejects a structurally invalid or over-dense deck. Audit catches what a *valid* deck can still get wrong at render time: an author-chosen text color that sits too close to the background, two components whose combined content collides, a card list that had to drop an item.
 
@@ -137,6 +137,6 @@ The skill wraps this loop for an agent ([`skills/pptfast/SKILL.md`](../skills/pp
 ## More
 
 - [`ir.md`](./ir.md) — what goes in the IR, narratives, layout selection, deck projects.
-- [`themes.md`](./themes.md) — the 21 built-in themes (22 ids), brand extraction, style overrides.
+- [`themes.md`](./themes.md) — the 24 built-in themes (24 ids), brand extraction, style overrides.
 - [`concepts.md`](./concepts.md) — the theme/layout/component/narrative model.
 - [`deck-projects.md`](./deck-projects.md) — the deck project format in depth.

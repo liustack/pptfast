@@ -68,7 +68,7 @@ IR 是一份描述整份 PPT 内容的 JSON 文件：有哪些页、每页上有
 
 v4 IR schema 自 0.4.0 起冻结，后续演进只走加法：新增可选字段、新增枚举值。任何破坏性变更都会启用新的顶层 `version` 值，并沿用 v3 那套硬拒绝加迁移提示的处理方式。
 
-`pptfast migrate <v3-file.json> -o <out.json>` 确定性地把 v3 文件转成 v4，只做字段改名，theme、版式选型、内容预算与视觉输出都不变。`deck.plan.json` → `deck.spec.json` 的姊妹转换见 [Deck 项目](#deck-项目)。
+`pptfast migrate <v3-file.json> -o <out.json>` 确定性地把 v3 文件转成 v4，做字段改名，以及 v4 遗留改写：`chrome` → `branding`、`bloom` → `classroom`、`logo_wall` → `image_grid`。`deck.plan.json` → `deck.spec.json` 的姊妹转换见 [Deck 项目](#deck-项目)。
 
 ## 叙事
 
@@ -98,12 +98,12 @@ bullets 需要时会在各自档位基线之下收缩以适配空间，最低到
 
 当某页省略 `layout` 时，pptfast 按四个确定性步骤自动选型：
 
-1. 该页型的全部注册版式。
-2. 收窄到主题为该页型准备的版式集合（默认全集，见[主题](./themes.zh-CN.md)）。
-3. 叙事的 `strategy` 对一小撮适配它的 content 版式做 ×3 软加权，其余维持 ×1 底权。cover、chapter、ending 三个页型永不参与这层加权，它们的个性来自主题。
+1. 该页型已注册的 archetype 池，去掉 pin-only 版式。
+2. 收窄到主题为该页型准备的 `layouts` 集合（封面锁到板面。内容页默认 10 个可自动选型的 id。lecture 和 luxe 去掉 `banner-heading` / `split-band` / `stacked-poster`，见[主题](./themes.zh-CN.md)）。
+3. 用 `Math.max` 做软加权：叙事 `strategy` 的 `layoutTendencies`（content）或 `identityTendencies`（cover/chapter/ending），可选的页级 `beat`，以及主题的 `layoutTendencies`。被偏好的 id 是 ×3，其余是 ×1。cover、chapter、ending 三个页型会走 `identityTendencies` 加权。
 4. 按 seed 加权取样，若命中结果与紧邻的上一页版式相同，则确定性地换成次优候选。
 
-显式 `layout` 恒优先，跳过以上四步。内容装不装得下由 `validate` 的密度门单独标记，从不参与选型，所以改一页的内容不会悄悄翻转它的版式。
+显式 `layout` 跳过以上四步，但主题不提供的稀排高潮钉（`SPARSE_LAYOUT_IDS`）除外：`effectiveRequestedLayout` 会剥掉它，自动选型继续跑，`validate` 给出警告，`ok` 仍为 true。`quote-stage` 是 pin-only，但不是稀排。内容装不装得下由 `validate` 的密度门单独标记，从不参与选型，所以改一页的内容不会悄悄翻转它的版式。
 
 选型本身完全确定：同一份 IR 永远选出同一个结果，预览与最终渲染绝不会不一致。但要在**多次修订之间**保持稳定（改一页不搅动其余页的自动选型），还需要一个持久化的 `seed`，按以下顺序解析：
 
