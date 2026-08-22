@@ -54,6 +54,13 @@ export type CoverLayoutId =
   | "paper-masthead"
   | "horizon-wedge"
   | "corner-wedge"
+  // Wave 8 batch 1 (2026-08-23): board-locked pinOnly covers. Not in the
+  // default auto-pick set. ikb-field-cover = full primary field + left
+  // title + foot bar. stat-cover = display heading as the page's number.
+  // type-rule-cover = type plus a short rule, no constellation.
+  | "ikb-field-cover"
+  | "stat-cover"
+  | "type-rule-cover"
 
 // Wave 2（chapter/ending）新增 id：每主题 1 个（命名见 Wave 2 任务表）
 export type ChapterLayoutId =
@@ -62,10 +69,24 @@ export type ChapterLayoutId =
   | "fashion-chapter" // 2026-07-10：时尚 magazine 满版色块出血大号（新表达）
   | "roman-chapter" // 2026-07-12：财经罗马数字+圆环光晕（新表达，insight 先挂）
   | "verse-chapter" // editorial-verse wave: pinOnly centered verse as chapter open
+  // Wave 8 batch 1 pinOnly chapter faces.
+  | "ghost-rule-chapter"
+  | "block-numeral-chapter"
+  | "ghost-section-chapter"
+  | "ember-index-chapter"
+  | "stroke-index-chapter"
+  | "act-chapter"
 export type EndingLayoutId =
   | "banner-ending" | "rail-ending" | "poster-ending"
   | "constellation-ending" | "masthead-ending" | "tone-adaptive-ending"
   | "fashion-ending" // 2026-07-10：时尚 runway 满版收尾（新表达）
+  // Wave 8 batch 1 pinOnly ending faces.
+  | "action-pad-ending"
+  | "signoff-ending"
+  | "close-word-ending"
+  | "ask-ending"
+  | "rule-close-ending"
+  | "pill-cta-ending"
 
 // Wave 3（content）新增 id
 export type ContentLayoutId =

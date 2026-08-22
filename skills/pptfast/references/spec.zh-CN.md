@@ -27,7 +27,7 @@ pptfast themes --json      # built-in themes (id + label)
 品牌信号回答的是这份 deck 长什么样，从来不回答它该怎么论证。完整规则在 `references/branding.md`。
 
 
-**边界页规则——现在就记住，这是最常见的错误：** `cover`、`chapter`、`ending` 三种页面，不论用哪个 layout，永远不渲染 `components` 或 `footnote`，没有例外。这类内容要放到 `content` 页面上。在 spec 阶段就弄错，意味着之后要重写已经写好的真实内容——`validate` 会用 `"<type>" slides do not render components/footnote — move this content to a content slide or remove it` 这条报错抓到它，但那时你已经把内容写完了，还得再搬一次。
+**边界页规则——现在就记住，这是最常见的错误：** `chapter` 和 `ending` 永远不渲染 `components` 或 `footnote`。`cover` 永远不渲染 `footnote`。封面只有在锁定版式声明了对应槽位时才能带 `components`。今天这只发生在 `verdict-index`（consulting）：它读第一个 `bullets` 块，画成最多三条编号论据。其余封面版式仍会丢掉 components。正文放到 `content` 页，除非你在填 consulting 封面那三列论据。`validate` 会用 `"<type>" slides do not render components/footnote — move this content to a content slide or remove it` 抓住多余字段。
 
 ```json
 // pages/closing.json — spec type "ending" — WRONG: components never render on an ending page

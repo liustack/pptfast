@@ -33,8 +33,10 @@
 // ## The four palettes this verdict actually changed
 //
 //   - enterprise: 炸橘 #E85D1F → 工业蓝 #2F6FBF. Named by the user.
-//   - ember: 天蓝 #3E7CB1 → 余烬紫 #6B3F5C. Found by the round-4 triage
-//     sweep as the second instance.
+//   - ember: 天蓝 #3E7CB1 → 余烬紫 #6B3F5C in the round-4 triage, then
+//     wave 8 (2026-08-22) lifted that purple to 浅余烬紫 #C48AA8, swapped
+//     the fire orange to the board's #E56A2C, and the ash grey to 暖沙
+//     #A89888. Current table: #E56A2C / #E8A13C / #C48AA8 / #A89888.
 //   - pulse: 警示褐 #B9722F → 墨蓝灰 #2E4257. Same shape, plus the theme's
 //     own file already said 「全程冷配角，暖色一律不出场」 while keeping a
 //     burnt orange in its chart table.
@@ -159,10 +161,10 @@ describe("chart palette: no vivid orange beside a vivid blue (round-4 taboo)", (
 
   it("the four palettes the verdict changed are exactly the four listed here", () => {
     expect(THEME_STYLES["ember"].colors.chartPalette).toEqual([
-      "#BC4620",
+      "#E56A2C",
       "#E8A13C",
-      "#6B3F5C",
-      "#756B5E",
+      "#C48AA8",
+      "#A89888",
     ])
     expect(THEME_STYLES["enterprise"].colors.chartPalette).toEqual([
       "#0032A0",
@@ -193,7 +195,7 @@ describe("chart palette: no vivid orange beside a vivid blue (round-4 taboo)", (
  */
 describe("chart palette replacements stay readable and distinguishable", () => {
   const REPLACEMENT = {
-    ember: "#6B3F5C",
+    ember: "#C48AA8",
     enterprise: "#2F6FBF",
     pulse: "#2E4257",
     tech: "#4BD98A",
@@ -239,9 +241,8 @@ describe("chart palette replacements stay readable and distinguishable", () => {
         // in at 27-36 against their nearest sibling.
         //
         // Scoped to the replaced colour on purpose. Sweeping every pair would
-        // re-open palettes this wave never touched — ember's 火橙 #BC4620 and
-        // 烬灰 #756B5E, for one, are near-identical in lightness (Lab L 46
-        // both) and are told apart by chroma (65 vs 9) rather than by ΔE.
+        // re-open palettes this wave never touched — ember's 火橙 #E56A2C and
+        // 暖沙 #A89888, for one, are told apart by chroma rather than by ΔE.
         // That is a pre-existing judgement, not this wave's to reverse.
         expect(
           deltaE(replacement, sibling),

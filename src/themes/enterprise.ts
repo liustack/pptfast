@@ -91,9 +91,12 @@ import type { StyleTokens } from "./tokens";
  * 上是逐字节 no-op（深底组给 `cover-banner-title` 等四处加的那道自适应
  * 不会在这里改任何一个字节）。
  *
- * 装饰见 `src/svg/motifs/motif-enterprise-motif.tsx`（方块秩序 v2：顶缘
- * 刻度尺 + 右上 IKB 方块阶 + 左下一枚 accent 方块）。几何一处未动，那枚方块
- * 跟着 token 从橘变成工业蓝。
+ * 装饰见 `src/svg/motifs/motif-enterprise-motif.tsx`（方块秩序 v3，第八波
+ * 制度板对账）：封面只留右上阶 0.28，删左下孤立 accent 方块，chapter 浅底
+ * 可画顶缘刻度尺。封面 / ending 的满版 IKB 由 pinOnly 版式自己铺
+ * （`paintsOwnBackground`），本文件 `defaultBackgrounds.cover/ending` 仍走
+ * 浅底，避免 `assertContrastFloor` 拿深字压深底判红。chapter / content 保持
+ * 画廊白墙。
  */
 export const ENTERPRISE_TOKENS: StyleTokens = {
   id: "enterprise",
@@ -122,6 +125,8 @@ export const ENTERPRISE_TOKENS: StyleTokens = {
     cover: { textAnchor: "start", bandY: 256, bandH: 220, bandMark: true },
   },
   defaultBackgrounds: {
+    // 四档保持浅底。封面 / ending 的 IKB 满版由 ikb-field-cover /
+    // signoff-ending 自己铺，不把 cover/ending 的 default 改成 primary。
     cover: { kind: "color", value: "#F7F7F4" },
     chapter: { kind: "color", value: "#F7F7F4" },
     content: { kind: "color", value: "#F7F7F4" },

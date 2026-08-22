@@ -21,7 +21,7 @@ import { STRATEGY_DEFINITIONS, resolveNarrative, type NarrativeProfile, type Str
 import { resolveStyle } from "../themes"
 import { effectiveRequestedLayout, getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { findImageComponent } from "./layouts/find-image"
-import { excludePinOnly, filterByNarrativesOnly, getLayout } from "./layouts/registry"
+import { filterByNarrativesOnly, getLayout } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
@@ -322,15 +322,14 @@ export function resolveLayoutId(
   const curatedDefs = curated
     .map((id) => getLayout(id))
     .filter((def): def is NonNullable<typeof def> => def !== undefined)
-  // `excludePinOnly` first (quote-stage wave, task T1): defensive re-check,
-  // not a duplicate of `fullLayoutSet`'s own exclusion — `registerTheme`
-  // (`../themes/definitions.ts`) legally allows a custom theme to list a
-  // pinOnly id in its own curated `layouts[slideType]` set (that
-  // registration-time check validates existence/kind/slideTypes, never this
-  // flag), so a pinOnly id can legitimately reach `curated` above. Sampling
-  // itself must still never pick it — see `LayoutDefinition.pinOnly`'s own
-  // doc comment (`./layouts/registry.ts`) for the full tier rationale.
-  const pool = filterByNarrativesOnly(excludePinOnly(curatedDefs), strategy).map((def) => def.id)
+  // Wave 8 board lock: `pinOnly` still keeps an id out of `fullLayoutSet`
+  // (the default pool), but a theme that *lists* it in `layouts[slideType]`
+  // is locking that face and must be able to auto-pick it. `excludePinOnly`
+  // therefore stays on `fullLayoutSet` only. Builtins only list a pinOnly
+  // id when the board face is the lock. quote-stage and the other speech
+  // faces stay unlisted, so they still reach render solely through an
+  // explicit `slide.layout` pin.
+  const pool = filterByNarrativesOnly(curatedDefs, strategy).map((def) => def.id)
   if (pool.length === 0) return null
 
   const tendencies = tendencyIdsFor(slideType, strategy)

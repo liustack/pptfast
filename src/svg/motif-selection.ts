@@ -167,13 +167,13 @@ export const MOTIF_BASE_WEIGHT = 1
  * motif is `undefined` by settled design, nothing to rotate).
  */
 export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId[]>> = {
-  consulting: ["banner-motif", "rail-motif", "enterprise-motif"],
+  consulting: ["banner-motif"],
   insight: ["poster-motif"],
   academic: ["rail-motif"],
   tech: ["constellation-motif"],
   // runway, museum, stage: intentionally absent — see module header.
   journal: ["corner-ornament-motif"],
-  enterprise: ["enterprise-motif", "banner-motif", "rail-motif"],
+  enterprise: ["enterprise-motif"],
   luxe: ["luxe-motif"],
   campaign: ["campaign-motif"],
   classroom: ["classroom-motif"],

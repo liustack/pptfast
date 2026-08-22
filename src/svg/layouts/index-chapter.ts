@@ -8,6 +8,12 @@ import { RomanChapter } from "./chapter-roman-chapter"
 import { ToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
 import { FashionChapter } from "./chapter-fashion-chapter"
 import { VerseChapter } from "./chapter-verse-chapter"
+import { GhostRuleChapter } from "./chapter-ghost-rule-chapter"
+import { BlockNumeralChapter } from "./chapter-block-numeral-chapter"
+import { GhostSectionChapter } from "./chapter-ghost-section-chapter"
+import { EmberIndexChapter } from "./chapter-ember-index-chapter"
+import { StrokeIndexChapter } from "./chapter-stroke-index-chapter"
+import { ActChapter } from "./chapter-act-chapter"
 
 export type { ChapterLayout, ChapterLayoutId } from "./types"
 
@@ -24,4 +30,10 @@ export const CHAPTER_LAYOUTS: Record<ChapterLayoutId, ChapterLayout> = {
   "tone-adaptive-chapter": ToneAdaptiveChapter,
   "fashion-chapter": FashionChapter,
   "verse-chapter": VerseChapter,
+  "ghost-rule-chapter": GhostRuleChapter,
+  "block-numeral-chapter": BlockNumeralChapter,
+  "ghost-section-chapter": GhostSectionChapter,
+  "ember-index-chapter": EmberIndexChapter,
+  "stroke-index-chapter": StrokeIndexChapter,
+  "act-chapter": ActChapter,
 }

@@ -144,6 +144,17 @@ export interface StyleShape {
     titleSize?: number
     /** Hide the right-bottom date/version slot. Default false. tone-adaptive-header. */
     hideRightMeta?: boolean
+    /** verdict-index. Omit for the restore-wave-1 constants. */
+    verdictTitleY?: number
+    verdictTitleSize?: number
+    verdictKickerY?: number
+    verdictColNumY?: number
+    verdictColBodyY?: number
+    verdictFootY?: number
+    verdictFootRule?: boolean
+    /** corner-wedge inner overlay (ember dual wedge). Omit for the single overlay. */
+    wedgeInnerStartX?: number
+    wedgeInnerPeakY?: number
   }
 }
 

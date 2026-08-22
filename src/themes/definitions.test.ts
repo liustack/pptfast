@@ -178,14 +178,17 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-ending",
     "fashion-ending",
   ]
-  it("W4 全集放开基线：chapter/ending stay full. content is full except lecture/luxe/consulting", () => {
+  it("W4 全集放开基线：chapter/ending stay full except wave-8 batch-1 locks. content is full except lecture/luxe/consulting", () => {
     expect(__fullLayoutSet("cover")).toEqual(FULL_COVER)
     expect(__fullLayoutSet("content")).toEqual(FULL_CONTENT)
     const NARROWED_CONTENT = new Set(["lecture", "luxe", "consulting"])
+    const WAVE8_B1 = new Set(["consulting", "enterprise", "insight", "ember", "tech", "campaign"])
     for (const id of CANONICAL_THEME_IDS) {
       expect(THEME_DEFINITIONS[id].layouts.cover.length, `${id}.cover is a singleton lock`).toBe(1)
-      expect(THEME_DEFINITIONS[id].layouts.chapter, `${id}.chapter`).toEqual(FULL_CHAPTER)
-      expect(THEME_DEFINITIONS[id].layouts.ending, `${id}.ending`).toEqual(FULL_ENDING)
+      if (!WAVE8_B1.has(id)) {
+        expect(THEME_DEFINITIONS[id].layouts.chapter, `${id}.chapter`).toEqual(FULL_CHAPTER)
+        expect(THEME_DEFINITIONS[id].layouts.ending, `${id}.ending`).toEqual(FULL_ENDING)
+      }
       if (!NARROWED_CONTENT.has(id)) {
         expect(THEME_DEFINITIONS[id].layouts.content, `${id}.content`).toEqual(FULL_CONTENT)
       }
@@ -252,8 +255,8 @@ describe("THEME_DEFINITIONS", () => {
     expect(THEME_DEFINITIONS.classroom.layouts.cover).toEqual(["band-title"])
     expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
 
-    expect(THEME_DEFINITIONS.enterprise.layouts.cover).toEqual(["band-title"])
-    expect(THEME_DEFINITIONS.enterprise.layoutTendencies?.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.enterprise.layouts.cover).toEqual(["ikb-field-cover"])
+    expect(THEME_DEFINITIONS.enterprise.layoutTendencies?.cover).toEqual(["ikb-field-cover"])
     expect(THEME_DEFINITIONS.enterprise.motif).toBe("enterprise-motif")
 
     expect(THEME_DEFINITIONS.vermilion.layouts.cover).toEqual(["band-title"])
@@ -283,11 +286,11 @@ describe("THEME_DEFINITIONS", () => {
     expect(THEME_DEFINITIONS.campaign.layouts.cover).toEqual(["poster-center"])
     expect(THEME_DEFINITIONS.campaign.layoutTendencies?.cover).toEqual(["poster-center"])
 
-    expect(THEME_DEFINITIONS.insight.layouts.cover).toEqual(["poster-center"])
-    expect(THEME_DEFINITIONS.insight.layoutTendencies?.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.insight.layouts.cover).toEqual(["stat-cover"])
+    expect(THEME_DEFINITIONS.insight.layoutTendencies?.cover).toEqual(["stat-cover"])
 
-    expect(THEME_DEFINITIONS.tech.layouts.cover).toEqual(["constellation"])
-    expect(THEME_DEFINITIONS.tech.layoutTendencies?.cover).toEqual(["constellation"])
+    expect(THEME_DEFINITIONS.tech.layouts.cover).toEqual(["type-rule-cover"])
+    expect(THEME_DEFINITIONS.tech.layoutTendencies?.cover).toEqual(["type-rule-cover"])
 
     expect(THEME_DEFINITIONS.luxe.layouts.cover).toEqual(["poster-center"])
     expect(THEME_DEFINITIONS.luxe.layoutTendencies?.cover).toEqual(["poster-center"])
@@ -892,7 +895,7 @@ describe("pinOnly layout tier: registerTheme still legally allows curating a pin
     __resetRegisteredThemes()
   })
 
-  it("does not throw when a custom theme curates a pinOnly id into its own layouts set (registerTheme validates existence/kind/slideTypes, never pinOnly — sampling itself excludes it instead, see layout-selection.test.ts)", () => {
+  it("does not throw when a custom theme curates a pinOnly id into its own layouts set (registerTheme validates existence/kind/slideTypes, never pinOnly — listing it is the board-lock path, see layout-selection.test.ts)", () => {
     expect(() =>
       registerTheme(testTheme({ id: "acme-pin-only", layouts: { content: [PIN_ONLY_TEST_ID, "two-column"] } })),
     ).not.toThrow()

@@ -22,7 +22,7 @@ Also scan the workspace before asking anyone anything. Facts the files can answe
 A brand signal answers what the deck should look like, never how it should argue. The full rule lives in `references/branding.md`.
 
 
-**Boundary-page rule — learn this now, it is the single most common mistake:** `cover`, `chapter`, and `ending` pages never render `components` or `footnote`, on any layout, no exceptions. Put that content on a `content` page instead. Getting this wrong at spec time means rewriting real content later — `validate` catches it with `"<type>" slides do not render components/footnote — move this content to a content slide or remove it`, but by then you have already drafted content that has to move.
+**Boundary-page rule — learn this now, it is the single most common mistake:** `chapter` and `ending` pages never render `components` or `footnote`. `cover` pages never render `footnote`. A `cover` may carry `components` only when its locked layout declares a slot for them. Today that is `verdict-index` (consulting), which reads the first `bullets` block as up to three numbered arguments. Every other cover layout still drops components. Put body content on a `content` page unless you are filling that consulting argument row. `validate` catches a stray field with `"<type>" slides do not render components/footnote — move this content to a content slide or remove it`.
 
 ```json
 // pages/closing.json — spec type "ending" — WRONG: components never render on an ending page

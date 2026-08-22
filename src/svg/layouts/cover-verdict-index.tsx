@@ -25,6 +25,11 @@ import { parseEmphasis, renderEmphasisText, sliceEmphasisForLines, stripEmphasis
  *      `components` 一列都不画，不编造预览文案。
  *   3. CJK 标题不加 letter-spacing。
  *   4. 左下落款收到 x96、y688，让开 logo 盒 (1120,630,96×40)。
+ *
+ * 第八波（2026-08-22）：几何改走 `style.shape.cover` 的 verdict* knobs。
+ * 缺省等于上面这组常量，别的主题抽到本版式时逐字节不变。consulting 把
+ * kicker / 标题 / 论据 / 落款收到板上，并打开底缘规矩线。列间竖线板上
+ * 没有：一旦写入 wave8 列位或底线 knobs，竖线不画。
  */
 
 const TITLE_X = 96
@@ -72,6 +77,15 @@ function coverBulletItems(slide: SvgTemplateProps["slide"]): string[] {
 export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const bg = ctx.defaultBg ?? colors.bg
+  const cover = ctx.shape?.cover
+  const titleY = cover?.verdictTitleY ?? TITLE_Y
+  const titleSize = cover?.verdictTitleSize ?? TITLE_SIZE
+  const kickerY = cover?.verdictKickerY ?? KICKER_Y
+  const colNumY = cover?.verdictColNumY ?? COL_NUM_Y
+  const colBodyY = cover?.verdictColBodyY ?? COL_BODY_Y
+  const footY = cover?.verdictFootY ?? FOOT_Y
+  const footRule = cover?.verdictFootRule === true
+  const showColRules = cover?.verdictColNumY == null && cover?.verdictFootRule !== true
   const org = ir.meta.organization
   const author = ir.meta.authors?.[0]
   const authorText = author ? [author.name, author.role].filter(Boolean).join(" · ") : null
@@ -82,7 +96,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
 
   const title = fitHeadingLines(plainHeading, {
     maxWidth: TITLE_MAX_W,
-    fontSize: TITLE_SIZE,
+    fontSize: titleSize,
     maxLines: TITLE_MAX_LINES,
     minPt: TITLE_MIN_PT,
     lineHeightRatio: TITLE_LINE_HEIGHT / TITLE_SIZE,
@@ -91,6 +105,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
   })
   const lineSegs = sliceEmphasisForLines(segments, title.lines)
   const titleInk = accessibleInk(colors.text, bg, title.fontSize)
+  const accentInk = accessibleInk(colors.accent, bg, title.fontSize)
 
   const kickerTracking = org && !hasCjk(org) ? KICKER_TRACKING : undefined
   const kicker = org
@@ -146,7 +161,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
           data-contrast-tier="meta"
           data-truncated={kicker.truncated ? "1" : undefined}
           x={KICKER_X}
-          y={KICKER_Y}
+          y={kickerY}
           fontFamily={fonts.body}
           fontSize={kicker.fontSize}
           fill={metaInk(colors.primary, bg)}
@@ -161,7 +176,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
         renderEmphasisText(
           lineSegs[i] ?? [{ text: line, emphasized: false }],
           {
-            accent: colors.accent,
+            accent: accentInk,
             padFill: colors.accent,
             baseFill: titleInk,
             fontWeight: "700",
@@ -172,7 +187,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
             key={i}
             data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
             x={TITLE_X}
-            y={TITLE_Y + i * TITLE_LINE_HEIGHT}
+            y={titleY + i * TITLE_LINE_HEIGHT}
             fontFamily={fonts.heading}
             fontSize={title.fontSize}
             fontWeight="700"
@@ -198,7 +213,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
 
       {columns.map((col, i) => (
         <g key={col.num}>
-          {i > 0 && (
+          {i > 0 && showColRules && (
             <line
               x1={COL_RULE_X[i - 1]}
               y1={COL_RULE_Y1}
@@ -210,7 +225,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
           )}
           <text
             x={col.x}
-            y={COL_NUM_Y}
+            y={colNumY}
             fontFamily={fonts.heading}
             fontSize={COL_NUM_SIZE}
             fontWeight="700"
@@ -224,7 +239,7 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
               key={li}
               data-truncated={col.body.truncated && li === col.body.lines.length - 1 ? "1" : undefined}
               x={col.x}
-              y={COL_BODY_Y + li * col.body.lineHeight}
+              y={colBodyY + li * col.body.lineHeight}
               fontFamily={fonts.body}
               fontSize={col.body.fontSize}
               fill={bodyInk}
@@ -236,12 +251,23 @@ export function VerdictIndexCover({ ir, slide, ctx }: SvgTemplateProps) {
         </g>
       ))}
 
+      {footRule && (
+        <line
+          x1={FOOT_X}
+          y1={footY - 36}
+          x2={FOOT_X + TITLE_MAX_W}
+          y2={footY - 36}
+          stroke={ruleStroke}
+          strokeWidth={1}
+        />
+      )}
+
       {foot && (
         <text
           data-contrast-tier="meta"
           data-truncated={foot.truncated ? "1" : undefined}
           x={FOOT_X}
-          y={FOOT_Y}
+          y={footY}
           fontFamily={fonts.body}
           fontSize={foot.fontSize}
           fill={metaInk(colors.muted, bg)}

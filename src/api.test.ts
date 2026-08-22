@@ -639,10 +639,11 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   const bullets = { type: "bullets" as const, items: ["a"] }
 
   it.each(["cover", "chapter", "ending"] as const)(
-    "hard-rejects a %s slide carrying components — every layout in that family drops them silently",
+    "hard-rejects a %s slide carrying components when the knowable layout has no matching slot",
     (type) => {
       const v = validateIr({
         ...raw,
+        theme: { id: "academic" },
         slides: [{ type, heading: "H", components: [bullets] }],
       })
       expect(v.ok).toBe(false)
@@ -654,6 +655,24 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
       )
     },
   )
+
+  it("accepts bullets on a consulting cover — verdict-index declares a body slot for them", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover", heading: "H", components: [bullets] }],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+
+  it("still rejects a paragraph on a consulting cover — verdict-index only accepts bullets", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover", heading: "H", components: [{ type: "paragraph", text: "x" }] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/do not render components/)
+  })
 
   it.each(["cover", "chapter", "ending"] as const)(
     "hard-rejects a %s slide carrying a footnote",
@@ -672,11 +691,23 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   it("names both offending fields, components first, when a slide carries both", () => {
     const v = validateIr({
       ...raw,
+      theme: { id: "academic" },
       slides: [{ type: "cover", heading: "H", components: [bullets], footnote: "source: x" }],
     })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toBe(
       '"cover" slides do not render components/footnote — move this content to a content slide or remove it',
+    )
+  })
+
+  it("names only footnote when a consulting cover carries accepted bullets plus a footnote", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover", heading: "H", components: [bullets], footnote: "source: x" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toBe(
+      '"cover" slides do not render footnote — move this content to a content slide or remove it',
     )
   })
 
@@ -721,6 +752,7 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   it("sets slideId when the offending slide has one (same shape as checkLayoutApplicability/checkFullBodyExclusivity)", () => {
     const v = validateIr({
       ...raw,
+      theme: { id: "academic" },
       slides: [{ type: "ending", id: "p-end", heading: "Thanks", components: [bullets] }],
     })
     expect(v.ok).toBe(false)
@@ -730,6 +762,7 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   it("lists one issue per offending slide, not just the first", () => {
     const v = validateIr({
       ...raw,
+      theme: { id: "academic" },
       slides: [
         { type: "cover", heading: "C", components: [bullets] },
         { type: "content", heading: "OK", components: [bullets] },

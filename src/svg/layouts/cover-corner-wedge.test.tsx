@@ -73,20 +73,58 @@ describe("cover-corner-wedge — board geometry", () => {
   })
 
   it("ember: left title, tall wedge, meta in the wedge", () => {
-    const { root, tokens } = renderCover(
-      "ember",
-      slide(HEADING_EMBER),
-      { textAnchor: "start", wedgePeakY: 120, wedgeStartX: 820, metaInWedge: true },
-    )
+    const { root, tokens } = renderCover("ember", slide(HEADING_EMBER), {
+      textAnchor: "start",
+      wedgePeakY: 120,
+      wedgeStartX: 820,
+      metaInWedge: true,
+      wedgeInnerStartX: undefined,
+      wedgeInnerPeakY: undefined,
+    })
     const paths = Array.from(root.querySelectorAll("path"))
     expect(paths[0]?.getAttribute("d")?.replace(/\s+/g, "")).toBe("M820,720L1280,120L1280,720Z")
     expect(paths[0]?.getAttribute("fill")).toBe(tokens.colors.primary)
+    expect(paths).toHaveLength(2)
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700")
     expect(headings[0]?.getAttribute("x")).toBe("96")
     expect(headings[0]?.getAttribute("text-anchor") ?? "start").not.toBe("middle")
     const wedgeMeta = Array.from(root.querySelectorAll("text")).find((t) => t.getAttribute("x") === "1108")
     expect(wedgeMeta?.getAttribute("text-anchor")).toBe("end")
     expect(wedgeMeta?.getAttribute("y")).toBe("700")
+  })
+
+  it("inner knobs paint a second wedge band and leave the default overlay pair intact", () => {
+    const base = renderCover("arena", slide(HEADING_ARENA), {
+      textAnchor: "middle",
+      wedgePeakY: 340,
+      wedgeStartX: 980,
+    })
+    const dual = renderCover("arena", slide(HEADING_ARENA), {
+      textAnchor: "middle",
+      wedgePeakY: 340,
+      wedgeStartX: 980,
+      wedgeInnerStartX: 860,
+      wedgeInnerPeakY: 212,
+    })
+    const basePaths = Array.from(base.root.querySelectorAll("path"))
+    const dualPaths = Array.from(dual.root.querySelectorAll("path"))
+    expect(basePaths).toHaveLength(2)
+    expect(dualPaths).toHaveLength(3)
+    expect(dualPaths[0]?.getAttribute("d")).toBe(basePaths[0]?.getAttribute("d"))
+    expect(dualPaths[1]?.getAttribute("d")).toBe(basePaths[1]?.getAttribute("d"))
+    expect(dualPaths[2]?.getAttribute("d")?.replace(/\s+/g, "")).toBe("M860,720L1280,212L1280,340L980,720Z")
+    expect(dualPaths[2]?.getAttribute("fill")).toBe(dual.tokens.colors.primary)
+    expect(dualPaths[2]?.getAttribute("opacity")).toBe("0.6")
+  })
+
+  it("ember theme knobs place the board dual wedge without baking hex", () => {
+    const { root, tokens } = renderCover("ember", slide(HEADING_EMBER))
+    const paths = Array.from(root.querySelectorAll("path"))
+    expect(paths[0]?.getAttribute("d")?.replace(/\s+/g, "")).toBe("M900,720L1280,260L1280,720Z")
+    expect(paths[2]?.getAttribute("d")?.replace(/\s+/g, "")).toBe("M860,720L1280,212L1280,260L900,720Z")
+    expect(paths[0]?.getAttribute("fill")).toBe(tokens.colors.primary)
+    expect(paths[2]?.getAttribute("fill")).toBe(tokens.colors.primary)
+    expect(root.innerHTML).not.toMatch(/#8A4A22/i)
   })
 
   it("title box and the wedge AABB do not intersect, and a wrapped title clears its subtitle", () => {

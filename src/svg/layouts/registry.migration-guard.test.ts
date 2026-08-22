@@ -45,8 +45,14 @@ function capturedFieldsOf(live: Record<string, unknown>, captured: Record<string
 }
 
 describe("LAYOUT_REGISTRY migration guard (registry.ts aggregator conversion, T1d)", () => {
-  it("key insertion order is byte-identical to the pre-migration registry", () => {
-    expect(Object.keys(LAYOUT_REGISTRY)).toEqual(fixture.order.filter((id) => !RETIRED_LAYOUT_IDS.has(id)))
+  it("captured key order is a subsequence of the live registry (later waves may append)", () => {
+    const expected = fixture.order.filter((id) => !RETIRED_LAYOUT_IDS.has(id))
+    const live = Object.keys(LAYOUT_REGISTRY)
+    let i = 0
+    for (const id of live) {
+      if (id === expected[i]) i++
+    }
+    expect(i, "live registry dropped or reordered a captured id").toBe(expected.length)
   })
 
   it("every captured field is deep-equal to its pre-migration counterpart", () => {

@@ -84,6 +84,10 @@ import { leafRecessOpacity } from "./decor-budget"
  * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary 藏青 / accent 一线
  * 黄），也不读 `chartPalette`——图表调色板一轮转不得改动装饰色
  * （`motif-chart-palette-isolation.test.tsx` 记着那次 Major）。
+ *
+ * 第八波（2026-08-22）：钉成咨询单语汇。黄块归 emphasis `pad`，本 motif
+ * 不再画第二块黄（没有 rect）。顶缘规矩线留下，chapter 继续整档退让。
+ * 不画幽灵序号，不画孤立角标。
  */
 
 // ── 顶缘规矩线 ──────────────────────────────────────────────────────────
