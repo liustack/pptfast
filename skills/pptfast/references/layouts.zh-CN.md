@@ -19,6 +19,12 @@ mirror_of: skills/pptfast/references/layouts.md
 
 `verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 不画。主题 motif 仍画。
 
+`stat-hero` 是 content 页上的整页数字。英雄位数字优先取自 `kpi_cards` 第一项，否则就是 heading。一行说明，可选出处。最多一个 component。品牌页脚和 logo 不画。主题 motif 仍画。
+
+`one-evidence` 是 content 页上的断言加一条证据。标题是一句完整主张。最多一个 component，渲成那条证据（一张 chart、一张表或一张图）。品牌页脚和 logo 不画。主题 motif 仍画。
+
+`mono-bleed` 是 content 页上的满版品牌色底，字当图。容量 0：字写在 heading 里，没有 body component。品牌页脚和 logo 不画。主题 motif 仍画。
+
 ### 稀排页合同
 
 一份 deck 是拿来讲的。幻灯片装不下的字写进 `slide.notes`。如果文件必须作为文档独立站住，建议用 PDF，不要把画布塞满。
