@@ -8,7 +8,7 @@ import { DroppedContentMarker } from "./drop-marker"
 import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
-import { scaleTypePx } from "./heading-fit"
+import { fitHeadingLines, scaleTypePx } from "./heading-fit"
 import { accessibleInk } from "./ink"
 import { showsDocumentMeta } from "./document-meta"
 
@@ -206,12 +206,17 @@ export function ImageSplitPage({
   const org = ir.meta.organization
 
   // fontWeight 600 而非 700：magazine/creative 的衬线 heading（SimSun/Lora）
-  // 被 700 合成加粗抹掉衬线特征——降字重提字号保气势
-  const title = layoutSvgText(slide.heading, {
+  // 被 700 合成加粗抹掉衬线特征——降字重提字号保气势。拟合必须带 bold +
+  // heading 字体：Regular 估算会把「Competitors are pricing」收成一行，
+  // SimSun 600 实宽超出 SPLIT_TEXT_W。
+  const title = fitHeadingLines(slide.heading, {
     maxWidth: SPLIT_TEXT_W,
     fontSize: scaleTypePx(44, ctx.shape?.typeScale),
     maxLines: 3,
+    minPt: 22,
     lineHeightRatio: 1.18,
+    fontFamily: ctx.fonts.heading,
+    bold: true,
   })
   const sub = layoutSvgText(slide.subheading, {
     maxWidth: SPLIT_TEXT_W,
@@ -294,6 +299,7 @@ export function ImageSplitPage({
       {title.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
           x={textX}
           y={titleY + i * title.lineHeight}
           fontSize={title.fontSize}
@@ -353,14 +359,21 @@ export function ImageTopPage({
   const alt = ctx.images?.[imageComponent.asset_id]?.alt
   const rest = slide.components.filter((b) => b !== imageComponent)
 
-  const title = layoutSvgText(slide.heading, {
-    maxWidth: W - BAND_PAD_X * 2 - 120,
+  const titleMaxW = W - BAND_PAD_X * 2 - 120
+  const title = fitHeadingLines(slide.heading, {
+    maxWidth: titleMaxW,
     fontSize: scaleTypePx(30, ctx.shape?.typeScale),
-    maxLines: 1,
+    maxLines: 2,
+    minPt: 18,
     lineHeightRatio: 1.2,
+    fontFamily: ctx.fonts.heading,
+    bold: true,
   })
-  const bandY = TOP_IMG_H + 52
-  const componentsTop = bandY + 34
+  // 单行标题保持原 y（398 / 发丝 410 / 正文 442）。换行时发丝和分栏整体下移。
+  const firstTitleY = TOP_IMG_H + 42
+  const lastTitleY = firstTitleY + Math.max(0, title.lines.length - 1) * title.lineHeight
+  const ruleY = lastTitleY + 12
+  const componentsTop = ruleY + 32
   const componentsH = H - 84 - componentsTop
   // 2-3 个文字块横向分列（P05 三栏），单块全宽
   const n = Math.max(1, Math.min(rest.length, 3))
@@ -393,12 +406,13 @@ export function ImageTopPage({
         <rect x={0} y={0} width={W} height={TOP_IMG_H} fill={ctx.colors.surface} />
       )}
       {/* 标题行：kicker 点 + 标题 + 贯穿细线（图眉/脚注的杂志结构） */}
-      <rect x={BAND_PAD_X} y={bandY - 22} width={13} height={13} fill={ctx.colors.accent} />
+      <rect x={BAND_PAD_X} y={firstTitleY - 12} width={13} height={13} fill={ctx.colors.accent} />
       {title.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
           x={BAND_PAD_X + 26}
-          y={bandY - 10}
+          y={firstTitleY + i * title.lineHeight}
           fontSize={title.fontSize}
           fontWeight={600}
           fontFamily={ctx.fonts.heading}
@@ -408,7 +422,7 @@ export function ImageTopPage({
           {line}
         </text>
       ))}
-      <rect x={BAND_PAD_X} y={bandY + 2} width={W - BAND_PAD_X * 2} height={1} fill={ctx.colors.border} />
+      <rect x={BAND_PAD_X} y={ruleY} width={W - BAND_PAD_X * 2} height={1} fill={ctx.colors.border} />
       {cols.map((placed, ci) => (
         <Fragment key={ci}>
           {placed.map((p, i) => (
