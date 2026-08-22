@@ -6,13 +6,25 @@
 
 两段可见文本的墨水包围盒不得相交。装饰线不得穿过字形（与 gravity 的下划条相接）。
 
-判定：标题与 meta、标题与分割线、楔形装饰与标题、两栏文字互相压盖，记 `rework`。故意的强调叠字（极少，须能读）除外，须写 note。
+看什么：标题与副题、标题与 meta、两栏文字的墨盒。封面即使没有 `data-audit-box`，也要按字形墨盒来看。
+
+怎么算 rework：两段字的墨盒相交，较小盒被压住一块，记 `rework`。arena 封面与 corner-wedge 曾把 70px 标题压在 34px 副题上。
+
+正例：两行同字号、行距约 1.07em，中间有气口。70px 标题在 y=360 与 y=435 这种叠行通过。
+
+反例：标题墨盒压副题。种植图 `rubric/examples/overlap-1.png` 与 `rubric/examples/overlap-2.png` 应判 `rework` 或 `limit`。故意的强调叠字（极少，须能读）除外，须写 note。
 
 ## 不溢出画布或栏
 
 文本不得画出 1280×720 画布，不得画出所属栏或卡的内盒。
 
-判定：字形越过页边，或越过栏/卡内边（含右缘与底缘）。设计 bleed 豁免只认 `evals/gallery/bbox-exemptions.ts` 里按版式加文本登记的条目，未登记的溢出仍报。
+看什么：栏宽、卡壳、页边。没有 `data-audit-box` 时，仍要看同一组里的卡片 rect。卡壳底边越过页底也算。
+
+怎么算 rework：字形越过页边，或越过栏、卡内边超过约 6px，记 `rework`。设计 bleed 豁免只认 `evals/gallery/bbox-exemptions.ts` 里按版式加文本登记的条目，未登记的溢出仍报。
+
+正例：英文标题留在栏内。卡落在黑板框里，底边不穿出 1280×720。
+
+反例：英文标题画出栏（image-top），卡画出框（lecture p04）。种植图 `rubric/examples/overflow-1.png` 与 `rubric/examples/overflow-2.png` 应判 `rework` 或 `limit`。
 
 ## 不贴分割线
 
