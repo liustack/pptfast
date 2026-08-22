@@ -337,7 +337,7 @@ describe("dsh preview card — the viewer", () => {
     routeIsAlive()
     const Card = makeCard()
     const view = render(<Card block={blockWith(bundleOf(nine()), id)} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(view.container)).not.toBeNull())
     await act(async () => {})
     return view
@@ -354,7 +354,7 @@ describe("dsh preview card — the viewer", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
 
     expect(await screen.findByText("gone")).toBeInTheDocument()
     expect(viewer(container)).toBeNull()
@@ -402,7 +402,7 @@ describe("dsh preview card — the viewer", () => {
     routeIsAlive()
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc/html")
   })
@@ -525,7 +525,7 @@ describe("dsh preview card — the viewer", () => {
     // Opening a second viewer must not stack a second copy in the head.
     fireEvent.keyDown(document, { key: "Escape" })
     expect(viewer(container)).toBeNull()
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     await act(async () => {})
     expect(document.querySelectorAll("#pptfast-modal-style")).toHaveLength(1)
@@ -544,7 +544,7 @@ describe("dsh preview card — the viewer", () => {
     // on a route of its own, with no idea an export exists.
     await openViewer("abc123")
 
-    const buttons = screen.getAllByText("Download .pptx")
+    const buttons = await screen.findAllByText("Download .pptx")
     expect(buttons).toHaveLength(2) // one on the card, one in the viewer
     fireEvent.click(buttons[1]!)
 
@@ -572,7 +572,7 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc123")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
 
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/abc123/pptx")
@@ -588,7 +588,7 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "missing")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
 
     expect(await screen.findByText("Unavailable")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
@@ -610,7 +610,7 @@ describe("dsh preview card — the export button", () => {
       const Card = makeCard()
       const view = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
-      fireEvent.click(screen.getByText("Download .pptx"))
+      fireEvent.click(await screen.findByText("Download .pptx"))
       expect(await screen.findByText("Retry download"), failure.name).toBeInTheDocument()
       expect(anchorClicks).toEqual([])
       // Still a button, and still wired: the whole point of not calling this
@@ -639,7 +639,7 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc123")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
 
     expect(await screen.findByText("Retry download")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
@@ -673,7 +673,7 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
 
     expect(await screen.findByText("Unavailable")).toBeInTheDocument()
     expect(screen.queryByText("Download .pptx")).toBeNull()
@@ -824,13 +824,12 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
       const view = render(<Card block={blockWith(null, "A", { pages: 3 })} />)
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
-      await act(async () => {})
+      expect(await screen.findByText("Retry"), String(status)).toBeInTheDocument()
       expect(screen.queryByText("gone"), String(status)).toBeNull()
       expect(screen.queryByText(/no longer on disk/), String(status)).toBeNull()
       // ...and the deck is not silently forgotten either: the transcript still
       // says how long it was, and the row says what to do about it.
       expect(screen.getByText("3 pages"), String(status)).toBeInTheDocument()
-      expect(screen.getByText("Retry"), String(status)).toBeInTheDocument()
       view.unmount()
     }
   })
@@ -882,12 +881,11 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     render(<Card block={blockWith(null, "A", { pages: 3 })} />)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
-    await act(async () => {})
+    expect(await screen.findByText("Retry")).toBeInTheDocument()
     expect(screen.queryByText("gone")).toBeNull()
     expect(screen.queryByText(/no longer on disk/)).toBeNull()
     // Treated as "could not reach it", which is the honest reading and leaves
     // a way forward.
-    expect(screen.getByText("Retry")).toBeInTheDocument()
   })
 
   it("still opens a deck it already has when a later request comes back 5xx", async () => {
@@ -900,7 +898,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(pages), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
     expect(viewer(container)).toBeNull()
     expect(screen.queryByText("gone")).toBeNull()
@@ -909,7 +907,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
 
     // ...and the retry the card left available actually works.
     fetchMock.mockResolvedValue(routeAnswer({ status: 200, json: bundleOf(pages) }))
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
   })
 
@@ -939,7 +937,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
       // A request that never landed says nothing about the deck, so the card
       // claims nothing about it — and still leaves a button.
       expect(screen.queryByText("gone")).toBeNull()
-      expect(screen.getByText("Retry")).toBeInTheDocument()
+      expect(await screen.findByText("Retry")).toBeInTheDocument()
     } finally {
       process.off("unhandledRejection", onRejection)
     }
@@ -983,7 +981,7 @@ describe("dsh preview card — a deck with unfilled pages", () => {
     const Card = makeCard()
     render(<Card block={blockWith(draftBundle(), "abc123")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
 
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(anchorClicks[0]!.download).toBe("Quarterly deck-draft.pptx")
@@ -1027,7 +1025,7 @@ describe("dsh preview card — a preview whose bookkeeping is damaged", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2), page(3)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
 
     expect(await screen.findByText("damaged")).toBeInTheDocument()
     expect(container.querySelectorAll("svg")).toHaveLength(3)
@@ -1039,7 +1037,7 @@ describe("dsh preview card — a preview whose bookkeeping is damaged", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await screen.findByText("damaged")
 
     // No viewer, no way back into one, and no Retry: nothing about clicking
@@ -1085,7 +1083,7 @@ describe("dsh preview card — a route that refuses", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
 
     expect(await screen.findByText("refused")).toBeInTheDocument()
     expect(screen.getByText(/refused this request/)).toBeInTheDocument()
@@ -1103,7 +1101,7 @@ describe("dsh preview card — a route that refuses", () => {
       const Card = makeCard()
       const view = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
-      fireEvent.click(screen.getByText("Download .pptx"))
+      fireEvent.click(await screen.findByText("Download .pptx"))
 
       expect(await screen.findByText("Refused"), String(status)).toBeInTheDocument()
       // The two things it used to say instead: a retry it could not honour, and
@@ -1129,17 +1127,17 @@ describe("dsh preview card — one button, many decks", () => {
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Unavailable")).toBeInTheDocument()
 
     rerender(<Card block={blockWith(bundleOf([page(1), page(2)]), "B")} />)
 
     // B has been asked nothing yet, so the button offers what it always offers.
-    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(await screen.findByText("Download .pptx")).toBeInTheDocument()
     expect(screen.queryByText("Unavailable")).toBeNull()
     // ...and it works, which is the half that says the state really did reset
     // rather than merely being hidden.
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/B/pptx")
   })
@@ -1151,11 +1149,11 @@ describe("dsh preview card — one button, many decks", () => {
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Retry download")).toBeInTheDocument()
 
     rerender(<Card block={blockWith(bundleOf([page(1)]), "B")} />)
-    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(await screen.findByText("Download .pptx")).toBeInTheDocument()
     expect(screen.queryByText("Retry download")).toBeNull()
   })
 })
@@ -1184,7 +1182,7 @@ describe("dsh preview card — one instance, decks going past", () => {
 
     const Card = makeCard()
     const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     // In flight, nothing open yet.
     await act(async () => {})
     expect(viewer(container)).toBeNull()
@@ -1213,7 +1211,7 @@ describe("dsh preview card — one instance, decks going past", () => {
 
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
 
     rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
@@ -1233,7 +1231,7 @@ describe("dsh preview card — one instance, decks going past", () => {
     const Card = makeCard()
     const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/A/html")
 
@@ -1255,7 +1253,7 @@ describe("dsh preview card — one instance, decks going past", () => {
 
     rerender(<Card block={blockWith(bundleOf([page(1), page(2)], "Deck B"), "B")} />)
     await act(async () => {})
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/B/html")
   })
@@ -1278,11 +1276,11 @@ describe("dsh preview card — one instance, decks going past", () => {
 
     const Card = makeCard()
     const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
 
     rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/B/html")
 
@@ -1423,11 +1421,11 @@ describe("dsh preview card — the store", () => {
 
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
 
     rerender(<Card block={blockWith(bundleOf([page(1), page(2)], "Deck B"), "B")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     expect(await screen.findByText("gone")).toBeInTheDocument()
     expect(screen.queryByText("Open")).toBeNull()
 
@@ -1460,11 +1458,11 @@ describe("dsh preview card — the store", () => {
 
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     await act(async () => {})
 
     rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Saving…")).toBeInTheDocument()
 
     answerA(routeAnswer({ status: 410, code: "preview_missing" }))
@@ -1515,7 +1513,7 @@ describe("dsh preview card — renders that never commit", () => {
         <Card block={blockWith(bundleOf([page(1)]), "A")} />
       </React.Suspense>,
     )
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Saving…")).toBeInTheDocument()
 
     // React starts rendering B and never gets to commit it. On screen, A.
@@ -1534,10 +1532,10 @@ describe("dsh preview card — renders that never commit", () => {
     // it. With ownership read from a render-time ref, the discarded B render had
     // already claimed the pointer and this stayed `Saving…` for ever.
     answerA(routeAnswer({ status: 410, code: "preview_missing" }))
-    await act(async () => {})
-
-    expect(screen.queryByText("Saving…")).toBeNull()
-    expect(screen.getByText("Unavailable")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText("Saving…")).toBeNull()
+      expect(screen.getByText("Unavailable")).toBeInTheDocument()
+    })
   })
 
   it("decides ownership without writing anything during a render", async () => {
@@ -1578,11 +1576,11 @@ describe("dsh preview card — decks that have left the screen", () => {
 
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     await act(async () => {})
 
     rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Saving…")).toBeInTheDocument()
 
     answerA(routeAnswer({ status: 410, code: "preview_missing" }))
@@ -1707,7 +1705,7 @@ describe("dsh preview card — a deck the card comes back to", () => {
 
     const Card = makeCard()
     const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
     expect(viewer(container)).toBeNull()
 
@@ -1744,15 +1742,14 @@ describe("dsh preview card — a deck the card comes back to", () => {
 
     const Card = makeCard()
     const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     expect(await screen.findByText("Saving…")).toBeInTheDocument()
 
     rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
     await act(async () => {})
     rerender(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
-    await act(async () => {})
     // A fresh visit: nothing is downloading, so the button offers the download.
-    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(await screen.findByText("Download .pptx")).toBeInTheDocument()
 
     answerA(routeAnswer({ status: 410, code: "preview_missing" }))
     await act(async () => {})
@@ -1821,16 +1818,15 @@ describe("dsh preview card — two requests for the same deck", () => {
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
     expect(answers).toHaveLength(2)
 
     // The newer request answers first: this deck is gone.
     answers[1]!(routeAnswer({ status: 410, code: "preview_missing" }))
-    await act(async () => {})
-    expect(screen.getByText("gone")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
 
     // The older one answers afterwards, with news from before that.
     answers[0]!(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)]) }))
@@ -1856,9 +1852,9 @@ describe("dsh preview card — two requests for the same deck", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("Download .pptx"))
+    fireEvent.click(await screen.findByText("Download .pptx"))
     await act(async () => {})
-    fireEvent.click(screen.getByText("Open"))
+    fireEvent.click(await screen.findByText("Open"))
     await act(async () => {})
 
     // The deck answers second but with a later ticket; the download's own
@@ -1866,12 +1862,13 @@ describe("dsh preview card — two requests for the same deck", () => {
     deckAnswers[0]!(routeAnswer({ status: 200, json: bundleOf([page(1)]) }))
     await act(async () => {})
     downloadAnswers[0]!(routeAnswer({ status: 200 }))
-    await waitFor(() => expect(anchorClicks).toHaveLength(1))
     // Both copies of the button — the card's and the viewer's, which the deck
     // answer opened — are back to offering the download rather than stuck on
     // `Saving…` because a newer deck ticket discarded the export's outcome.
-    const buttons = screen.getAllByText("Download .pptx")
-    expect(buttons.length).toBeGreaterThan(0)
-    expect(screen.queryByText("Saving…")).toBeNull()
+    await waitFor(() => {
+      expect(anchorClicks).toHaveLength(1)
+      expect(screen.getAllByText("Download .pptx").length).toBeGreaterThan(0)
+      expect(screen.queryByText("Saving…")).toBeNull()
+    })
   })
 })
