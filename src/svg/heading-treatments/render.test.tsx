@@ -240,6 +240,18 @@ describe("baseline heritage", () => {
     expect(thick.getAttribute("fill")).toBe(colors.primary)
     expect(thin.getAttribute("fill")).toBe(colors.primary)
   })
+
+  it("enhanced: sub sits under the wenwu rule, contentRect y=248", () => {
+    const { treated, colors } = withChapter("heritage", { subheading: SUB })
+    expect(treated!.contentRect.y).toBe(248)
+    const root = rootOf(treated!.chrome)
+    const sub = textContaining(root, SUB)
+    expect(num(sub, "y")).toBe(188)
+    expect(num(sub, "font-size")).toBe(18)
+    expect(sub.getAttribute("fill")).toBe(colors.muted)
+    rectAt(root, 96, 158, 1088, 2)
+    rectAt(root, 96, 164, 1088, 1)
+  })
 })
 
 describe("baseline journal", () => {

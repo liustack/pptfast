@@ -301,7 +301,7 @@ function renderBaseline(args: RenderArgs): { chrome: ReactNode; contentRect: Con
   const hasSub = args.subheading.length > 0
   const rule = args.knobs.rule ?? "hairline"
   const rightSlot = args.knobs.rightSlot ?? "none"
-  const journalEnhanced = rule === "double-tone" && hasSub
+  const journalEnhanced = (rule === "double-tone" || rule === "wenwu") && hasSub
   const insightSide = rule === "hairline" && hasSub
   const sidePhrase = insightSide
     ? fitSvgLine(args.subheading, { maxWidth: 200, fontSize: 16, minFontSize: 16, fontFamily: fonts.body })
