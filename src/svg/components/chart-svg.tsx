@@ -74,11 +74,12 @@ const VALUE_FONT_WEIGHT = 600
  */
 const VALUE_LABEL_GAP = 9
 /**
- * 11px leftover used by dumbbell's "from" value and the gauge caption —
- * those subtypes never drew the cartesian tick/value pair this tuning
- * restyles, so they keep their own established size.
+ * Gauge caption keeps 11px (classroom theme-table pages pin this size).
+ * Dumbbell "from" values sit on the L1 12px floor. The two used to share
+ * one leftover 11px constant.
  */
 const LABEL_FONT_SIZE = 11
+const DUMBBELL_FROM_FONT_SIZE = 12
 /** Space (px) reserved at the top of `h` for value labels above the plot. */
 const LABEL_TOP_PAD = 14
 /**
@@ -895,8 +896,8 @@ export function renderDumbbell(
         // already rendered at, only maxWidth is new.
         const fromValueLabel = fitSvgLine(String(from.y), {
           maxWidth: DUMBBELL_VALUE_LABEL_W,
-          fontSize: LABEL_FONT_SIZE,
-          minFontSize: 10,
+          fontSize: DUMBBELL_FROM_FONT_SIZE,
+          minFontSize: 12,
         })
         const toValueLabel = fitSvgLine(String(to.y), {
           maxWidth: DUMBBELL_VALUE_LABEL_W,

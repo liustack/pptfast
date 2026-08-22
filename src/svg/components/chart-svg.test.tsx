@@ -631,7 +631,7 @@ describe("renderDumbbell — value-label width fitting (from.y/to.y)", () => {
     const toLabel = texts.find((t) => t.textContent === "128")
     expect(fromLabel).toBeTruthy()
     expect(toLabel).toBeTruthy()
-    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(11) // dumbbell "from" keeps the pre-tuning 11px
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(12)
     expect(Number(toLabel!.getAttribute("font-size"))).toBe(12.5) // unchanged
     expect(fromLabel!.getAttribute("data-truncated")).toBeNull()
     expect(toLabel!.getAttribute("data-truncated")).toBeNull()
@@ -656,8 +656,7 @@ describe("renderDumbbell — value-label width fitting (from.y/to.y)", () => {
     const toLabel = texts.find((t) => t.getAttribute("fill") === ACCENT)
     expect(fromLabel).toBeTruthy()
     expect(toLabel).toBeTruthy()
-    expect(Number(fromLabel!.getAttribute("font-size"))).toBeLessThan(11) // LABEL_FONT_SIZE
-    expect(Number(fromLabel!.getAttribute("font-size"))).toBeGreaterThanOrEqual(10) // this call's minFontSize
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(12)
     expect(Number(toLabel!.getAttribute("font-size"))).toBeLessThan(12.5)
     expect(Number(toLabel!.getAttribute("font-size"))).toBeGreaterThanOrEqual(10)
   })
@@ -683,7 +682,7 @@ describe("renderDumbbell — value-label width fitting (from.y/to.y)", () => {
     const toLabel = texts.find((t) => t.getAttribute("fill") === ACCENT)
     expect(fromLabel).toBeTruthy()
     expect(toLabel).toBeTruthy()
-    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(10) // this call's minFontSize floor
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(12)
     expect(Number(toLabel!.getAttribute("font-size"))).toBe(10)
     expect(fromLabel!.textContent!.length).toBeLessThan(String(hugeFrom).length)
     expect(toLabel!.textContent!.length).toBeLessThan(String(hugeTo).length)
