@@ -74,7 +74,7 @@ const TITLE_FONT_SIZE = 16
 const TITLE_MIN_FONT_SIZE = 12
 // Raised from 24 on 2026-08-15, back when the title's baseline sat at
 // TITLE_FONT_SIZE (round 4 hung it off the band's bottom edge instead —
-// see TITLE_TO_CARDS). A 24px band left barely 4px between the title's
+// see TITLE_TOP_PAD). A 24px band left barely 4px between the title's
 // descenders and the top of the first card — the visual review read the
 // two as one glued block ("标题距离卡片太近了，没有呼吸感"). 36 leaves the
 // title its own line of air, the same relationship cycle.tsx's band
@@ -92,33 +92,20 @@ const TITLE_MIN_FONT_SIZE = 12
 const TITLE_BAND = 36
 /** Share of the density-stretch increment that widens the title's band
  * rather than the card shells, so the title gets air of its own as the
- * cards' internal padding grows instead of staying frozen. Which side of
- * the title that air lands on is `TITLE_TO_CARDS`'s business — round 4
- * moved it above the title; the share itself is unchanged. */
+ * cards' internal padding grows instead of staying frozen. The extra band
+ * lands under the title (see `TITLE_TOP_PAD`). */
 const TITLE_BAND_GROW_SHARE = 0.25
 /** Ceiling on that widening — past this the title stops reading as a label
  * on the grid below it and starts floating on its own. */
 const TITLE_BAND_MAX_GROW = 16
 /**
- * Distance from the title's baseline down to the top of the first card —
- * fixed, and deliberately shorter than the layout's own stacking gap
- * (`BLOCK_GAP`, 16px).
- *
- * Review round 4. A reader assigns a label to a group by proximity, before
- * reading a word of it, so the label has to be nearer the thing it names
- * than the block it follows. It was the other way round on the gallery's
- * `component--people-cards--mixed`: 22px up to the paragraph, 32px down to
- * its own cards. The band is where the slack lives — its natural surplus
- * plus the growth share above — and all of it used to pile up under the
- * title because the title was pinned to the top of the band. It hangs off
- * the *bottom* of the band now, so the slack opens above the label, where
- * it separates two blocks instead of splitting one.
- *
- * The band itself and how much of a density stretch it takes
- * (`TITLE_BAND`, `TITLE_BAND_GROW_SHARE`) are unchanged — this only moves
- * the title inside it, so `measure()` reports exactly what it always did.
+ * Top padding inside the title band. The title hangs off the *top* of the
+ * band so leftover height from a density stretch lands between the label
+ * and the cards (gallery review 2026-08-22: "标题贴卡片"). Hanging it off
+ * the bottom put that growth above the label instead, which left the
+ * title-to-card gap frozen at 12px.
  */
-const TITLE_TO_CARDS = 12
+const TITLE_TOP_PAD = 4
 
 interface PersonCardLayout {
   name: { text: string; fontSize: number; truncated: boolean }
@@ -280,11 +267,10 @@ export const peopleCards: SvgComponent<PeopleCardsComponent> = {
               bold: true,
               fontFamily: ctx.fonts.heading,
             })
-            // Hung off the bottom of the band (see `TITLE_TO_CARDS`), never
-            // above the band's own top edge — a title shrunk by `fitSvgLine`
-            // gets a shorter baseline offset, and the clamp keeps even that
-            // case inside the box the layout handed this component.
-            const baselineY = Math.max(title.fontSize, grownTitleBand - TITLE_TO_CARDS)
+            // Hung off the top of the band so leftover height widens the
+            // title-to-card gap (gallery review 2026-08-22) instead of
+            // piling up above the label while the cards stay glued.
+            const baselineY = TITLE_TOP_PAD + title.fontSize
             return (
               <text
                 data-truncated={title.truncated ? "1" : undefined}

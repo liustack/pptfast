@@ -178,6 +178,37 @@ export function layoutContent(
   }
 }
 
+/** Matches `MIN_READABLE_CARD_W` / `GAP` in `components/kpi.tsx`. Layout
+ * restacks a two-column page before that component drops items at half
+ * width (gallery two-column EN, 2026-08-22). */
+const KPI_MIN_CARD_W = 160
+const KPI_CARD_GAP = 16
+
+function kpiCardsNeedFullWidth(component: Component, width: number): boolean {
+  if (component.type !== "kpi_cards") return false
+  const n = component.items.length
+  if (n <= 1) return false
+  return (width - KPI_CARD_GAP * (n - 1)) / n < KPI_MIN_CARD_W
+}
+
+function placementSqueezesKpi(placed: PlacedComponent[]): boolean {
+  return placed.some((p) => kpiCardsNeedFullWidth(p.component, p.box.w))
+}
+
+function restackIfKpiSqueezed(
+  arrangement: Arrangement | undefined,
+  components: Component[],
+  rect: ContentRect,
+  ctx: ComponentCtx,
+  result: { placed: PlacedComponent[]; dropped: number },
+): { placed: PlacedComponent[]; dropped: number } {
+  if (arrangement !== "two_column" || result.dropped !== 0 || !placementSqueezesKpi(result.placed)) {
+    return result
+  }
+  const single = layoutContentFit("single", components, rect, ctx)
+  return single.dropped === 0 ? single : result
+}
+
 /** Gap tiers tried in order (widest first) before resorting to dropping components. */
 const GAP_TIERS = [BLOCK_GAP, 10, 6]
 
@@ -397,13 +428,15 @@ export function settleToGolden(
   placed: PlacedComponent[],
   rect: ContentRect,
   ctx: ComponentCtx,
+  opts?: { capTopAir?: boolean },
 ): PlacedComponent[] {
   if (placed.length === 0) return placed
   const top = placed.reduce((min, p) => Math.min(min, p.box.y), Number.POSITIVE_INFINITY)
   if (Math.abs(top - rect.y) > 0.5) return placed
   const remaining = rect.y + rect.h - stackBottom(placed, ctx)
   if (remaining <= 0) return placed
-  const shift = Math.min(remaining * GOLDEN_TOP_SHARE, goldenTopCap(ctx))
+  const airCap = opts?.capTopAir === false ? remaining : goldenTopCap(ctx)
+  const shift = Math.min(remaining * GOLDEN_TOP_SHARE, airCap)
   return placed.map((p) => ({ ...p, box: { ...p.box, y: p.box.y + shift } }))
 }
 
@@ -456,7 +489,10 @@ export function layoutContentFit(
         // whole row still gets set down at the golden position, which moves
         // every section by the same amount and so cannot pull two of them
         // apart.
-        return { placed: settleToGolden(placed, rect, ctx), dropped: 0 }
+        return restackIfKpiSqueezed(arrangement, components, rect, ctx, {
+          placed: settleToGolden(placed, rect, ctx),
+          dropped: 0,
+        })
       }
       // 先做卡片密度拉伸（吃大头），剩余交给间距呼吸
       const grown = growStretchables(placed, rect, ctx)
@@ -470,7 +506,10 @@ export function layoutContentFit(
       // *sub*-region (an image takeover's caption column, `big_number`'s
       // support stack), where settling each one-block region by its own
       // leftover would tilt regions that are meant to share a top edge.
-      return { placed: spaced.length >= 2 ? settleToGolden(spaced, rect, ctx) : spaced, dropped: 0 }
+      return restackIfKpiSqueezed(arrangement, components, rect, ctx, {
+        placed: spaced.length >= 2 ? settleToGolden(spaced, rect, ctx) : spaced,
+        dropped: 0,
+      })
     }
   }
   // Before giving up and dropping content: a column-splitting arrangement

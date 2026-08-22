@@ -2,6 +2,7 @@ import type { ReactElement } from "react"
 import type { Component } from "@/ir"
 import { mixHex } from "../color-mix"
 import { accessibleInk, readableOn } from "../../ink"
+import { Icon } from "../../icons"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
 import {
@@ -13,6 +14,12 @@ import {
 } from "./legibility"
 
 type CycleComponent = Extract<Component, { type: "cycle" }>
+type CycleItem = CycleComponent["items"][number] & { icon?: string }
+
+function itemIcon(item: CycleComponent["items"][number]): string | undefined {
+  const icon = (item as CycleItem).icon
+  return typeof icon === "string" && icon.length > 0 ? icon : undefined
+}
 
 function nodeAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n
@@ -150,18 +157,28 @@ export function renderPetalWheel(
 
   return (
     <g transform={`translate(${box.x},${box.y})`}>
-      {component.items.map((_, i) => {
+      {component.items.map((item, i) => {
         const a0 = nodeAngle(i, n)
         const a1 = a0 + (2 * Math.PI) / n
         const fill = petalFill(ctx, petalAlt, i)
+        const icon = itemIcon(item)
+        const mid = a0 + Math.PI / n
+        const lr = (inner + outer) / 2
+        const iconSize = Math.max(12, Math.round(20 * scale))
+        const ix = ox + Math.cos(mid) * lr - iconSize / 2
+        const iy = oy + Math.sin(mid) * lr - iconSize / 2
         return (
-          <path
-            key={`petal-${i}`}
-            d={petalD(ox, oy, inner, outer, a0, a1)}
-            fill={fill}
-            stroke={ctx.colors.bg}
-            strokeWidth={Math.max(2, 3 * scale)}
-          />
+          <g key={`petal-${i}`}>
+            <path
+              d={petalD(ox, oy, inner, outer, a0, a1)}
+              fill={fill}
+              stroke={ctx.colors.bg}
+              strokeWidth={Math.max(2, 3 * scale)}
+            />
+            {icon ? (
+              <Icon name={icon} x={ix} y={iy} size={iconSize} color={readableOn(fill)} />
+            ) : null}
+          </g>
         )
       })}
       <circle
@@ -203,6 +220,7 @@ export function renderPetalWheel(
         : null}
       {petalOnly.map((i) => {
         const item = component.items[i]!
+        if (itemIcon(item)) return null
         const mid = nodeAngle(i, n) + Math.PI / n
         const lr = (inner + outer) / 2 + 6 * scale
         const x = ox + Math.cos(mid) * lr
@@ -236,9 +254,8 @@ export function renderPetalWheel(
       {callouts.map((c) => {
         const item = component.items[c.i]!
         const mid = c.mid
-        const dotR = outer + 6 * scale
-        const dx = ox + Math.cos(mid) * dotR
-        const dy = oy + Math.sin(mid) * dotR
+        const dx = ox + Math.cos(mid) * outer
+        const dy = oy + Math.sin(mid) * outer
         const cy = calloutY.get(c.i) ?? oy
         const tx = c.side === "left" ? ox - outer - CALL_GAP * scale : ox + outer + CALL_GAP * scale
         const anchor = c.side === "left" ? "end" : "start"

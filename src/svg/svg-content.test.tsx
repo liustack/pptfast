@@ -96,6 +96,23 @@ describe("SvgContent", () => {
   })
 })
 
+it("places a lone chart at the golden share of leftover rather than the heading-body cap", () => {
+  const markup = renderToStaticMarkup(
+    <svg>
+      <SvgContent
+        components={[
+          { type: "chart", chart_type: "bar", series: [{ name: "a", data: [{ x: "Q1", y: 1 }] }] },
+        ]}
+        rect={{ x: 96, y: 228, w: 1088, h: 412 }}
+        ctx={ctx}
+      />
+    </svg>,
+  )
+  const match = /data-audit-box="96,([\d.]+),1088"/.exec(markup)!
+  const y = Number(match[1])
+  expect(y).toBeGreaterThan(228 + 16)
+})
+
 it("sets a lone short component down by at most one heading-body beat, not 38% of a tall leftover", () => {
   // 上不空优先 (2026-08-21, fifth review, sixth review tightens the cap
   // from two gaps to one): a lone short block in a tall content rect used

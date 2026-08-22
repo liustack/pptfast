@@ -100,6 +100,32 @@ describe("playbill sparse faces", () => {
     expect(chip?.getAttribute("fill")).toBe(ctx.colors.bg)
   })
 
+  it("stat-hero chip polygon is clockwise 4° (top-right corner drops in y-down)", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "stat-hero",
+      heading: "-43%",
+      subheading: "非计划停机 · 试点 90 天",
+      components: [],
+    } as Slide
+    const { root } = render(
+      <StatHeroContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const pts = root
+      .querySelector("polygon")!
+      .getAttribute("points")!
+      .trim()
+      .split(/\s+/)
+      .map((p) => {
+        const [x, y] = p.split(",").map(Number)
+        return { x: x!, y: y! }
+      })
+    const tr = pts[1]!
+    const unrotatedTr = { x: 1100 + 180 / 2, y: 152 - 64 / 2 }
+    expect(tr.y).toBeGreaterThan(unrotatedTr.y)
+    expect(tr.x).toBeGreaterThan(unrotatedTr.x)
+  })
+
   it("mono-bleed paints primary, keeps the caption in bg, and never writes a placeholder", () => {
     const slide: Slide = {
       type: "content",

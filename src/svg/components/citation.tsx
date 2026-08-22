@@ -40,7 +40,7 @@ export const citation: SvgComponent<CitationComponent> = {
       // itself — same reservation shape row-cards.tsx's own
       // `truncBudget - 20` uses. Floored at 1 (row-cards.tsx's "never
       // render zero visible units" precedent).
-      visibleCount = Math.max(1, Math.min(fullCount, Math.floor(truncBudget / ROW) - 1))
+      visibleCount = Math.max(1, Math.min(fullCount, Math.floor(truncBudget / ROW)))
     }
     const hiddenCount = fullCount - visibleCount
     const component = hiddenCount > 0 ? { ...rawComponent, sources: rawComponent.sources.slice(0, visibleCount) } : rawComponent
@@ -81,20 +81,7 @@ export const citation: SvgComponent<CitationComponent> = {
             </text>
           )
         })}
-        {hiddenCount > 0 && (
-          <text
-            data-dropped={hiddenCount}
-            x={box.w}
-            y={baselineY(component.sources.length)}
-            textAnchor="end"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hiddenCount} …`}
-          </text>
-        )}
+        {hiddenCount > 0 && <g data-dropped={hiddenCount} />}
       </g>
     )
   },

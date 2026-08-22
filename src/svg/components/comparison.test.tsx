@@ -314,16 +314,8 @@ describe("comparison 首列重复归一化（2026-07-10 无图矩阵真机病型
       expect(dropped).toBeTruthy()
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount).toBeGreaterThan(0)
-      expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
+      expect((dropped!.textContent ?? "").trim()).toBe("")
       expect(hiddenCount + dataRowLabelTexts.length).toBe(manyRowsComponent.rows.length)
-
-      // Review fix (I1, sibling audit): the marker itself must stay inside
-      // box.h too, not just the rule lines — a marker-excluding containment
-      // check is exactly what let bullets.tsx's own marker overflow slip
-      // through review.
-      const markerY = Number(dropped!.getAttribute("y"))
-      const markerFontSize = Number(dropped!.getAttribute("font-size"))
-      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
     })
 
     it("still renders at least one row even when box.h is far smaller than a single row's height", () => {
@@ -472,7 +464,7 @@ describe("pill_panels form", () => {
       const fy = Number(frames[i].getAttribute("y"))
       expect(py).toBeLessThan(fy)
       expect(py + ph).toBeGreaterThan(fy)
-      expect(Number(pill.getAttribute("rx"))).toBeCloseTo(ph / 2)
+      expect(Number(pill.getAttribute("rx"))).toBe(themeCtx.shape?.radius ?? 2)
     })
     const title0 = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === twoCol.columns[0])
     expect(title0?.getAttribute("fill")).toBe(readableOn(themeCtx.colors.accent))
@@ -500,6 +492,9 @@ describe("pill_panels form", () => {
     )
     expect(marks.length).toBeGreaterThanOrEqual(2)
     expect(marks[0].getAttribute("d") ?? "").toMatch(/L /)
+    pills.forEach((p) => {
+      expect(Number(p.getAttribute("rx"))).toBe(themeCtx.shape?.radius ?? 2)
+    })
   })
 
   it("ember: no frame stroke, soft pill radius, accent-all fill from tokens", () => {
@@ -564,7 +559,7 @@ describe("pill_panels form", () => {
     }
   })
 
-  it("box.h truncates body rows and marks the drop with +N …", () => {
+  it("box.h truncates body rows and marks the drop with data-dropped", () => {
     const many = {
       type: "comparison" as const,
       columns: ["甲", "乙"],
@@ -583,6 +578,6 @@ describe("pill_panels form", () => {
     expect(labels.length).toBeLessThan(20)
     const dropped = container.querySelector("[data-dropped]")
     expect(dropped).toBeTruthy()
-    expect(dropped!.textContent).toMatch(/^\+\d+ …$/)
+    expect((dropped!.textContent ?? "").trim()).toBe("")
   })
 })

@@ -18,18 +18,26 @@ import { accessibleOpacity, readableOn } from "../ink"
  * discipline `chrome-geometry.ts`'s `FOOTNOTE_DESCENT_RATIO` states for the
  * footnote it keeps off the footer divider.
  */
-const INK_DESCENT_RATIO = 0.22
+const LATIN_DESCENT_RATIO = 0.22
+/** CJK em-box bottom sits near the alphabetic baseline (~0.12em). A little
+ * slack so a Songti glyph that hangs lower still clears the rule. */
+const CJK_EM_DESCENT_RATIO = 0.16
 
 /**
  * Air between that ink and the rule, per unit of font size.
  *
  * Proportional, not flat: an underline belongs to its own type, so a 36px
- * subheading and an 84px heading should read with the same air rather than
- * the same pixels. Together with {@link INK_DESCENT_RATIO} the rule sits
- * 0.33em under the baseline — ~6px of visible air under a 36px CJK line,
- * ~12px under a Latin one that happens to carry no descender.
+ * subheading and an 84px heading should read with the same optical air
+ * rather than the same pixels. 0.11em was enough for the measured Latin
+ * descent but kissed CJK em boxes (gallery banner-chapter, 2026-08-22).
  */
-const UNDERLINE_AIR_RATIO = 0.11
+const UNDERLINE_AIR_RATIO = 0.28
+
+function underlineDescentRatio(text: string): number {
+  if (/[A-Za-z]/.test(text)) return LATIN_DESCENT_RATIO
+  if (/[\u3400-\u9fff]/.test(text)) return CJK_EM_DESCENT_RATIO
+  return LATIN_DESCENT_RATIO
+}
 
 /**
  * banner-chapter layout（spec §3.2）：巨幅居中章节号水印 + 主标题/副
@@ -129,7 +137,8 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     (measureTextUnits(underlined.text, underlined.weight) * underlined.fontSize) / 2,
   )
   const underlineY = Math.round(
-    underlined.baseline + underlined.fontSize * (INK_DESCENT_RATIO + UNDERLINE_AIR_RATIO),
+    underlined.baseline +
+      underlined.fontSize * (underlineDescentRatio(underlined.text) + UNDERLINE_AIR_RATIO),
   )
 
   return (

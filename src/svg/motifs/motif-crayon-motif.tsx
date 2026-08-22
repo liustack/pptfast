@@ -6,7 +6,7 @@ import type { DecorProps } from "./types"
  * 蜡笔涂边 + 太阳涂鸦，设计源画布 `EdgeShading.dc.html` 与
  * `SunDoodle.dc.html`，几何坐标逐条抄录）。
  *
- * 一盒蜡笔画在卡纸上。heavy 的量全部堆在页缘带，不进场内。四件东西，位置
+ * 一盒蜡笔画在卡纸上。heavy 的量全部堆在页缘带，不进场内。三件东西，位置
  * 写死，不读内容、不随 seed 变：
  *   - **顶缘蜡笔涂边**：页顶 y0-14 的 primary 蓝填充多边形，下缘手涂不齐。
  *     板上公式 `12 + 3.5*sin(x/97) + 2.5*sin(x/41) + 2`，每 40px 采样，y
@@ -25,8 +25,8 @@ import type { DecorProps } from "./types"
  *     会丢）。准入是正文墨压在「四色划各自叠在 bg 上的合成色」上四格都
  *     ≥4.5:1，`motif-crayon-motif.test.tsx` 用 `contrastRatio` 锁死。
  *     cover 仍撤底带，减淡也是删除线观感。
- *   - **左下角一颗橘红星贴纸**：板上路径从 `(56,628)` 起笔（星顶），填
- *     accent。标签写的 x56,y636 是这颗星的位置，不是另一个坐标。
+ *     左下星贴纸（板上 `M56,628`）已整族退役：画廊审查把所有页型的这颗
+ *     星都判成多余贴纸。
  *
  * ## 偏离设计板：末两段彩虹划让开右下 logo 盒
  *
@@ -36,12 +36,9 @@ import type { DecorProps } from "./types"
  * 的底带纸屑整条退役是同一条先例。这里少画末两段、前 22 段坐标一字不改，
  * 24 段的节奏和四色轮换都还在，只是右缘在 logo 盒左沿停住。
  *
- * 左下星贴纸会擦到可选的左下 logo 盒 (64,630,96×40) 大约 6px。第 5 条点名
- * 的是右下那只，左下放星是板上自己画的，不挪。
- *
  * ## heavy 档降档：判据只钉 IR 结构层
  *
- * 定稿密页形态：太阳与星撤场，涂边与淡彩虹划留下。对应旧规则里「贴纸撤场」
+ * 定稿密页形态：太阳撤场，涂边与淡彩虹划留下。对应旧规则里「贴纸撤场」
  * 的位置。判据是这一页的组件数量（{@link HALF_FIELD_COMPONENTS}），一个纯
  * IR 结构量，`slide.components.length` 一个属性读到底。不是 campaign 那种
  * 「满场 120 枚砍成顶带 60 枚」的一半点数，是「页缘两带还在、贴上去的零件
@@ -57,13 +54,13 @@ import type { DecorProps } from "./types"
  * 涂边走 primary（蓝压蓝，看不见），太阳压在八个 chapter layout 的巨幅居中
  * 标题活动范围上。两件失效、一件抢戏，chapter 不画。
  *
- * ## 偏离设计板：cover 撤底带（彩虹划＋星）且太阳让位
+ * ## 偏离设计板：cover 撤底带（彩虹划）且太阳让位
  *
  * crayon 声明的封面构造之一 `tone-adaptive-header` 在无背景图模式下把
  * 作者行画在 x64 y650 基线、日期行右对齐 y650（`cover-tone-adaptive-header
  * .tsx`），墨迹带约 y624-656——正是第 5 条新增的 y620-664 第五保护带。
  * 彩虹划的墨迹 y641.5-646.5 正好横穿这行字（structure-map 点名的
- * 「tone-adaptive 底槽撞位」，五案里第四案），星贴纸也压住作者行起笔。
+ * 「tone-adaptive 底槽撞位」，五案里第四案）。
  * 减淡档把划退到底色级，但 meta 行横贯全宽，淡划仍是删除线观感，所以
  * cover 继续撤底带。motif 不许感知当页选中的 layout（terra 板的确定性
  * 红线），所以照 terra「chapter 整页退让」的同一模式按页型处理：cover
@@ -82,7 +79,7 @@ import type { DecorProps } from "./types"
  * 太阳。banner-title 本不撞，同一条页型规则一并让出。
  *
  * 纪律：零 theme id、零 hex。涂边走 primary，划痕走 bg，太阳圈与光芒走
- * accent，芯走 chartPalette[3]，星走 accent，彩虹划走 chartPalette
+ * accent，芯走 chartPalette[3]，彩虹划走 chartPalette
  * （`chartPaletteOffset` 是 ctx 上的独立字段、不改 `colors.chartPalette`
  * 本身，`motif-chart-palette-isolation.test.tsx` 钉着这条）。画笔属性一律
  * 写在叶子上不挂 `<g>`——导出侧 `svg2pptx/dispatch.ts` 的 `leafToOp` 只读
@@ -178,12 +175,8 @@ const DASHES = Array.from({ length: DASH_COUNT }, (_, i) => i).filter(dashDrawn)
 /** 密页实际落笔的彩虹划段数（满场让开 logo 后的条数，降档不减这段）。 */
 export const CRAYON_DASH_DRAWN = DASHES.length
 
-// ── 左下角橘红星贴纸 ────────────────────────────────────────────────────
-/** 板上路径，从星顶 (56,628) 起笔。标签 x56,y636 是这颗星的位置。 */
-const STAR_D = "M56,628 l4,10 10,1 -7,7 2,10 -9,-5 -9,5 2,-10 -7,-7 10,-1 z"
-
 /**
- * 半场降档判据：一页的组件数到这个数就撤太阳与星星。取
+ * 半场降档判据：一页的组件数到这个数就撤太阳。取
  * `PACING_BUDGETS.dense.maxComponentsPerSlide`——全仓自己的「最密一档每页
  * 块数上限」，不另造一个魔数。到了这个数，页面已经是内容说了算的一页，
  * 装饰把贴上去的零件让出来。
@@ -202,7 +195,7 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
   // cover 撤底带：tone-adaptive-header 封面的作者/日期行画在 y624-656，
-  // 彩虹划与星会横穿它（见文件头「cover 撤底带」一节）。
+  // 彩虹划会横穿它（见文件头「cover 撤底带」一节）。
   const bottomBand = slide.type !== "cover"
   // cover 太阳让位：tone-adaptive-header 密级徽标与太阳下光芒相交
   // （见文件头）。motif 不感知 layout，按页型整颗撤场。
@@ -264,7 +257,6 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
             opacity={DASH_OPACITY}
           />
         ))}
-      {bottomBand && !halfField && <path d={STAR_D} fill={orange} />}
     </>
   )
 }

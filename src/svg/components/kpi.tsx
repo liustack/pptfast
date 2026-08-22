@@ -265,22 +265,23 @@ function baseCardH(component: KpiComponent): number {
  * ("units") another 26px at the matching 10px — 80px of the 120.
  */
 const MIN_READABLE_CARD_W = 160
-/** Reserved horizontal slot (px) for the "+N …" marker text itself,
- * plus one `GAP` before it — sized generously for a 3-4 digit count
- * ("+9999 more") at the marker's own 13px font, never a source of the
- * marker itself overflowing `box.w`. */
-const MARKER_RESERVE_W = 90
 
 /**
- * How many leading items fit `box.w` at `MIN_READABLE_CARD_W` once
- * `MARKER_RESERVE_W` (+ one more `GAP`) is set aside for the "+N …"
- * marker — at least 1, matching every other component in this task's family
+ * How many leading items fit `box.w` at `MIN_READABLE_CARD_W` —
+ * at least 1, matching every other component in this task's family
  * sweep ("never render zero visible units, even in a near-zero box").
  */
 function visibleCardCount(fullCount: number, boxW: number): number {
-  const effectiveW = boxW - MARKER_RESERVE_W - GAP
-  const visible = Math.floor((effectiveW + GAP) / (MIN_READABLE_CARD_W + GAP))
+  const visible = Math.floor((boxW + GAP) / (MIN_READABLE_CARD_W + GAP))
   return Math.max(1, Math.min(fullCount, visible))
+}
+
+function wrappedHeight(component: KpiComponent, w: number): number {
+  const n = component.items.length
+  const cols = visibleCardCount(n, w)
+  const rows = Math.ceil(n / cols)
+  const rowH = baseCardH(component)
+  return rows * rowH + (rows - 1) * GAP
 }
 
 export const kpi: SvgComponent<KpiComponent> = {
@@ -292,7 +293,7 @@ export const kpi: SvgComponent<KpiComponent> = {
     if (assignment?.form === "bubble_row") {
       return measureBubbleRow(component, w, ctx, assignment.knobs ?? {})
     }
-    return baseCardH(component)
+    return wrappedHeight(component, w)
   },
   render(rawComponent, box, ctx) {
     const assignment = resolveComponentForm("kpi_cards", ctx.themeId)
@@ -303,23 +304,21 @@ export const kpi: SvgComponent<KpiComponent> = {
       return renderBubbleRow(rawComponent, box, ctx, assignment.knobs ?? {})
     }
     const fullCount = rawComponent.items.length
-    // Only cap when the *full* set would actually breach
-    // MIN_READABLE_CARD_W — a row whose cards already clear it reflows
-    // through the exact same formula it always has (byte-identical no-op on
-    // the common path).
-    const naturalCardW = (box.w - GAP * (fullCount - 1)) / fullCount
-    const visible = naturalCardW < MIN_READABLE_CARD_W ? visibleCardCount(fullCount, box.w) : fullCount
+    const cols = visibleCardCount(fullCount, box.w)
+    const rowH = baseCardH(rawComponent)
+    const naturalRows = Math.ceil(fullCount / cols)
+    const maxRows =
+      box.h == null ? naturalRows : Math.max(1, Math.floor((box.h + GAP) / (rowH + GAP)))
+    const rows = Math.min(naturalRows, maxRows)
+    const visible = Math.min(fullCount, cols * rows)
     const hidden = fullCount - visible
     const component = hidden > 0 ? { ...rawComponent, items: rawComponent.items.slice(0, visible) } : rawComponent
-    const n = component.items.length
-    // Visible cards reflow to fill box.w when truncated (leaving
-    // MARKER_RESERVE_W + GAP for the marker slot after them), otherwise the
-    // original, unreserved full-width formula — unchanged from pre-fix.
-    const cardW = hidden > 0 ? (box.w - MARKER_RESERVE_W - GAP - GAP * (n - 1)) / n : (box.w - GAP * (n - 1)) / n
-    const measured = baseCardH(component)
-    // 密度拉伸（box.h 由布局分配）：卡片撑到分配高度，内容组垂直居中
-    const cardH = Math.max(measured, box.h ?? measured)
-    const contentShift = (cardH - measured) / 2
+    // Grid pitch is the column count, not the last row's leftover, so a
+    // 3+1 wrap does not stretch the fourth card across the whole rail.
+    const cardW = (box.w - GAP * (cols - 1)) / cols
+    const natural = rows * rowH + (rows - 1) * GAP
+    const cardH = box.h != null && box.h > natural ? (box.h - (rows - 1) * GAP) / rows : rowH
+    const contentShift = (cardH - rowH) / 2
     // Row-level, not per-card: every card in this row is the same width, so
     // its text column and the type size its number is set at are the row's
     // property rather than each card's (see `rowValueFontSize`).
@@ -329,7 +328,10 @@ export const kpi: SvgComponent<KpiComponent> = {
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {component.items.map((item, i) => {
-          const cardX = i * (cardW + GAP)
+          const col = i % cols
+          const row = Math.floor(i / cols)
+          const cardX = col * (cardW + GAP)
+          const cardY = row * (cardH + GAP)
           const dp = item.delta ? deltaProps(item.delta, ctx.colors) : null
           // Bench-driven fix round, defect B: `deltaProps` returns a raw
           // semantic hex (or "" for "flat", falling back to colors.muted)
@@ -404,7 +406,7 @@ export const kpi: SvgComponent<KpiComponent> = {
             <g key={i}>
               <rect
                 x={cardX}
-                y={0}
+                y={cardY}
                 width={cardW}
                 height={cardH}
                 rx={ctx.shape?.radius ?? 8}
@@ -417,7 +419,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 <Icon
                   name={item.icon}
                   x={cardX + 20}
-                  y={12 + contentShift}
+                  y={cardY + 12 + contentShift}
                   size={18}
                   color={ctx.colors.primary}
                 />
@@ -425,7 +427,7 @@ export const kpi: SvgComponent<KpiComponent> = {
               <text
                 data-truncated={fittedValue.truncated ? "1" : undefined}
                 x={cardX + 20}
-                y={(item.icon ? 64 : 58) + contentShift}
+                y={cardY + (item.icon ? 64 : 58) + contentShift}
                 fontSize={fittedValue.fontSize}
                 fontWeight="bold"
                 fill={ctx.colors.text}
@@ -442,7 +444,7 @@ export const kpi: SvgComponent<KpiComponent> = {
               {dp && (
                 <text
                   x={cardX + cardW - 20}
-                  y={36 + contentShift}
+                  y={cardY + 36 + contentShift}
                   textAnchor="end"
                   fontSize={20}
                   fill={deltaColor}
@@ -454,7 +456,7 @@ export const kpi: SvgComponent<KpiComponent> = {
               <text
                 data-truncated={fittedLabel.truncated ? "1" : undefined}
                 x={cardX + 20}
-                y={96 + contentShift}
+                y={cardY + 96 + contentShift}
                 fontSize={fittedLabel.fontSize}
                 fill={ctx.colors.muted}
                 fontFamily={ctx.fonts.body}
@@ -466,7 +468,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 <text
                   data-truncated={fittedSource.truncated ? "1" : undefined}
                   x={cardX + 20}
-                  y={114 + contentShift}
+                  y={cardY + 114 + contentShift}
                   fontSize={11}
                   fill={ctx.colors.muted}
                   // Post-v0.3 W8 fix round (backlog item "D", task-2 review
@@ -495,20 +497,7 @@ export const kpi: SvgComponent<KpiComponent> = {
             </g>
           )
         })}
-        {hidden > 0 && (
-          <text
-            data-dropped={hidden}
-            x={n * (cardW + GAP)}
-            y={cardH / 2 + 5}
-            textAnchor="start"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hidden} …`}
-          </text>
-        )}
+        {hidden > 0 && <g data-dropped={hidden} />}
       </g>
     )
   },

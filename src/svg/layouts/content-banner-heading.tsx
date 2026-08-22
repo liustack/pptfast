@@ -71,15 +71,16 @@ const CONTENT_RECT_BOTTOM = 620
 // kicker on and every motif treats as the decoration band's lower edge.
 // Was a flat 52 (em top 40), eight pixels inside that band — on luxe the
 // gold inner frame at y=34 left 6px of air and read as glued to the page
-// top. Baseline = 48 + 12 = 60. The 20px kicker-to-banner gap is the
-// same beat the old 52/72 pair spent, so BANNER_Y follows to 80.
+// top. Baseline = 48 + 12 = 60. A 20px kicker-to-banner gap still read as
+// welded to the banner's top edge (gallery banner-heading zh/en, 2026-08-22).
+// 32px of air makes the kicker a separate line. BANNER_Y follows.
 const KICKER_FONT_SIZE = 12
 const KICKER_Y = TITLE_ZONE_TOP + KICKER_FONT_SIZE
-const BANNER_KICKER_GAP = 20
+const BANNER_KICKER_GAP = 32
 const BANNER_Y = KICKER_Y + BANNER_KICKER_GAP
 
 // Baseline vertical-centering fudge: for a single line at the nominal 34px
-// heading size this yields a baseline of 80 + 88/2 + round(34*0.32) = 135,
+// heading size this yields a baseline of BANNER_Y + 88/2 + round(34*0.32),
 // staying proportional if the heading shrinks toward its 22px floor on
 // pathologically long titles.
 

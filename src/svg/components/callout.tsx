@@ -13,17 +13,12 @@ const RX = 6
 const MIN_HEIGHT = 56
 
 /**
- * The variant accent is a rule across the *top* of the card, not a bar down
- * its left edge (visual review 2026-08-15: a left-edge bar was rejected on
- * every callout in every theme and language). A card may carry a horizontal
- * edge; a vertical one down the side reads as a quoted-text marker bolted
- * onto a panel, and it fights the card's own rounded corner.
- *
- * Drawn by layering rather than by insetting: the accent rect sits behind
- * the surface rect with the same corner radius, so the visible sliver is a
- * true top border that follows the corner curve instead of a floating dash
- * with gaps at both ends. On a square-cornered theme (radius 0) the same
- * two rects degrade to a plain full-width rule.
+ * The variant accent is a dedicated hairline across the *top* of the card,
+ * not a bar down its left edge (visual review 2026-08-15, restated
+ * 2026-08-22). A stacked full-size accent rect behind the surface leaked
+ * color around the left/right rounded corners and read as the leftover
+ * left bar. The hairline is its own 3px rect sitting on the card's top
+ * edge. The surface is a single card, never a second full-size fill.
  */
 const TOP_RULE_H = 3
 
@@ -96,18 +91,18 @@ export const callout: SvgComponent<CalloutComponent> = {
     const iconY = TOP_RULE_H + (h - TOP_RULE_H - ICON_SIZE) / 2
     return (
       <g transform={`translate(${box.x},${box.y})`}>
-        <rect x={0} y={0} width={box.w} height={h} rx={radius} fill={accent} />
         <rect
           x={0}
-          y={TOP_RULE_H}
+          y={0}
           width={box.w}
-          height={h - TOP_RULE_H}
+          height={h}
           rx={radius}
           fill={ctx.colors.surface}
           {...(ctx.colors.cardStroke
             ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
             : {})}
         />
+        <rect x={0} y={0} width={box.w} height={TOP_RULE_H} fill={accent} />
         <Icon name={component.icon ?? VARIANT_ICON[component.variant]} x={ICON_LEFT} y={iconY} size={ICON_SIZE} color={accent} />
         {lineSegments.map((segments, i) => (
           <text

@@ -23,9 +23,10 @@ import type { DecorProps } from "./types"
  * 方片四角在模块加载时烘焙成 `<polygon points>`——导出侧 `svg2pptx/dispatch.ts`
  * 对 `<rect transform>` 的旋转不在受控子集内，烘焙顶点的 polygon 不受此限，
  * 且审计的压字归因把 polygon 当精确轮廓（fix/audit-polygon-attribution），
- * 贴片里的日期字会正确判给黑贴而不是页面黄底。贴片内的
- * 日期字用 `<text transform="rotate(4 …)">`：文本旋转导出路径已在图表
- * 竖排标题波落地（`svg2pptx/text.ts` 的 `rotate` 字段），4° 在支持面内。
+ * 贴片里的日期字会正确判给黑贴而不是页面黄底。贴片内的日期字用同一个
+ * `PATCH_DEG` 写成 `<text transform="rotate(4 …)">`。正角在 SVG y 向下
+ * 的画布上就是顺时针，和板上 CSS、pptxgenjs `rotate` 同号。旧实现把烘焙矩阵
+ * 写成 -4°（逆时针），字仍是 +4°，贴片和字差了 8°。
  *
  * AABB 约 x1059-1213、y5-45：在标题区 (96,48,1040×122) 上方、右上
  * logo 盒 (1120,48,96×40) 顶沿之上、五个保护区全不进。cover / content / ending 三页型同一张（chapter 让位，见下）；
@@ -43,8 +44,8 @@ const PATCH_CX = 1136
 const PATCH_CY = 25
 const PATCH_W = 150
 const PATCH_H = 34
-/** 顺时针 4°，对齐板上 CSS `rotate(4deg)`。手算矩阵用负角（y 向下）。 */
-const PATCH_DEG = -4
+/** 顺时针 4°。SVG / 板上 CSS / pptxgenjs 在 y 向下画布上同号，烘焙矩阵不再取负。 */
+const PATCH_DEG = 4
 
 /** 日期字的排版预算：贴片内宽留 16px 内边距，字号 20 起缩到 13。 */
 const DATE_MAX_WIDTH = PATCH_W - 32
@@ -93,7 +94,7 @@ export function PlaybillMotif({ ir, slide, ctx }: DecorProps) {
       <text
         x={PATCH_CX}
         y={PATCH_CY + fitted.fontSize * 0.35}
-        transform={`rotate(4 ${PATCH_CX} ${PATCH_CY})`}
+        transform={`rotate(${PATCH_DEG} ${PATCH_CX} ${PATCH_CY})`}
         fontFamily={ctx.fonts.heading}
         fontSize={fitted.fontSize}
         fontWeight={700}

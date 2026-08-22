@@ -295,10 +295,15 @@ function walk(
  * `rotate(-90)` matrix has zeros on that diagonal, so that path would
  * collapse the text to a zero-size box. pptxgenjs rotates around the box
  * *center*, clockwise, so this rebuilds a tight unrotated box whose center
- * lands the SVG baseline-start anchor at the right canvas point after a
- * 270° rotation (SVG -90°). Other angles snap to the same 90°-grid and
- * reuse that construction. The wide `anchorTextBox` is skipped: rotating a
- * slide-wide box around its center would throw the caption across the page.
+ * lands the SVG baseline anchor at the right canvas point after that
+ * rotation. The wide `anchorTextBox` is skipped: rotating a slide-wide box
+ * around its center would throw the caption across the page.
+ *
+ * Construction is the same at 4° as at 90°/270°: invert the clockwise
+ * rotation of the unrotated baseline-offset so the offset lands on
+ * `anchor`. A 270°-only shortcut used to park every other angle's box
+ * center on `anchor` as if the text were unrotated, which left playbill's
+ * 4° date sitting flat on a tilted chip.
  */
 function positionRotatedText(op: TextOp, el: Element, ctm: Matrix): TextOp {
   const localX = Number(el.getAttribute("x") ?? 0) || 0
@@ -309,7 +314,7 @@ function positionRotatedText(op: TextOp, el: Element, ctm: Matrix): TextOp {
   const svgDeg = rotationDeg(ctm)
   // SVG and OOXML share a y-down canvas, so the SVG angle maps onto
   // pptxgenjs clockwise `rotate` without a sign flip. -90° (up the page)
-  // becomes 270°.
+  // becomes 270°. Cardinals snap for numerical cleanliness. 4° stays 4°.
   let rotate = ((svgDeg % 360) + 360) % 360
   if (Math.abs(rotate - 270) < 0.5) rotate = 270
   else if (Math.abs(rotate - 90) < 0.5) rotate = 90
@@ -323,12 +328,17 @@ function positionRotatedText(op: TextOp, el: Element, ctm: Matrix): TextOp {
   const wPx = Math.max(1, units * fontSizePx * scale)
   const hPx = Math.max(1, fontSizePx * 1.2 * scale)
   // Matches `text.ts`'s ASCENT_RATIO: alphabetic baseline sits ~0.8em below
-  // the box top. 270° clockwise around the box center maps (dx, dy) → (dy, -dx),
-  // so the unrotated left-baseline lands on `anchor` when the center sits
-  // (h/2 - ascent) to the right of it and w/2 above it.
+  // the box top. pptxgenjs clockwise rotation around the box center maps
+  // (dx, dy) → (dx cos θ − dy sin θ, dx sin θ + dy cos θ). Invert so the
+  // unrotated baseline-anchor offset lands on `anchor` after that rotate.
   const ascent = 0.8 * fontSizePx * scale
-  const centerX = rotate === 270 ? anchor.x + (hPx / 2 - ascent) : anchor.x
-  const centerY = rotate === 270 ? anchor.y - wPx / 2 : anchor.y
+  const dx = op.align === "center" ? 0 : op.align === "right" ? wPx / 2 : -wPx / 2
+  const dy = -hPx / 2 + ascent
+  const rad = (rotate * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const centerX = anchor.x - (dx * cos - dy * sin)
+  const centerY = anchor.y - (dx * sin + dy * cos)
   return {
     ...op,
     x: pxToIn(centerX - wPx / 2),

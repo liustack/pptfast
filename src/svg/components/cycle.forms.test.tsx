@@ -118,6 +118,7 @@ function allowedPaints(ctx: ComponentCtx): Set<string> {
     "#FFFFFF",
     "#0A0E14",
     "none",
+    mixHex(c.surface, c.primary, 0.22),
     mixHex(c.surface, c.primary, 0.35),
     mixHex(c.surface, c.accent, 0.35),
     mixHex(c.surface, c.primary, 0.72),
@@ -252,6 +253,41 @@ describe("cycle forms: HubSpoke", () => {
     expect(texts).toEqual(expect.arrayContaining(["A", "B", "C", "D"]))
   })
 
+  it("spoke endpoints sit on the hub circle and the capsule rect", () => {
+    const ctx = themed("insight")
+    const box = { x: 80, y: 80, w: 1088 }
+    const { container } = svg(cycle.render(four, box, ctx))
+    const root = container.querySelector("svg") ?? container
+    const { dx, dy } = parseTranslate(root.querySelector("g")!)
+    const hub = Array.from(container.querySelectorAll("circle")).reduce((best, c) =>
+      Number(c.getAttribute("r")) > Number(best.getAttribute("r")) ? c : best,
+    )
+    const hx = dx + Number(hub.getAttribute("cx"))
+    const hy = dy + Number(hub.getAttribute("cy"))
+    const hr = Number(hub.getAttribute("r"))
+    const caps = Array.from(container.querySelectorAll("rect")).map((r) => ({
+      x: dx + Number(r.getAttribute("x")),
+      y: dy + Number(r.getAttribute("y")),
+      w: Number(r.getAttribute("width")),
+      h: Number(r.getAttribute("height")),
+    }))
+    const lines = Array.from(container.querySelectorAll("line"))
+    expect(lines).toHaveLength(caps.length)
+    const onHub = (x: number, y: number) => Math.abs(Math.hypot(x - hx, y - hy) - hr) <= 1
+    const onCap = (x: number, y: number, cap: (typeof caps)[number]) =>
+      x >= cap.x - 1 && x <= cap.x + cap.w + 1 && y >= cap.y - 1 && y <= cap.y + cap.h + 1
+    for (const line of lines) {
+      const x1 = dx + Number(line.getAttribute("x1"))
+      const y1 = dy + Number(line.getAttribute("y1"))
+      const x2 = dx + Number(line.getAttribute("x2"))
+      const y2 = dy + Number(line.getAttribute("y2"))
+      const hubEnd = onHub(x1, y1) || onHub(x2, y2)
+      const capEnd = caps.some((cap) => onCap(x1, y1, cap) || onCap(x2, y2, cap))
+      expect(hubEnd).toBe(true)
+      expect(capEnd).toBe(true)
+    }
+  })
+
   it("campaign stays hub_spoke (capsules, not petals)", () => {
     const ctx = themed("campaign")
     const { container } = svg(cycle.render(four, { x: 80, y: 80, w: 1088 }, ctx))
@@ -291,6 +327,54 @@ describe("cycle forms: PetalWheel", () => {
     )
     expect(Number(hub.getAttribute("r"))).toBeGreaterThan(20)
     expect(container.querySelectorAll("marker").length).toBe(0)
+  })
+
+  it("paints an icon on a petal when the item names one", () => {
+    const withIcon = {
+      type: "cycle" as const,
+      title: "能力面",
+      items: [
+        { label: "采集", description: "传感器接入", icon: "rocket" },
+        { label: "清洗", description: "规则校验" },
+        { label: "训练", description: "模型迭代" },
+        { label: "回流", description: "误报回灌" },
+      ],
+    }
+    const ctx = themed("tech")
+    const markup = markupOf(withIcon as typeof four, { x: 80, y: 80, w: 1088 }, ctx)
+    expect(markup).toContain("M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2")
+  })
+
+  it("distinguishes petals by token fills when no icon is set", () => {
+    const ctx = themed("tech")
+    const { container } = svg(cycle.render(four, { x: 80, y: 80, w: 1088 }, ctx))
+    const fills = Array.from(container.querySelectorAll("path"))
+      .map((p) => p.getAttribute("fill"))
+      .filter((f): f is string => !!f && f !== "none")
+    expect(new Set(fills).size).toBeGreaterThan(1)
+    const allowed = allowedPaints(ctx)
+    for (const fill of fills) expect(allowed.has(fill)).toBe(true)
+  })
+
+  it("spoke lines meet the petal outer edge and the callout column", () => {
+    const ctx = themed("tech")
+    const { container } = svg(cycle.render(four, { x: 80, y: 80, w: 1088 }, ctx))
+    const hub = Array.from(container.querySelectorAll("circle")).reduce((best, c) =>
+      Number(c.getAttribute("r")) > Number(best.getAttribute("r")) ? c : best,
+    )
+    const hx = Number(hub.getAttribute("cx"))
+    const hy = Number(hub.getAttribute("cy"))
+    const hubR = Number(hub.getAttribute("r"))
+    const nears = Array.from(container.querySelectorAll("line")).map((line) => {
+      const x1 = Number(line.getAttribute("x1"))
+      const y1 = Number(line.getAttribute("y1"))
+      const x2 = Number(line.getAttribute("x2"))
+      const y2 = Number(line.getAttribute("y2"))
+      return Math.min(Math.hypot(x1 - hx, y1 - hy), Math.hypot(x2 - hx, y2 - hy))
+    })
+    expect(nears.length).toBeGreaterThan(0)
+    for (const d of nears) expect(d).toBeGreaterThan(hubR + 8)
+    expect(Math.max(...nears) - Math.min(...nears)).toBeLessThanOrEqual(1)
   })
 })
 

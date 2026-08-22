@@ -344,14 +344,7 @@ describe("bullets component spacious-pacing shrink (MIN_FONT floor)", () => {
       expect(dropped).toBeTruthy()
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount).toBeGreaterThan(0)
-      expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
-
-      // Review fix (I1) — reviewer's exact repro pinned directly: at this
-      // box (500 items, box.h=300), the marker itself used to land at
-      // y=304.8, past box.h=300. It must now stay inside.
-      const markerY = Number(dropped!.getAttribute("y"))
-      const markerFontSize = Number(dropped!.getAttribute("font-size"))
-      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
+      expect((dropped!.textContent ?? "").trim()).toBe("")
     })
 
     it("still renders at least one item even when box.h is far smaller than a single item's own height", () => {

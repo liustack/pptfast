@@ -255,6 +255,25 @@ describe("ImageLeadSplitContent pathological content", () => {
     expect(markup).toContain("微服务架构")
   })
 
+  it("gallery English heading wraps inside the text column and does not dump the raw line", () => {
+    const slide: Slide = {
+      type: "content",
+      heading: "Competitors are pricing below cost in the mid-market",
+      components: [{ type: "paragraph", text: "Connected equipment passed one hundred thousand units this quarter, up sixty-seven percent year over year. Close to half of that growth came from existing customers expanding onto new production lines rather than from new logos." }],
+    } as Slide
+    const { markup, root } = render(ir([slide]), slide)
+    expect(() => assertSubset(root)).not.toThrow()
+    const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700")
+    expect(headings.every((t) => (t.textContent ?? "").length < 80)).toBe(true)
+    const textRect = Array.from(root.querySelectorAll("g[data-audit-rect]"))
+      .map((g) => parseAudit(g.getAttribute("data-audit-rect")))
+      .find((r) => r.x === 96)!
+    for (const t of headings) {
+      expect(Number(t.getAttribute("x"))).toBeLessThanOrEqual(textRect.x + 1)
+    }
+    expect(markup).toContain("Connected equipment")
+  })
+
   it("a pathologically long mixed-script heading (MIXED_LONG) also shrinks/wraps safely", () => {
     const slide: Slide = { ...zeroComponents, heading: MIXED_LONG }
     const { root } = render(ir([slide]), slide)

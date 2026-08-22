@@ -779,6 +779,38 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // (journal kpi_cards) moves. Cover, chapter, quote, and ending stay
       // byte-identical. `.audit.json` findings stay []. PPTX only
       // `ppt/slides/slide3.xml`.
+      //
+      // Recaptured (gallery review r1, 2026-08-22). Intended visual
+      // geometry, not a migration regression. `.audit.json` needed no
+      // recapture (findings stayed the empty array). Targeted diff:
+      //   - `basic` (`consulting`): slide 3 `bento-panel` content rect
+      //     454→434 (bottom 640→620) and card `rx` 6→2 (`shape.radius`).
+      //     PPTX `ppt/slides/slide4.xml`.
+      //   - `scenarioBearing` (`journal`): slide 1 quote mark baseline
+      //     56→64, slide 2 `banner-heading` banner y 80→92, slide 3
+      //     `side-highlight` panel `rx` 12→6. PPTX slides 2/3/4.xml.
+      //   - `annualReviewPreset` (`journal`): slide 3 quote mark baseline
+      //     56→64. PPTX `ppt/slides/slide4.xml`.
+      //
+      // Recaptured (gallery-review-r1 × main merge, 2026-08-22).
+      // Union of forms-legibility (bubble_row shared label baseline y=246
+      // on annualReviewPreset slide 2, smallest label/value at the 15px
+      // floor) and gallery review r1 (quote mark baseline 56→64 on
+      // slide 3). Targeted diff against both parents.
+      // No unrelated geometry drift:
+      //   - vs r1: only slide 2 / ppt/slides/slide3.xml (forms-legibility).
+      //     Labels were y=244/208.56/162 at font-size 14/14/12, now one
+      //     baseline y=246 at 16/16/15. Cover, chapter, quote, ending
+      //     stay byte-identical.
+      //   - vs main: only slide 3 / ppt/slides/slide4.xml (r1 quote).
+      //     Quote mark y="56"→y="64" (same string length). Matching PPTX
+      //     `<a:off>` y 1988820→2065020 (exactly +8px at 9525 EMU per px).
+      //     Cover, chapter, kpi, ending stay byte-identical.
+      // Zip file-name set unchanged (43 parts). Other pptx parts did not
+      // drift. `.audit.json` needed no recapture (findings stayed the
+      // empty array, pagesAudited 5).
+      // basic / scenarioBearing live pipeline matched the r1 goldens
+      // byte-for-byte. Not recaptured.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

@@ -234,6 +234,69 @@ describe("layoutContentFit", () => {
     expect(placed[0].box.y).toBe(0)
   })
 
+  it("restacks a two_column page to one column when half-width would drop KPI cards", () => {
+    const kpi: Component = {
+      type: "kpi_cards",
+      items: [
+        { value: "102k", unit: "units", label: "Connected equipment" },
+        { value: "91", unit: "%", label: "Renewal rate" },
+        { value: "88", unit: "%", label: "Prediction accuracy" },
+        { value: "5", unit: "weeks", label: "Average delivery time" },
+      ],
+    }
+    const components = [bulletsComponent(["a", "b", "c", "d", "e"]), kpi]
+    const pageRect: ContentRect = { x: 96, y: 278, w: 1088, h: 362 }
+    const { placed, dropped } = layoutContentFit("two_column", components, pageRect, ctx)
+    expect(dropped).toBe(0)
+    expect(placed).toHaveLength(2)
+    expect(new Set(placed.map((p) => p.box.x)).size).toBe(1)
+    expect(placed[0].box.w).toBe(1088)
+    expect(placed.find((p) => p.component.type === "kpi_cards")!.box.w).toBe(1088)
+  })
+
+  it("keeps gallery-length English bullets in two columns and wraps KPI instead of restacking", () => {
+    // Short "a".."e" bullets restack (test above). The live gallery credits
+    // the first KPI, so a sourced card is 138px and the single stack is
+    // 228+16+138=382 against a 362px rect. Restack declines, wrapping has
+    // to keep the fourth card in the 528px column.
+    const kpi: Component = {
+      type: "kpi_cards",
+      items: [
+        {
+          value: "102k",
+          unit: "units",
+          label: "Connected equipment",
+          source: "Lingyuan Intelligence Q2 2026 operating data",
+        },
+        { value: "91", unit: "%", label: "Renewal rate" },
+        { value: "88", unit: "%", label: "Prediction accuracy" },
+        { value: "5", unit: "weeks", label: "Average delivery time" },
+      ],
+    }
+    const components: Component[] = [
+      {
+        type: "bullets",
+        items: [
+          "Renewals back to 91%, a six-quarter high",
+          "Bookings up 23%, still too concentrated",
+          "Accuracy at 88%, downtime down 40%",
+          "Delivery cut from nine weeks to five",
+          "In-house compute cut unit cost by 31%",
+        ],
+        style: "default",
+      },
+      kpi,
+    ]
+    const pageRect: ContentRect = { x: 96, y: 278, w: 1088, h: 362 }
+    expect(measureComponent(kpi, 528, ctx)).toBe(2 * 138 + 16)
+    expect(measureComponent(kpi, 1088, ctx)).toBe(138)
+    const { placed, dropped } = layoutContentFit("two_column", components, pageRect, ctx)
+    expect(dropped).toBe(0)
+    expect(placed).toHaveLength(2)
+    expect(new Set(placed.map((p) => p.box.x)).size).toBe(2)
+    expect(placed.find((p) => p.component.type === "kpi_cards")!.box.w).toBe(528)
+  })
+
   it("declines the restack when the wider column would cost even more content", () => {
     // An `image` is the counter-example: its measured height grows with its
     // width (`min(round(w * 0.5), 340)`), so the full-width column it would
@@ -502,6 +565,15 @@ describe("layoutContentFit surplus distribution", () => {
 })
 
 describe("settleToGolden top-air cap (上不空优先)", () => {
+  it("can spend the full golden share when the caller opts out of the heading-body cap", () => {
+    const placed = [{ component: kpi, box: { x: 0, y: 192, w: 400 } }]
+    const fitRect: ContentRect = { x: 0, y: 192, w: 400, h: 428 }
+    const next = settleToGolden(placed, fitRect, ctx, { capTopAir: false })
+    const leftover = 428 - 120
+    expect(next[0].box.y - fitRect.y).toBeCloseTo(leftover * GOLDEN_TOP_SHARE, 5)
+    expect(next[0].box.y - fitRect.y).toBeGreaterThan(BLOCK_GAP)
+  })
+
   it("caps at one designed block-gap at gapScale 1 (sixth review: two gaps still read as an island)", () => {
     expect(GOLDEN_TOP_CAP_GAPS).toBe(1)
     expect(goldenTopCap(ctx)).toBe(BLOCK_GAP)

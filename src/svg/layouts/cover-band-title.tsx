@@ -21,7 +21,7 @@ import { showsDocumentMeta } from "../document-meta"
  *
  * 板上做不到、最近落地：
  *   1. CJK 标题不加 letter-spacing，即便板上给 Latin kicker 加了字距。
- *   2. enterprise 带上那枚方块走 `colors.accent` token，不烤 `#E85D1F`。
+ *   2. 带上那枚方块走标题同一套 on-band ink（`readableOn(primary)`），不烤 accent hex。
  *   3. classroom 带下陶土波浪是 layout 的强调件（固定 path，不跟标题宽度），
  *      打孔排仍归 motif。
  *   4. 顶栏右 meta 收到 x1108，躲开 (1120,48) 顶右 logo 带。
@@ -167,7 +167,7 @@ export function BandTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
 
       <rect x={0} y={bandY} width={BAND_W} height={bandH} fill={colors.primary} />
       {bandMark && (
-        <rect x={MARK_X} y={bandY + MARK_DY} width={MARK_SIZE} height={MARK_SIZE} fill={colors.accent} />
+        <rect x={MARK_X} y={bandY + MARK_DY} width={MARK_SIZE} height={MARK_SIZE} fill={onBand} />
       )}
 
       {title.lines.map((line, i) => (

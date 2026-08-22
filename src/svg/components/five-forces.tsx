@@ -146,8 +146,8 @@ const LABEL_SIZE_MIN = 10.5
  *
  * That +30 is not free, which is what `_TIGHT` below is for.
  */
-const GAP_LABEL_MARKER = 16
-const GAP_HEADER_ITEMS = 18
+const GAP_LABEL_MARKER = 22
+const GAP_HEADER_ITEMS = 24
 
 /**
  * The same two gaps, at the smallest values this component is willing to

@@ -2,6 +2,7 @@ import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 import { renderComponent } from "./components"
 import { asideSplit, layoutContentFit, settleToGolden, type ContentRect, type Arrangement } from "./layout"
+import { SCALABLE_TYPES } from "./component-traits"
 import { AssertionEvidence } from "./assertion-evidence"
 import { BigNumber } from "./big-number"
 import { FULL_BODY_TYPES } from "./component-traits"
@@ -81,7 +82,11 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
   // 对已安放过的摞是空操作（首块不贴 rect 顶就原样返回），两处不会各
   // 偏移一次。
   const placed =
-    laidOut.length === 1 && dropped === 0 ? settleToGolden(laidOut, rect, ctx) : laidOut
+    laidOut.length === 1 && dropped === 0
+      ? settleToGolden(laidOut, rect, ctx, {
+          capTopAir: !SCALABLE_TYPES.has(laidOut[0].component.type),
+        })
+      : laidOut
   // aside 版式的侧栏分隔竖线（几何与 layoutContent 同源 asideSplit）。
   //
   // Read off the *actual* placement, not the requested arrangement: since

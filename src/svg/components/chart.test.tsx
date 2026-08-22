@@ -730,9 +730,9 @@ describe("chart component — legend (n>=2 series)", () => {
     expect(truncated!.textContent!.length).toBeLessThan(longName.length)
   })
 
-  it("count overflow: more series than fit in one row drop the tail into a '+N …' marker, marked data-dropped", () => {
+  it("count overflow: more series than fit in one row drop the tail, marked data-dropped with no painted remainder copy", () => {
     // Header-row packing starts at 72px per short name, so a 1120px plot
-    // holds ~15 of these. 24 is enough to force the "+N …" drop.
+    // holds ~15 of these. 24 is enough to force the drop.
     const manySeries = Array.from({ length: 24 }, (_, i) => ({
       name: `S${i + 1}`,
       data: [{ x: "A", y: i + 1 }],
@@ -740,9 +740,9 @@ describe("chart component — legend (n>=2 series)", () => {
     const component = { type: "chart" as const, chart_type: "bar" as const, series: manySeries }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = legendTexts(container)
-    const dropped = texts.find((t) => t.hasAttribute("data-dropped"))
+    const dropped = container.querySelector("[data-dropped]")
     expect(dropped).toBeTruthy()
-    expect(dropped!.textContent).toMatch(/^\+\d+ …$/)
+    expect((dropped!.textContent ?? "").trim()).toBe("")
     const droppedCount = Number(dropped!.getAttribute("data-dropped"))
     expect(droppedCount).toBeGreaterThan(0)
     const nameEntries = texts.filter((t) => !t.hasAttribute("data-dropped"))

@@ -5,7 +5,6 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { assertSubset } from "../subset-validate"
 import { parseSvgRoot } from "../serialize"
 import { auditSvgMarkup } from "../audit/svg-audit"
-import { BLOCK_GAP } from "../layout"
 import { readableOn } from "../ink"
 import { deriveInitials } from "./people-initials"
 import { peopleCards } from "./people-cards"
@@ -299,32 +298,19 @@ describe("people-cards title belongs to the group below it", () => {
     return { baseline, fontSize, below: cardTop - baseline, aboveInsideBox: baseline - fontSize }
   }
 
-  it("holds the label one short, fixed step above its own cards, however hard the page stretches", () => {
+  it("a stretched box grows the title-to-card gap, not only inner card padding", () => {
     const measuredH = peopleCards.measure(component9, 1200, ctx)
     const natural = titleGeometry(1200)
     const stretched = titleGeometry(1200, measuredH + 120)
-    expect(natural.below).toBe(12)
-    expect(stretched.below).toBe(natural.below)
+    expect(natural.below).toBeGreaterThanOrEqual(16)
+    expect(stretched.below).toBeGreaterThan(natural.below)
   })
 
-  it("spends the band's growth on the space above the label instead", () => {
+  it("spends the band's growth under the label, next to the cards it names", () => {
     const measuredH = peopleCards.measure(component9, 1200, ctx)
     const natural = titleGeometry(1200)
     const stretched = titleGeometry(1200, measuredH + 120)
-    // The band still takes its capped quarter of the increment — that part
-    // is unchanged. What moved is which side of the label it lands on.
-    expect(stretched.aboveInsideBox - natural.aboveInsideBox).toBe(16)
-  })
-
-  it("leaves the label nearer its cards than the block above it, by a margin a reader can see", () => {
-    // The component cannot see what precedes it, so the gap above is the
-    // layout's own smallest stacking gap plus whatever the band holds over
-    // the label. A layout with room to spare only widens that gap further,
-    // so the tightest possible page is the one worth pinning.
-    const measuredH = peopleCards.measure(component9, 1200, ctx)
-    for (const h of [undefined, measuredH + 40, measuredH + 120]) {
-      const { below, aboveInsideBox } = titleGeometry(1200, h)
-      expect(BLOCK_GAP + aboveInsideBox).toBeGreaterThanOrEqual(1.5 * below)
-    }
+    expect(stretched.below - natural.below).toBe(16)
+    expect(stretched.aboveInsideBox).toBe(natural.aboveInsideBox)
   })
 })

@@ -86,7 +86,7 @@ describe("cover-band-title — board geometry", () => {
     expect(root.querySelectorAll("circle")).toHaveLength(0)
   })
 
-  it("enterprise: accent-token mark on the band, not a baked hex", () => {
+  it("enterprise: on-band-ink mark on the band, not a baked hex", () => {
     const { root, tokens } = renderCover("enterprise", slide(), FULL_META, {
       textAnchor: "start",
       bandY: 256,
@@ -99,8 +99,23 @@ describe("cover-band-title — board geometry", () => {
     const mark = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "26")!
     expect(mark.getAttribute("x")).toBe("1180")
     expect(mark.getAttribute("y")).toBe("282")
-    expect(mark.getAttribute("fill")).toBe(tokens.colors.accent)
+    const heading = Array.from(root.querySelectorAll("text")).find((t) => t.getAttribute("font-weight") === "700")!
+    expect(mark.getAttribute("fill")).toBe(heading.getAttribute("fill"))
+    expect(mark.getAttribute("fill")).not.toBe(tokens.colors.accent)
     expect(mark.getAttribute("fill")).not.toBe("#E85D1F")
+  })
+
+  it("band mark uses the same on-band ink as the heading, never the accent token", () => {
+    const { root, tokens } = renderCover("enterprise", slide(), FULL_META, {
+      textAnchor: "start",
+      bandY: 256,
+      bandH: 220,
+      bandMark: true,
+    })
+    const heading = Array.from(root.querySelectorAll("text")).find((t) => t.getAttribute("font-weight") === "700")!
+    const mark = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "26")!
+    expect(mark.getAttribute("fill")).toBe(heading.getAttribute("fill"))
+    expect(mark.getAttribute("fill")).not.toBe(tokens.colors.accent)
   })
 
   it("vermilion: centered title on the band", () => {

@@ -32,7 +32,7 @@ function visibleVerticalRowCount(
   if (truncBudget === Number.POSITIVE_INFINITY) return rows.length
   let visible = 0
   for (let i = 0; i < rows.length; i++) {
-    if (rowTops[i] + rows[i].rowH > truncBudget - 20) break
+    if (rowTops[i] + rows[i].rowH > truncBudget) break
     visible = i + 1
   }
   return Math.max(1, visible)
@@ -274,23 +274,7 @@ export function renderVertTimeline(
           </g>
         )
       })}
-      {hidden > 0 && last && (
-        <text
-          data-dropped={hidden}
-          x={box.w}
-          y={Math.min(
-            (box.h ?? Number.POSITIVE_INFINITY) - 4,
-            rowTops[rowTops.length - 1] + last.rowH + 16,
-          )}
-          textAnchor="end"
-          fontSize={13}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${hidden} …`}
-        </text>
-      )}
+      {hidden > 0 && <g data-dropped={hidden} />}
     </g>
   )
 }

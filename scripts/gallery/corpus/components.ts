@@ -496,10 +496,11 @@ const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as 
 
 /**
  * Full-load instances for the 满载表. Each builder is the largest count
- * that still renders on a consulting `densityPage` with no "+N …" marker
- * and without the block being dropped whole. Counts were measured with a
- * probe (zh first, then en and mixed still fit). One item past the listed
- * count re-introduces the marker on at least the English track.
+ * that still renders on a consulting `densityPage` with no silent
+ * `data-dropped` overflow stamp and without the block being dropped whole.
+ * Counts were measured with a probe (zh first, then en and mixed still fit).
+ * One item past the listed count re-introduces the stamp on at least the
+ * English track.
  *
  * These pages exist so a reviewer can see a component filled to its
  * geometric ceiling, not past it. Authoring cuts or splits content. The
@@ -539,12 +540,13 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     })),
   }),
 
-  // 14 sources. citation.tsx `ROW = 28`. CAPACITY.warnSources=9 is the
-  // 277px worst-case editorial number. Probe on consulting densityPage.
-  // 15 sources marks on en.
+  // 13 sources. citation.tsx `ROW = 28`. CAPACITY.warnSources=9 is the
+  // 277px worst-case editorial number. Probe on consulting densityPage
+  // after gallery-review-r1 × main. Coverage's 14 still fits zh/mixed.
+  // 14 sources marks on en.
   citation: (lex) => ({
     type: "citation",
-    sources: [...slice(lex.orgs, 12), ...slice(lex.phrases, 2)].map((label, i) => ({
+    sources: [...slice(lex.orgs, 12), ...slice(lex.phrases, 1)].map((label, i) => ({
       label,
       ref: lex.periods[i % lex.periods.length]!,
     })),

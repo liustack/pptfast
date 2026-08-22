@@ -124,7 +124,7 @@ function visibleVerticalRowCount(
   if (truncBudget === Number.POSITIVE_INFINITY) return rows.length
   let visible = 0
   for (let i = 0; i < rows.length; i++) {
-    if (rowTops[i] + rows[i].rowH > truncBudget - 20) break
+    if (rowTops[i] + rows[i].rowH > truncBudget) break
     visible = i + 1
   }
   return Math.max(1, visible)
@@ -235,20 +235,7 @@ function renderVertical(
           </g>
         )
       })}
-      {hiddenCount > 0 && (
-        <text
-          data-dropped={hiddenCount}
-          x={box.w}
-          y={rowTops[rowTops.length - 1] + rows[rows.length - 1].rowH + 20}
-          textAnchor="end"
-          fontSize={13}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${hiddenCount} …`}
-        </text>
-      )}
+      {hiddenCount > 0 && <g data-dropped={hiddenCount} />}
     </g>
   )
 }

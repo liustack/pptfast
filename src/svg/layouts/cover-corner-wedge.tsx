@@ -92,7 +92,7 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
     ? Math.max(320, 2 * (startX - TITLE_CENTER_X - 24))
     : Math.max(320, startX - TITLE_START_X - 24)
   const kickerY = centered ? 248 : 262
-  const subtitleY = centered ? 446 : 496
+  const designedSubtitleY = centered ? 446 : 496
   const onWedge = readableOn(colors.primary)
 
   const org = ir.meta.organization
@@ -130,6 +130,11 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
     lineHeightRatio: 1.25,
     fontFamily: fonts.body,
   })
+  const titleLastY = titleY + Math.max(0, title.lines.length - 1) * title.lineHeight
+  const subtitleY = Math.max(
+    designedSubtitleY,
+    titleLastY + Math.round(title.fontSize * 0.16) + subtitle.fontSize + 12,
+  )
 
   const wedgeMeta = authorText
     ? fitSvgLine(authorText, {

@@ -64,23 +64,19 @@ describe("quote component", () => {
     }
   })
 
-  // The mark's own geometry, pinned as literals rather than re-derived from
-  // the component's constants — this is the assertion that catches the mark
-  // drifting back off the text it opens (visual review round 3, C6: it used
-  // to sit on baseline 40, leaving a full body line of air under its ink).
-  // Both numbers are whole-pixel page coordinates inside the block:
-  //   - mark baseline 56, so its ink (which stops ~0.49em above its own
-  //     baseline at 64px) ends around y=25;
-  //   - first body baseline 60, whose ink starts around y=39.
-  // ~14px of air between the two, not ~30.
   it("sets the decorative mark on an ink-derived baseline just above the first body line", () => {
     const { container } = svg(quote.render(componentWithAttr, { x: 0, y: 0, w: 1120 }, ctx))
     const mark = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "“")
     const firstBody = container.querySelector('text[font-style="italic"]')
 
     expect(mark?.getAttribute("font-size")).toBe("64")
-    expect(mark?.getAttribute("y")).toBe("56")
     expect(firstBody?.getAttribute("y")).toBe("60")
+    const markY = Number(mark?.getAttribute("y"))
+    const bodyY = Number(firstBody?.getAttribute("y"))
+    const markInkBottom = markY - 64 * 0.49
+    const bodyInkTop = bodyY - 26 * 0.81
+    expect(bodyInkTop - markInkBottom).toBeGreaterThan(2)
+    expect(bodyInkTop - markInkBottom).toBeLessThanOrEqual(8)
   })
 
   // The mark hangs off the block's own height rather than driving it: moving

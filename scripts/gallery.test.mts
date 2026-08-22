@@ -520,9 +520,12 @@ describe("gallery page", () => {
 
 // The full-load table (满载表) fills each of nine components to the largest
 // count that still fits the consulting density page. Authoring cuts or
-// splits content. These pages must not draw a "+N …" marker or drop the
-// block whole. A tenth component that grows a marker branch still fails
-// the coverage test below until a builder is added.
+// splits content. These pages must not stamp a silent `data-dropped`
+// overflow attribute or drop the block whole. Gallery review r1 retired
+// the painted "+N …" copy. The drop path is now the attribute, and a
+// full-load page should not reach it. A tenth component that grows a
+
+// drop branch still fails the coverage test below until a builder is added.
 describe("gallery density table", () => {
   it("renders every page at full load, with no drop marker and no silent drop", async () => {
     const { renderMatrix } = await import("./gallery/render")
@@ -534,8 +537,11 @@ describe("gallery density table", () => {
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
     const { svgs } = renderMatrix(jobs, outDir, "test")
 
-    const marked = [...svgs].filter(([, svg]) => /\+\d+ …/.test(svg)).map(([id]) => id)
-    expect(marked, "these full-load pages still draw a +N marker. lower their item counts").toEqual([])
+    const marked = [...svgs].filter(([, svg]) => /data-dropped="[1-9]/.test(svg)).map(([id]) => id)
+    expect(marked, "these full-load pages still stamp data-dropped. lower their item counts").toEqual([])
+
+    const painted = [...svgs].filter(([, svg]) => /\+\d+ …/.test(svg)).map(([id]) => id)
+    expect(painted, "painted +N copy must stay gone").toEqual([])
 
     const swallowed = [...svgs].filter(([, svg]) => svg.includes("data-dropped-silent")).map(([id]) => id)
     expect(swallowed, "the component was dropped whole instead of fitting").toEqual([])
@@ -552,11 +558,11 @@ describe("gallery density table", () => {
     const dir = join(fileURLToPath(new URL("..", import.meta.url)), "src/svg/components")
     const drawers = readdirSync(dir)
       .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
-      .filter((f) => /\+\$\{[^}]+\} …`/.test(readFileSync(join(dir, f), "utf8")))
+      .filter((f) => /data-dropped=\{/.test(readFileSync(join(dir, f), "utf8")))
 
     expect(
       Object.keys(DENSITY_BUILDERS).length,
-      `${drawers.length} components draw a "+N …" marker (${drawers.join(", ")}) but the density ` +
+      `${drawers.length} components draw a data-dropped marker (${drawers.join(", ")}) but the density ` +
         `table covers ${Object.keys(DENSITY_BUILDERS).length} — add a builder to DENSITY_BUILDERS`,
     ).toBe(drawers.length)
   })

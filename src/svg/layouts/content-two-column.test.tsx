@@ -60,6 +60,92 @@ describe("TwoColumnContent", () => {
     expect(markup).toContain("单块内容。")
   })
 
+  it("gallery English two-column page keeps every authored block and every KPI value, with no silent drop", () => {
+    const enSlide: Slide = {
+      type: "content",
+      layout: "two-column",
+      heading: "Competitors are pricing below cost in the mid-market",
+      components: [
+        {
+          type: "bullets",
+          items: [
+            "Renewals back to 91%, a six-quarter high",
+            "Bookings up 23%, still too concentrated",
+            "Accuracy at 88%, downtime down 40%",
+            "Delivery cut from nine weeks to five",
+            "In-house compute cut unit cost by 31%",
+          ],
+          style: "default",
+        },
+        {
+          type: "kpi_cards",
+          items: [
+            {
+              value: "102k",
+              unit: "units",
+              label: "Connected equipment",
+              delta: "up" as const,
+              // Live gallery credits the first card. That source line is
+              // what makes a full-width restack miss the content rect, so
+              // the page stays two-column and wrapping has to keep the
+              // fourth value.
+              source: "Lingyuan Intelligence Q2 2026 operating data",
+            },
+            { value: "91", unit: "%", label: "Renewal rate", delta: "up" as const },
+            { value: "88", unit: "%", label: "Prediction accuracy", delta: "up" as const },
+            { value: "5", unit: "weeks", label: "Average delivery time", delta: "down" as const },
+          ],
+        },
+      ],
+    } as Slide
+    const markup = render(enSlide, [enSlide], 0)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
+    expect(root.querySelector("[data-dropped]")).toBeNull()
+    expect(root.querySelector("[data-dropped-silent]")).toBeNull()
+    expect(markup).not.toMatch(/\+\d+ …/)
+    expect(markup).toContain("Renewals back to 91%")
+    expect(markup).toContain("In-house compute cut unit cost by 31%")
+    const kpiValueEls = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-weight") === "bold",
+    )
+    const ownText = (el: Element) =>
+      Array.from(el.childNodes)
+        .filter((n) => n.nodeType === 3)
+        .map((n) => n.textContent)
+        .join("")
+    const kpiValues = kpiValueEls.map(ownText)
+    expect(kpiValues).toEqual(expect.arrayContaining(["102k", "91", "88", "5"]))
+    // The 165px wrap cell ellipsizes "Average delivery time". The unit
+    // tspan on the value "5" is the fourth metric, not the bullet's word
+    // "weeks".
+    const weeksValue = kpiValueEls.find((t) => ownText(t) === "5")
+    expect(weeksValue?.querySelector("tspan")?.textContent).toBe("weeks")
+  })
+
+  it("a lone chart on two-column stays on the page and is not glued to the rule line", () => {
+    const chartSlide: Slide = {
+      type: "content",
+      layout: "two-column",
+      heading: "预测准确率提升带来的直接停机减少",
+      components: [
+        {
+          type: "chart",
+          chart_type: "bar",
+          series: [{ name: "冶金", data: [{ x: "Q1", y: 42 }] }],
+        },
+      ],
+    } as Slide
+    const markup = render(chartSlide, [chartSlide], 0)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
+    expect(root.querySelector("[data-dropped-silent]")).toBeNull()
+    const rectG = root.querySelector("g[data-audit-rect]")!
+    const rectY = Number(rectG.getAttribute("data-audit-rect")!.split(",")[1])
+    const body = root.querySelector("g[data-audit-box]")!
+    const bodyY = Number(body.getAttribute("data-audit-box")!.split(",")[1])
+    expect(bodyY).toBeGreaterThan(rectY)
+    expect(bodyY - rectY).toBeGreaterThan(16)
+  })
+
   it("输出在可导出 SVG 子集内", () => {
     for (const [slide, slides, index] of [
       [withSub, [chapter1, withSub], 1],

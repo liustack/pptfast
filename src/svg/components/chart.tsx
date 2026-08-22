@@ -185,10 +185,6 @@ type LegendSlot = {
   width: number
 }
 
-function droppedMarkerText(n: number): string {
-  return `+${n} …`
-}
-
 function legendNameWidth(
   fitted: ReturnType<typeof fitSvgLine>,
   fontFamily: string,
@@ -201,8 +197,8 @@ function legendNameWidth(
  * already in input series order) against `availW` px. Slots pack left to
  * right with a ≥72px swatch-to-swatch pitch (or the fitted name width when
  * that is larger). The caller right-aligns the group by offsetting
- * `slotX` with `availW - groupW`. Entries that do not fit drop into one
- * trailing "+N …" marker.
+ * `slotX` with `availW - groupW`. Entries that do not fit are omitted and
+ * recorded on a silent `data-dropped` marker.
  */
 function layoutChartLegend(
   legend: ReturnType<typeof buildChartModel>["legend"],
@@ -226,7 +222,7 @@ function layoutChartLegend(
 
   const pitchAfter = (width: number) => Math.max(LEGEND_ENTRY_PITCH, width)
 
-  function pack(count: number, droppedCount: number) {
+  function pack(count: number) {
     const slots: LegendSlot[] = []
     for (let i = 0; i < count; i++) {
       const e = prepared[i]!
@@ -240,26 +236,16 @@ function layoutChartLegend(
       })
     }
     if (count === 0) {
-      const markerW =
-        droppedCount > 0
-          ? measureTextUnits(droppedMarkerText(droppedCount), { fontFamily }) * LEGEND_FONT_SIZE
-          : 0
-      return { slots, groupW: markerW, droppedX: 0 }
+      return { slots, groupW: 0, droppedX: 0 }
     }
     const last = slots[count - 1]!
-    if (droppedCount > 0) {
-      const droppedX = last.slotX + pitchAfter(last.width)
-      const markerW =
-        measureTextUnits(droppedMarkerText(droppedCount), { fontFamily }) * LEGEND_FONT_SIZE
-      return { slots, groupW: droppedX + markerW, droppedX }
-    }
     return { slots, groupW: last.slotX + last.width, droppedX: last.slotX + last.width }
   }
 
   let visible = prepared.length
   while (visible >= 0) {
     const droppedCount = prepared.length - visible
-    const packed = pack(visible, droppedCount)
+    const packed = pack(visible)
     if (packed.groupW <= availW || visible === 0) {
       return { ...packed, droppedCount }
     }
@@ -491,19 +477,7 @@ export const chart: SvgComponent<ChartComponent> = {
                 </g>
               )
             })}
-            {legendLayout.droppedCount > 0 && (
-              <text
-                data-dropped={legendLayout.droppedCount}
-                x={legendLeft + legendLayout.droppedX}
-                y={HEADER_BASELINE_Y}
-                fontSize={LEGEND_FONT_SIZE}
-                fill={accessibleInk(ctx.colors.muted, legendBg, LEGEND_FONT_SIZE)}
-                fontFamily={bodyFace}
-                dominantBaseline="alphabetic"
-              >
-                {droppedMarkerText(legendLayout.droppedCount)}
-              </text>
-            )}
+            {legendLayout.droppedCount > 0 && <g data-dropped={legendLayout.droppedCount} />}
           </g>
         ) : null}
       </g>

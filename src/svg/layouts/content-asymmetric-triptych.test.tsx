@@ -89,6 +89,21 @@ describe("AsymmetricTriptychContent", () => {
     expect(root.querySelector('line[x1="744"]')).not.toBeNull()
   })
 
+  it("panel frames follow shape.radius instead of a baked capsule radius", () => {
+    const tokens = resolveStyle("vermilion")
+    const ctx = buildCtx(tokens, {})
+    const slide = slideWith([])
+    const markup = renderSvgMarkup(
+      <AsymmetricTriptychContent ir={ir([chapter1, slide])} slide={slide} index={1} ctx={ctx} />,
+    )
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
+    const frames = Array.from(root.querySelectorAll('rect[fill="none"]'))
+    expect(frames.length).toBeGreaterThan(0)
+    for (const frame of frames) {
+      expect(frame.getAttribute("rx")).toBe(String(tokens.shape?.radius))
+    }
+  })
+
   it("passes assertSubset (no forbidden elements) across 0/1/4 component counts", () => {
     for (const components of [[], [para("一")], [para("一"), para("二"), para("三"), para("四")]]) {
       const slide = slideWith(components)

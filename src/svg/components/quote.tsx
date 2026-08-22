@@ -48,7 +48,7 @@ const MARK_INK_DEPTH_RATIO = 0.49
 const BODY_INK_ASCENT_RATIO = 0.81
 
 /** Optical air left between the mark's ink and the first body line's ink. */
-const MARK_TO_BODY_AIR = 14
+const MARK_TO_BODY_AIR = 6
 
 /**
  * Ink-derived, so changing either font size can no longer leave the mark

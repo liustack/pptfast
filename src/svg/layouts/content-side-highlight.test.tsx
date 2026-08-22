@@ -75,6 +75,20 @@ describe("SideHighlightContent", () => {
     expect(withoutOrg).not.toContain("Acme Corp")
   })
 
+  it("panel corner radius follows shape.radius, so a square-chip theme is not stuck with rx=12", () => {
+    const vermilion = resolveStyle("vermilion")
+    const ctx = buildCtx(vermilion, {})
+    const deck = ir([chapter1, withSub])
+    const markup = renderSvgMarkup(<SideHighlightContent ir={deck} slide={withSub} index={1} ctx={ctx} />)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
+    const panel = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("x") === "1008" && r.getAttribute("width") === "176",
+    )!
+    expect(vermilion.shape?.radius).toBe(2)
+    expect(panel.getAttribute("rx")).toBe(String(vermilion.shape?.radius))
+    expect(panel.getAttribute("rx")).not.toBe("12")
+  })
+
   it("badge label follows chapterNumberFor/contentIndexInChapter across multiple content pages in one chapter", () => {
     const p2: Slide = { type: "content", heading: "第二页", components: [] } as Slide
     const deck = ir([chapter1, withSub, p2])

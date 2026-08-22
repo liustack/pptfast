@@ -89,6 +89,48 @@ describe("cover-corner-wedge — board geometry", () => {
     expect(wedgeMeta?.getAttribute("y")).toBe("700")
   })
 
+  it("title box and the wedge AABB do not intersect, and a wrapped title clears its subtitle", () => {
+    const heading = "岭原智能 2026 年第二季度业务评审"
+    const { root } = renderCover("arena", slide(heading), {
+      textAnchor: "middle",
+      wedgePeakY: 340,
+      wedgeStartX: 980,
+    })
+    const wedge = root.querySelector("path")!
+    const d = (wedge.getAttribute("d") ?? "").replace(/\s+/g, "")
+    const parsed = /^M(\d+),720L1280,(\d+)L1280,720Z$/.exec(d)!
+    const startX = Number(parsed[1])
+    const peakY = Number(parsed[2])
+    const wedgeBox = { x: startX, y: peakY, w: 1280 - startX, h: 720 - peakY }
+
+    const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700")
+    expect(headings.length).toBe(2)
+    const fs = Number(headings[0]!.getAttribute("font-size"))
+    const cx = Number(headings[0]!.getAttribute("x"))
+    const maxW = Math.max(320, 2 * (startX - cx - 24))
+    const titleBox = {
+      x: cx - maxW / 2,
+      y: Number(headings[0]!.getAttribute("y")) - fs,
+      w: maxW,
+      h:
+        Number(headings[headings.length - 1]!.getAttribute("y")) +
+        fs * 0.16 -
+        (Number(headings[0]!.getAttribute("y")) - fs),
+    }
+    const overlap =
+      titleBox.x < wedgeBox.x + wedgeBox.w &&
+      titleBox.x + titleBox.w > wedgeBox.x &&
+      titleBox.y < wedgeBox.y + wedgeBox.h &&
+      titleBox.y + titleBox.h > wedgeBox.y
+    expect(overlap).toBe(false)
+
+    const lastTitleY = Number(headings[headings.length - 1]!.getAttribute("y"))
+    const subtitle = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("八强出炉"),
+    )!
+    expect(Number(subtitle.getAttribute("y"))).toBeGreaterThan(lastTitleY + fs * 0.16)
+  })
+
   it("does not draw HUD brackets", () => {
     const { root } = renderCover("arena", slide(HEADING_ARENA), { textAnchor: "middle", wedgePeakY: 340, wedgeStartX: 980 })
     expect(root.querySelectorAll("circle")).toHaveLength(0)
