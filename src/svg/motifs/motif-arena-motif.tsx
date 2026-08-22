@@ -1,5 +1,7 @@
 import { PACING_BUDGETS } from "@/narrative"
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * arena-motif —— 「HUD 括弧＋速度线」（2026-08-21，设计源
@@ -144,6 +146,8 @@ export function ArenaMotif({ slide, ctx }: DecorProps) {
   const green = ctx.colors.accent
   const magenta = ctx.colors.chartPalette[1] ?? ctx.colors.accent
   const dim = ctx.colors.border ?? ctx.colors.primary
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const fade = (ink: string, preferred?: number) => leafRecessOpacity(slide.type, ink, bg, preferred)
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
   // cover 撤能量条：第五文字带住着封面 meta 行。注脚页撤能量条：IR 结构层
@@ -152,35 +156,48 @@ export function ArenaMotif({ slide, ctx }: DecorProps) {
 
   return (
     <>
-      {BRACKETS.map((d) => (
-        <path key={d} d={d} fill="none" stroke={green} strokeWidth={BRACKET_STROKE} />
-      ))}
-      {halfField
-        ? null
-        : SPEED_LINES.map((l) => (
-            <line
-              key={`${l.x1}-${l.y1}`}
-              x1={l.x1}
-              y1={l.y1}
-              x2={l.x2}
-              y2={l.y2}
-              stroke={l.magenta ? magenta : green}
-              strokeWidth={SPEED_STROKE}
-              opacity={l.opacity}
-            />
-          ))}
-      {energyBar
-        ? Array.from({ length: ENERGY_COUNT }, (_, i) => (
-            <rect
-              key={i}
-              x={ENERGY_X0 + i * ENERGY_STEP}
-              y={ENERGY_Y}
-              width={ENERGY_W}
-              height={ENERGY_H}
-              fill={i < ENERGY_LIT ? green : dim}
-            />
-          ))
-        : null}
+      <DecorPiece id="brackets">
+        {BRACKETS.map((d) => (
+          <path key={d} d={d} fill="none" stroke={green} strokeWidth={BRACKET_STROKE} opacity={fade(green)} />
+        ))}
+      </DecorPiece>
+      {halfField ? null : (
+        <DecorPiece id="speed-lines">
+          {SPEED_LINES.map((l) => {
+            const ink = l.magenta ? magenta : green
+            return (
+              <line
+                key={`${l.x1}-${l.y1}`}
+                x1={l.x1}
+                y1={l.y1}
+                x2={l.x2}
+                y2={l.y2}
+                stroke={ink}
+                strokeWidth={SPEED_STROKE}
+                opacity={fade(ink, l.opacity)}
+              />
+            )
+          })}
+        </DecorPiece>
+      )}
+      {energyBar ? (
+        <DecorPiece id="energy-bar">
+          {Array.from({ length: ENERGY_COUNT }, (_, i) => {
+            const ink = i < ENERGY_LIT ? green : dim
+            return (
+              <rect
+                key={i}
+                x={ENERGY_X0 + i * ENERGY_STEP}
+                y={ENERGY_Y}
+                width={ENERGY_W}
+                height={ENERGY_H}
+                fill={ink}
+                opacity={fade(ink)}
+              />
+            )
+          })}
+        </DecorPiece>
+      ) : null}
     </>
   )
 }

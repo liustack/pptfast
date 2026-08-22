@@ -82,9 +82,11 @@ describe("SwissMotif（冷白制度页缘）", () => {
     }
   })
 
-  it("四档输出完全相同，chapter 不退让", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("swiss", slide).markup))
-    expect(markups.size).toBe(1)
+  it("cover/chapter/ending 输出完全相同。内容页退底，件数不变", () => {
+    expect(draw("swiss", coverSlide).markup).toBe(draw("swiss", chapterSlide).markup)
+    expect(draw("swiss", coverSlide).markup).toBe(draw("swiss", endingSlide).markup)
+    expect(draw("swiss", contentSlide).root.querySelectorAll("rect")).toHaveLength(1)
+    expect(draw("swiss", contentSlide).root.querySelectorAll("line")).toHaveLength(3)
   })
 
   it("chapter 硬黑底上红条与灰刻度都过可见度地板（红成边压黑，不是红成面）", () => {
@@ -99,9 +101,12 @@ describe("SwissMotif（冷白制度页缘）", () => {
     const { root } = draw("swiss", coverSlide)
     const bar = root.querySelector("rect")!
     expect(bar.getAttribute("fill")).toBe(t.colors.accent)
-    const tickGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.muted)!
-    expect(tickGroup.getAttribute("stroke-width")).toBe("1.5")
-    expect(Array.from(tickGroup.querySelectorAll("line"))).toHaveLength(3)
+    const ticks = Array.from(root.querySelectorAll("line"))
+    expect(ticks).toHaveLength(3)
+    for (const l of ticks) {
+      expect(l.getAttribute("stroke")).toBe(t.colors.muted)
+      expect(l.getAttribute("stroke-width")).toBe("1.5")
+    }
   })
 
   it("motif 不读 chartPalette，调色板轮转改不动它一个字节", () => {

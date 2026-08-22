@@ -320,9 +320,12 @@ describe("CrayonMotif（蜡笔描边）", () => {
     }
   })
 
-  it("content/ending 在同一页结构下画同一张（cover 另有撤底带且太阳让位档）", () => {
-    const markups = new Set([contentSlide, endingSlide].map((slide) => draw("crayon", slide).markup))
-    expect(markups.size).toBe(1)
+  it("content/ending 几何相同（内容页退底，cover 另有撤底带且太阳让位档）", () => {
+    const content = draw("crayon", contentSlide)
+    const ending = draw("crayon", endingSlide)
+    expect(parts(content.root).dashes).toHaveLength(parts(ending.root).dashes.length)
+    expect(parts(content.root).sunCircles).toHaveLength(parts(ending.root).sunCircles.length)
+    expect(parts(content.root).rays).toHaveLength(parts(ending.root).rays.length)
   })
 
   it("同一份 IR 两次渲染逐字节相同", () => {
@@ -397,11 +400,11 @@ describe("CrayonMotif（蜡笔描边）", () => {
         expect(draw("crayon", long).markup).toBe(draw("crayon", short).markup)
       })
 
-      it("同结构不同页型：content/ending 输出逐字节相同（cover 是声明的撤底带且太阳让位档，不是文字几何的函数）", () => {
-        const markups = new Set(
-          (["content", "ending"] as const).map((type) => draw("crayon", slideOf(type, [para("同一段")])).markup),
-        )
-        expect(markups.size).toBe(1)
+      it("同结构不同页型：content/ending 几何相同（内容页退底，cover 是声明的撤底带档）", () => {
+        const content = parts(draw("crayon", slideOf("content", [para("同一段")])).root)
+        const ending = parts(draw("crayon", slideOf("ending", [para("同一段")])).root)
+        expect(content.dashes).toHaveLength(ending.dashes.length)
+        expect(content.sunCircles).toHaveLength(ending.sunCircles.length)
       })
 
       it("组件数相同、组件类型不同：输出逐字节相同（数的是个数，不是内容）", () => {

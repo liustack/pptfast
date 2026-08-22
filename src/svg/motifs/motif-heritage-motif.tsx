@@ -1,4 +1,7 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { yieldsOnSparsePin } from "./branded-frame"
 
 /**
  * heritage-motif v3 —— 「藏书票纹饰」（2026-08-19 暖纸组皮肤重设计，设计源
@@ -10,12 +13,10 @@ import type { DecorProps } from "./types"
  * 三档各画各的，没有一档撑得起主题识别；c 的左右页缘竖线正是本轮设计板
  * 点名要清零的「左竖条」。v3 把这些零碎收成一件整的：一张藏书票的边饰。
  *
- * 画的三件东西（四种页型都画，恒位，无 seed 变体）：
+ * 画的三件东西，r2 预算把角花裁掉（封面还要留藏书票章，角花是最次的一件）：
  *   - **顶缘双线**：y28 粗（2px）/ y36 细（0.75px），焦糖（accent），
  *     x48→1232。报头的双规则线，藏书票和扉页的排印惯例。
- *   - **顶部两角小角花**：左右各一枚 8×8 旋转 45° 的酒红（primary）方块，
- *     中心 (60,16) / (1220,16)。v2 的四角大菱形（半径 9 的实心菱形，四角
- *     全占）退役——它与 split-diagonal 封面的斜切缘、footer meta 带都碰过。
+ *   - **顶部两角小角花**：裁掉。8×8 旋转 45° 的酒红方块是第四件，超预算。
  *   - **底缘细线带中点金菱**：y626 一条 1px 纸纹线（border），x96→1184，
  *     线上中点 (640,626) 一枚 10×10 旋转 45° 的焦糖（accent）方块。
  *
@@ -49,7 +50,7 @@ import type { DecorProps } from "./types"
  *
  * 封面另加一枚 60×76 藏书票章（外框 (1150,96)，内缩 6px，中心一枚 16×16
  * 焦糖菱），只在 cover 上画。外框走 primary（酒红），内框与中心菱走 accent。
- * 顶双线 / 角花 / 底菱四种页型都保留。
+ * 顶双线 / 底菱四种页型都保留。角花已裁。
  */
 
 // ── 顶缘双线（报头双规则线） ────────────────────────────────────────────
@@ -59,14 +60,6 @@ const RULE_THICK_Y = 28
 const RULE_THICK_W = 2
 const RULE_THIN_Y = 36
 const RULE_THIN_W = 0.75
-
-// ── 顶部两角小角花 ──────────────────────────────────────────────────────
-const FLORET_SIZE = 8
-/** 两枚角花的中心。旋转 45° 用的也是这两个点。 */
-const FLORET_CENTERS: readonly [number, number][] = [
-  [60, 16],
-  [1220, 16],
-]
 
 // ── 底缘细线 + 中点金菱 ─────────────────────────────────────────────────
 const FOOT_X1 = 96
@@ -92,46 +85,59 @@ const STAMP_CX = STAMP_X + STAMP_W / 2
 const STAMP_CY = STAMP_Y + STAMP_H / 2
 
 export function HeritageMotif({ slide, ctx }: DecorProps) {
+  if (yieldsOnSparsePin(slide)) return null
   const caramel = ctx.colors.accent
   const wine = ctx.colors.primary
   const hairline = ctx.colors.border ?? ctx.colors.muted
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const fade = (ink: string, preferred?: number) => leafRecessOpacity(slide.type, ink, bg, preferred)
 
   return (
     <>
-      {/* 顶缘双线。两条真正的 <line>，不用只走一根轴的 <path> — svg2pptx
-          会把 <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被
-          package-audit 硬门的 invalid-shape-transform 规则拒绝（spec §4.4）。
-          <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该规则明确允许一根
-          轴为零。 */}
-      <line x1={RULE_X1} y1={RULE_THICK_Y} x2={RULE_X2} y2={RULE_THICK_Y} stroke={caramel} strokeWidth={RULE_THICK_W} />
-      <line x1={RULE_X1} y1={RULE_THIN_Y} x2={RULE_X2} y2={RULE_THIN_Y} stroke={caramel} strokeWidth={RULE_THIN_W} />
-
-      {/* 顶部两角小角花 */}
-      {FLORET_CENTERS.map(([cx, cy]) => (
-        <rect
-          key={cx}
-          x={cx - FLORET_SIZE / 2}
-          y={cy - FLORET_SIZE / 2}
-          width={FLORET_SIZE}
-          height={FLORET_SIZE}
-          fill={wine}
-          transform={`rotate(45 ${cx} ${cy})`}
+      <DecorPiece id="masthead">
+        <line
+          x1={RULE_X1}
+          y1={RULE_THICK_Y}
+          x2={RULE_X2}
+          y2={RULE_THICK_Y}
+          stroke={caramel}
+          strokeWidth={RULE_THICK_W}
+          opacity={fade(caramel)}
         />
-      ))}
+        <line
+          x1={RULE_X1}
+          y1={RULE_THIN_Y}
+          x2={RULE_X2}
+          y2={RULE_THIN_Y}
+          stroke={caramel}
+          strokeWidth={RULE_THIN_W}
+          opacity={fade(caramel)}
+        />
+      </DecorPiece>
 
-      {/* 底缘细线 + 中点金菱 */}
-      <line x1={FOOT_X1} y1={FOOT_Y} x2={FOOT_X2} y2={FOOT_Y} stroke={hairline} strokeWidth={FOOT_W} />
-      <rect
-        x={DIAMOND_CX - DIAMOND_SIZE / 2}
-        y={DIAMOND_CY - DIAMOND_SIZE / 2}
-        width={DIAMOND_SIZE}
-        height={DIAMOND_SIZE}
-        fill={caramel}
-        transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
-      />
+      <DecorPiece id="foot">
+        <line
+          x1={FOOT_X1}
+          y1={FOOT_Y}
+          x2={FOOT_X2}
+          y2={FOOT_Y}
+          stroke={hairline}
+          strokeWidth={FOOT_W}
+          opacity={fade(hairline)}
+        />
+        <rect
+          x={DIAMOND_CX - DIAMOND_SIZE / 2}
+          y={DIAMOND_CY - DIAMOND_SIZE / 2}
+          width={DIAMOND_SIZE}
+          height={DIAMOND_SIZE}
+          fill={caramel}
+          transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
+          opacity={fade(caramel)}
+        />
+      </DecorPiece>
 
       {slide.type === "cover" && (
-        <>
+        <DecorPiece id="stamp">
           <rect
             x={STAMP_X}
             y={STAMP_Y}
@@ -158,7 +164,7 @@ export function HeritageMotif({ slide, ctx }: DecorProps) {
             fill={caramel}
             transform={`rotate(45 ${STAMP_CX} ${STAMP_CY})`}
           />
-        </>
+        </DecorPiece>
       )}
     </>
   )

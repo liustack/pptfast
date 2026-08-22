@@ -1,5 +1,8 @@
 import type { DecorProps } from "./types"
 import { accessibleInk } from "../ink"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { yieldsOnSparsePin } from "./branded-frame"
 
 /**
  * memo-motif —— 「打字机眉行」（2026-08-21 wave7 memo，设计源
@@ -63,16 +66,12 @@ export function MemoMotif({ slide, ctx }: DecorProps) {
   // 装饰。版式按板面坐标画那一份，motif 再画顶缘那一份就会叠成两行。
   // 内容 / 章节 / 收尾仍走页缘（playbill 在 chapter 退让的同一写法）。
   if (slide.type === "cover") return null
+  if (yieldsOnSparsePin(slide)) return null
   const ink = ctx.colors.accent
   const bg = ctx.defaultBg ?? ctx.colors.bg
 
   return (
-    <>
-      {/* 两条真正的 <line>，不用只走一根轴的 <path> — svg2pptx 会把
-          <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被
-          package-audit 硬门的 invalid-shape-transform 规则拒绝。
-          <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该规则明确允许一根
-          轴为零。 */}
+    <DecorPiece id="masthead">
       <line
         x1={RULE_X1}
         y1={THICK_RULE_Y}
@@ -80,6 +79,7 @@ export function MemoMotif({ slide, ctx }: DecorProps) {
         y2={THICK_RULE_Y}
         stroke={ink}
         strokeWidth={THICK_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, ink, bg)}
       />
       <line
         x1={RULE_X1}
@@ -88,6 +88,7 @@ export function MemoMotif({ slide, ctx }: DecorProps) {
         y2={THIN_RULE_Y}
         stroke={ink}
         strokeWidth={THIN_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, ink, bg)}
       />
       <text
         x={EYEBROW_X}
@@ -102,6 +103,6 @@ export function MemoMotif({ slide, ctx }: DecorProps) {
       >
         {EYEBROW}
       </text>
-    </>
+    </DecorPiece>
   )
 }

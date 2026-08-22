@@ -1,4 +1,7 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { yieldsOnSparsePin } from "./branded-frame"
 
 /**
  * poster-motif —— insight 的「行情语汇」（2026-08-19 深底组皮肤重设计，
@@ -132,70 +135,75 @@ const areaPath = (points: readonly (readonly [number, number])[]): string => {
 }
 
 export function PosterMotif({ ir, slide, ctx }: DecorProps) {
+  if (yieldsOnSparsePin(slide)) return null
   const { colors } = ctx
+  const bg = ctx.defaultBg ?? colors.bg
+  const fade = (ink: string, preferred?: number) => leafRecessOpacity(slide.type, ink, bg, preferred)
   const quarter = slide.type === "cover" ? quarterLabel(ir.meta.date) : undefined
+  const border = colors.border ?? colors.muted
 
   return (
     <>
-      {/* 幽灵季度水印：先画，压在所有行情语汇之下。5% 透明度远低于
-          MIN_BG_OPACITY(0.5)，不参与任何对比度判读。 */}
       {quarter && (
-        <text
-          x={WATERMARK_X}
-          y={WATERMARK_Y}
-          fontFamily={ctx.fonts.heading}
-          fontSize={WATERMARK_SIZE}
-          fontWeight={WATERMARK_WEIGHT}
-          fill={colors.accent}
-          opacity={WATERMARK_OPACITY}
-          textAnchor="middle"
-        >
-          {quarter}
-        </text>
+        <DecorPiece id="watermark">
+          <text
+            x={WATERMARK_X}
+            y={WATERMARK_Y}
+            fontFamily={ctx.fonts.heading}
+            fontSize={WATERMARK_SIZE}
+            fontWeight={WATERMARK_WEIGHT}
+            fill={colors.accent}
+            opacity={WATERMARK_OPACITY}
+            textAnchor="middle"
+          >
+            {quarter}
+          </text>
+        </DecorPiece>
       )}
 
-      {/* 顶缘行情带：双细线。用 <line> 不用 <path>——纯水平 <path> 会被
-          svg2pptx 转成包围盒零高度的 custGeom，package-audit 的
-          invalid-shape-transform 硬门拒收（luxe-motif 建这道门时的实测缺陷）。 */}
-      <line
-        x1={BAND_X1}
-        y1={BAND_LINE_Y_TOP}
-        x2={BAND_X2}
-        y2={BAND_LINE_Y_TOP}
-        stroke={colors.border}
-        strokeWidth={BAND_STROKE_TOP}
-      />
-      <line
-        x1={BAND_X1}
-        y1={BAND_LINE_Y_BOTTOM}
-        x2={BAND_X2}
-        y2={BAND_LINE_Y_BOTTOM}
-        stroke={colors.border}
-        strokeWidth={BAND_STROKE_BOTTOM}
-        opacity={BAND_BOTTOM_OPACITY}
-      />
-      {/* 琥珀刻度齿（竖向 <line>，同上理由） */}
-      {TICK_XS.map((x) => (
+      <DecorPiece id="ticker">
         <line
-          key={`tick-${x}`}
-          x1={x}
-          y1={TICK_Y1}
-          x2={x}
-          y2={TICK_Y2}
-          stroke={colors.accent}
-          strokeWidth={TICK_STROKE}
+          x1={BAND_X1}
+          y1={BAND_LINE_Y_TOP}
+          x2={BAND_X2}
+          y2={BAND_LINE_Y_TOP}
+          stroke={border}
+          strokeWidth={BAND_STROKE_TOP}
+          opacity={fade(border)}
         />
-      ))}
+        <line
+          x1={BAND_X1}
+          y1={BAND_LINE_Y_BOTTOM}
+          x2={BAND_X2}
+          y2={BAND_LINE_Y_BOTTOM}
+          stroke={border}
+          strokeWidth={BAND_STROKE_BOTTOM}
+          opacity={fade(border, BAND_BOTTOM_OPACITY)}
+        />
+        {TICK_XS.map((x) => (
+          <line
+            key={`tick-${x}`}
+            x1={x}
+            y1={TICK_Y1}
+            x2={x}
+            y2={TICK_Y2}
+            stroke={colors.accent}
+            strokeWidth={TICK_STROKE}
+            opacity={fade(colors.accent)}
+          />
+        ))}
+      </DecorPiece>
 
-      {/* 基线面积线：填充 + 走线，两档都是退底值（见 BASELINE_LINE_OPACITY） */}
-      <path d={areaPath(BASELINE_POINTS)} fill={colors.accent} opacity={BASELINE_FILL_OPACITY} />
-      <polyline
-        points={BASELINE_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}
-        fill="none"
-        stroke={colors.accent}
-        strokeWidth={BASELINE_STROKE}
-        opacity={BASELINE_LINE_OPACITY}
-      />
+      <DecorPiece id="baseline">
+        <path d={areaPath(BASELINE_POINTS)} fill={colors.accent} opacity={fade(colors.accent, BASELINE_FILL_OPACITY)} />
+        <polyline
+          points={BASELINE_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}
+          fill="none"
+          stroke={colors.accent}
+          strokeWidth={BASELINE_STROKE}
+          opacity={fade(colors.accent, BASELINE_LINE_OPACITY)}
+        />
+      </DecorPiece>
     </>
   )
 }

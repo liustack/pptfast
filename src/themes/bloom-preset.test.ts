@@ -88,6 +88,10 @@ function stripPalette(markup: string, theme: string): string {
     if (!hex) continue
     out = out.split(hex).join(name)
   }
+  // Content-page motif fade is a function of the palette (gallery r2 B2).
+  // Strip it with the hexes so the skeleton comparison stays about
+  // structure, not per-theme contrast math.
+  out = out.replace(/opacity="[\d.]+"/g, 'opacity="<op>"')
   return out
 }
 

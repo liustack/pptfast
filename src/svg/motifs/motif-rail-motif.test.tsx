@@ -85,9 +85,12 @@ describe("RailMotif（顶带点轨）", () => {
       expect(d.getAttribute("stroke-width")).toBe("1.5")
       expect(num(d, "r")).toBe(6)
     }
-    const cornerGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.accent)
-    expect(cornerGroup, "corner marks must read colors.accent").toBeTruthy()
-    expect(cornerGroup!.getAttribute("stroke-width")).toBe("1.5")
+    const corners = Array.from(root.querySelectorAll("line"))
+    expect(corners, "corner marks must read colors.accent").toHaveLength(2)
+    for (const l of corners) {
+      expect(l.getAttribute("stroke")).toBe(t.colors.accent)
+      expect(l.getAttribute("stroke-width")).toBe("1.5")
+    }
   })
 
   it("点轨几何：默认锚落在 x96-296 顶带槽内居中、间距 46、y30 上的五枚 r6", () => {

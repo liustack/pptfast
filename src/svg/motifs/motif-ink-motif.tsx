@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * ink-motif v3（2026-08-18 主题重设计第一期，1a「素」方向 ——
@@ -143,10 +145,21 @@ export function InkMotif({ slide, ir, ctx }: DecorProps) {
   // 从列首起排。
   const dateFirstY = org.glyphs.length > 0 ? orgLastY + BLOCK_GAP : ORG_FIRST_Y
 
+  const bg = ctx.defaultBg ?? colors.bg
+  const border = colors.border ?? colors.muted
+
   return (
     <>
-      {/* 右缘落款列的竖界线 */}
-      <line x1={RAIL_X} y1={RAIL_Y1} x2={RAIL_X} y2={RAIL_Y2} stroke={colors.border} strokeWidth={RAIL_STROKE} />
+      <DecorPiece id="colophon">
+      <line
+        x1={RAIL_X}
+        y1={RAIL_Y1}
+        x2={RAIL_X}
+        y2={RAIL_Y2}
+        stroke={border}
+        strokeWidth={RAIL_STROKE}
+        opacity={leafRecessOpacity(slide.type, border, bg)}
+      />
 
       {/* 机构名逐字竖排（楷）。`data-contrast-tier="meta"` —— 这是 B 层元
           信息文本（`docs/contrast-system.md` 三层策略：机构名/日期，真信息、
@@ -189,7 +202,15 @@ export function InkMotif({ slide, ir, ctx }: DecorProps) {
 
       {/* 列底朱砂印：外框 + 内嵌白描边。印上无字——印面刻什么不是渲染器能
           知道的事，留白比编一个字负责。 */}
-      <rect x={SEAL_X} y={SEAL_Y} width={SEAL_SIZE} height={SEAL_SIZE} rx={SEAL_RADIUS} fill={colors.accent} />
+      <rect
+        x={SEAL_X}
+        y={SEAL_Y}
+        width={SEAL_SIZE}
+        height={SEAL_SIZE}
+        rx={SEAL_RADIUS}
+        fill={colors.accent}
+        opacity={leafRecessOpacity(slide.type, colors.accent, bg)}
+      />
       <rect
         x={SEAL_X + SEAL_INNER_INSET}
         y={SEAL_Y + SEAL_INNER_INSET}
@@ -198,11 +219,14 @@ export function InkMotif({ slide, ir, ctx }: DecorProps) {
         fill="none"
         stroke={colors.surface}
         strokeWidth={SEAL_INNER_STROKE}
+        opacity={leafRecessOpacity(slide.type, colors.surface, bg)}
       />
+      </DecorPiece>
 
-      {/* 一角残山：只在 cover / chapter。内容页留干净的纸。 */}
       {(slide.type === "cover" || slide.type === "chapter") && (
-        <path d={REMNANT_PATH} fill={colors.primary} opacity={REMNANT_OPACITY} />
+        <DecorPiece id="remnant">
+          <path d={REMNANT_PATH} fill={colors.primary} opacity={REMNANT_OPACITY} />
+        </DecorPiece>
       )}
     </>
   )

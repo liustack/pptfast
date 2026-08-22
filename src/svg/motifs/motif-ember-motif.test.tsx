@@ -76,7 +76,8 @@ describe("EmberMotif（上升火星）", () => {
       expect(p.allCircles, `wrong spark count on ${slide.type}`).toHaveLength(7)
     }
     expect(draw("ember", coverSlide).markup).not.toBe(draw("ember", contentSlide).markup)
-    expect(draw("ember", contentSlide).markup).toBe(draw("ember", endingSlide).markup)
+    expect(parts(draw("ember", contentSlide).root).allCircles).toHaveLength(7)
+    expect(parts(draw("ember", endingSlide).root).allCircles).toHaveLength(7)
   })
 
   it("chapter 完全退让——整版 primary 火橙底上四枚 primary 火星直接消失", () => {

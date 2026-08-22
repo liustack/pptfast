@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * rail-motif v2 —— 「顶带点轨」（2026-08-20 冷调组皮肤重设计，设计源
@@ -98,23 +100,41 @@ export function RailMotif({ slide, ctx }: DecorProps) {
   if (slide.type === "chapter") return null
 
   const ink = ctx.colors.primary
+  const accent = ctx.colors.accent
+  const bg = ctx.defaultBg ?? ctx.colors.bg
   const startX = slide.type === "cover" ? DOT_X_COVER : DOT_X_DEFAULT
   const dots = Array.from({ length: DOT_COUNT }, (_, i) => startX + i * DOT_GAP)
 
   return (
     <>
-      {/* 顶带五枚相同空心圆：不再一实四空，避免被读成进度 */}
-      <g>
+      <DecorPiece id="dot-track">
         {dots.map((cx) => (
-          <circle key={cx} cx={cx} cy={DOT_Y} r={DOT_R} fill="none" stroke={ink} strokeWidth={DOT_STROKE} />
+          <circle
+            key={cx}
+            cx={cx}
+            cy={DOT_Y}
+            r={DOT_R}
+            fill="none"
+            stroke={ink}
+            strokeWidth={DOT_STROKE}
+            opacity={leafRecessOpacity(slide.type, ink, bg)}
+          />
         ))}
-      </g>
-      {/* 右上双线角标 */}
-      <g stroke={ctx.colors.accent} strokeWidth={CORNER_STROKE}>
+      </DecorPiece>
+      <DecorPiece id="corner-mark">
         {CORNER_MARKS.map((m) => (
-          <line key={m.y} x1={m.x1} y1={m.y} x2={CORNER_X2} y2={m.y} />
+          <line
+            key={m.y}
+            x1={m.x1}
+            y1={m.y}
+            x2={CORNER_X2}
+            y2={m.y}
+            stroke={accent}
+            strokeWidth={CORNER_STROKE}
+            opacity={leafRecessOpacity(slide.type, accent, bg)}
+          />
         ))}
-      </g>
+      </DecorPiece>
     </>
   )
 }

@@ -47,7 +47,7 @@ function draw(theme: string, slide: Slide) {
 
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
-/** 三件东西：顶缘双线（按描边宽度分粗/细）、两枚角花、底缘线 + 中点金菱。 */
+/** 顶缘双线（按描边宽度分粗/细）、底缘线 + 中点金菱。角花已裁。 */
 function parts(root: Element) {
   const lines = Array.from(root.querySelectorAll("line"))
   const rects = Array.from(root.querySelectorAll("rect"))
@@ -71,26 +71,37 @@ const circumRadius = (r: Element) => (num(r, "width") / 2) * Math.SQRT2
  * 测试，四家皮肤这一轮一并补齐。
  */
 describe("HeritageMotif（藏书票纹饰）", () => {
-  it("四种页型都画：顶缘双线 + 两角角花 + 底缘线带中点金菱（v2 的 chapter 退让取消）", () => {
+  it("content 稀排钉 pin 整片退让，不和 statement 等脸的横线叠预算", () => {
+    for (const layout of ["statement", "pull-quote", "stat-hero", "one-evidence", "mono-bleed"] as const) {
+      const slide = { ...contentSlide, layout } as Slide
+      const { root } = draw("heritage", slide)
+      expect(root.querySelectorAll("line"), layout).toHaveLength(0)
+      expect(root.querySelectorAll("rect"), layout).toHaveLength(0)
+    }
+    const { root } = draw("heritage", contentSlide)
+    expect(parts(root).thickRule).toBeTruthy()
+    expect(draw("heritage", coverSlide).root.querySelectorAll("line").length).toBeGreaterThan(0)
+  })
+
+  it("四种页型都画：顶缘双线 + 底缘线带中点金菱。角花是预算裁掉的次件", () => {
     for (const slide of ALL_SLIDES) {
       const { root } = draw("heritage", slide)
       const p = parts(root)
       expect(p.thickRule, `no thick rule on ${slide.type}`).toBeTruthy()
       expect(p.thinRule, `no thin rule on ${slide.type}`).toBeTruthy()
       expect(p.footRule, `no foot rule on ${slide.type}`).toBeTruthy()
-      expect(p.florets, `wrong floret count on ${slide.type}`).toHaveLength(2)
+      expect(p.florets, `florets survived on ${slide.type}`).toHaveLength(0)
       expect(p.centerDiamond, `no center diamond on ${slide.type}`).toBeTruthy()
     }
   })
 
-  it("颜色一律读 token：双线与金菱走 accent、角花走 primary、底缘线走 border", () => {
+  it("颜色一律读 token：双线与金菱走 accent、底缘线走 border", () => {
     const t = resolveStyle("heritage")
     const { root } = draw("heritage", coverSlide)
     const p = parts(root)
     expect(p.thickRule.getAttribute("stroke")).toBe(t.colors.accent)
     expect(p.thinRule.getAttribute("stroke")).toBe(t.colors.accent)
     expect(p.centerDiamond.getAttribute("fill")).toBe(t.colors.accent)
-    for (const f of p.florets) expect(f.getAttribute("fill")).toBe(t.colors.primary)
     expect(p.footRule.getAttribute("stroke")).toBe(t.colors.border)
   })
 
@@ -105,21 +116,9 @@ describe("HeritageMotif（藏书票纹饰）", () => {
     expect(num(thinRule, "y1")).toBe(36)
   })
 
-  it("两角角花几何：中心 (60,16) 与 (1220,16)，8×8 旋转 45°", () => {
+  it("不画两角角花（封面还要留藏书票章，角花是超预算的第四件）", () => {
     const { root } = draw("heritage", coverSlide)
-    const centers = parts(root)
-      .florets.map((f) => [num(f, "x") + num(f, "width") / 2, num(f, "y") + num(f, "height") / 2] as const)
-      .sort((a, b) => a[0] - b[0])
-    expect(centers).toEqual([
-      [60, 16],
-      [1220, 16],
-    ])
-    for (const f of parts(root).florets) {
-      expect(num(f, "width")).toBe(num(f, "height"))
-      const cx = num(f, "x") + num(f, "width") / 2
-      const cy = num(f, "y") + num(f, "height") / 2
-      expect(f.getAttribute("transform")).toBe(`rotate(45 ${cx} ${cy})`)
-    }
+    expect(parts(root).florets).toHaveLength(0)
   })
 
   it("底缘线几何：x96→1184 的 y626，金菱压在它的中点 x640", () => {
@@ -140,15 +139,11 @@ describe("HeritageMotif（藏书票纹饰）", () => {
    * 安全区守卫（设计板的四条红虚线逐条量）。把顶缘双线压进标题区、或把
    * 底缘线放到 logo 盒的纵向区间里，这一条立刻红。
    */
-  it("安全区：顶缘三件全在标题区上沿 y48 之上", () => {
+  it("安全区：顶缘双线全在标题区上沿 y48 之上", () => {
     const { root } = draw("heritage", coverSlide)
-    const { thickRule, thinRule, florets } = parts(root)
+    const { thickRule, thinRule } = parts(root)
     expect(num(thickRule, "y1")).toBeLessThan(TITLE_ZONE.y)
     expect(num(thinRule, "y1")).toBeLessThan(TITLE_ZONE.y)
-    for (const f of florets) {
-      const cy = num(f, "y") + num(f, "height") / 2
-      expect(cy + circumRadius(f)).toBeLessThan(TITLE_ZONE.y)
-    }
   })
 
   it("安全区：底缘线让开右下 logo 盒的上沿 y630，且整组都在正文区之下、页脚 meta 带之上", () => {

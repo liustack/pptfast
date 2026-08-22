@@ -1,4 +1,6 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * enterprise-motif v2 —— 「方块秩序」（2026-08-20 冷调组皮肤重设计，设计源
@@ -91,24 +93,36 @@ export function EnterpriseMotif({ slide, ctx }: DecorProps) {
 
   const ikb = ctx.colors.primary
   const rule = ctx.colors.border ?? ctx.colors.muted
+  const muted = ctx.colors.muted
+  const accent = ctx.colors.accent
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const fade = (ink: string) => leafRecessOpacity(slide.type, ink, bg)
 
   return (
     <>
-      {/* 顶缘刻度尺：尺身 + 六枚灰齿 */}
-      <line x1={RULE_X1} y1={RULE_Y} x2={RULE_X2} y2={RULE_Y} stroke={rule} strokeWidth={1} />
-      <g stroke={ctx.colors.muted} strokeWidth={TICK_STROKE}>
+      <DecorPiece id="ruler">
+        <line x1={RULE_X1} y1={RULE_Y} x2={RULE_X2} y2={RULE_Y} stroke={rule} strokeWidth={1} opacity={fade(rule)} />
         {TICKS.map((t) => (
-          <line key={t.x} x1={t.x} y1={t.y1} x2={t.x} y2={t.y2} />
+          <line
+            key={t.x}
+            x1={t.x}
+            y1={t.y1}
+            x2={t.x}
+            y2={t.y2}
+            stroke={muted}
+            strokeWidth={TICK_STROKE}
+            opacity={fade(muted)}
+          />
         ))}
-      </g>
-      {/* 右上 IKB 方块阶 */}
-      <g fill={ikb}>
+      </DecorPiece>
+      <DecorPiece id="ikb-steps">
         {STEPS.map((s) => (
-          <rect key={s.x} x={s.x} y={s.y} width={s.size} height={s.size} />
+          <rect key={s.x} x={s.x} y={s.y} width={s.size} height={s.size} fill={ikb} opacity={fade(ikb)} />
         ))}
-      </g>
-      {/* 左缘下方一枚 accent 方块 */}
-      <rect x={SPARK.x} y={SPARK.y} width={SPARK.size} height={SPARK.size} fill={ctx.colors.accent} />
+      </DecorPiece>
+      <DecorPiece id="spark">
+        <rect x={SPARK.x} y={SPARK.y} width={SPARK.size} height={SPARK.size} fill={accent} opacity={fade(accent)} />
+      </DecorPiece>
     </>
   )
 }

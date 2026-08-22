@@ -1,5 +1,7 @@
 import { PACING_BUDGETS } from "@/narrative"
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * campaign-motif v6 —— 「纸屑场」（2026-08-20 柔和组皮肤重设计，设计源
@@ -321,18 +323,31 @@ export function CampaignMotif({ slide, ctx }: DecorProps) {
   if (slide.type === "chapter") return null
 
   const palette = ctx.colors.chartPalette
+  const bg = ctx.defaultBg ?? ctx.colors.bg
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
 
   return (
-    <>
+    <DecorPiece id="confetti">
       {CONFETTI.map((piece, i) =>
         halfField && piece.band >= HALF_FIELD_BANDS ? null : piece.kind === "dot" ? (
-          <circle key={i} cx={piece.cx} cy={piece.cy} r={piece.r} fill={palette[piece.c]} opacity={piece.o} />
+          <circle
+            key={i}
+            cx={piece.cx}
+            cy={piece.cy}
+            r={piece.r}
+            fill={palette[piece.c]}
+            opacity={leafRecessOpacity(slide.type, palette[piece.c]!, bg, piece.o)}
+          />
         ) : (
-          <path key={i} d={piece.d} fill={palette[piece.c]} opacity={piece.o} />
+          <path
+            key={i}
+            d={piece.d}
+            fill={palette[piece.c]}
+            opacity={leafRecessOpacity(slide.type, palette[piece.c]!, bg, piece.o)}
+          />
         ),
       )}
-    </>
+    </DecorPiece>
   )
 }

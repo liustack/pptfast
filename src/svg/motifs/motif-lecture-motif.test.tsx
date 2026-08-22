@@ -20,13 +20,14 @@ const FOOTER_ZONE = { x: 48, y: 664, w: 1184, h: 44 }
 const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
 const FIFTH_BAND = { x: 0, y: 620, w: 1280, h: 44 }
 
-const ir = (theme: string, filename = "x.pptx"): PptxIR =>
+const ir = (theme: string, filename = "x.pptx", branding?: PptxIR["branding"]): PptxIR =>
   ({
     version: "3",
     filename,
     theme: { id: theme },
     meta: {},
     assets: { images: {} },
+    branding,
     slides: [coverSlide],
   }) as unknown as PptxIR
 
@@ -39,9 +40,9 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
   return { markup, root: parseSvgRoot(markup) }
 }
 
-function draw(theme: string, slide: Slide, filename?: string) {
+function draw(theme: string, slide: Slide, filename?: string, branding?: PptxIR["branding"]) {
   const ctx = buildCtx(resolveStyle(theme), {})
-  return { ...render(<LectureMotif ir={ir(theme, filename)} slide={slide} ctx={ctx} />), ctx }
+  return { ...render(<LectureMotif ir={ir(theme, filename, branding)} slide={slide} ctx={ctx} />), ctx }
 }
 
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
@@ -57,14 +58,16 @@ function frame(root: Element) {
  */
 describe("LectureMotif（粉笔槽细框）", () => {
   it("四种页型都画同一根单层细框，chapter 不退让", () => {
-    const markups = new Set<string>()
     for (const slide of ALL_SLIDES) {
-      const { root, markup } = draw("lecture", slide)
+      const { root } = draw("lecture", slide)
       expect(frame(root), `no frame on ${slide.type}`).toBeTruthy()
       expect(root.querySelectorAll("rect")).toHaveLength(1)
-      markups.add(markup)
     }
-    expect(markups.size).toBe(1)
+    const cover = draw("lecture", coverSlide).markup
+    const chapter = draw("lecture", chapterSlide).markup
+    const ending = draw("lecture", endingSlide).markup
+    expect(chapter).toBe(cover)
+    expect(ending).toBe(cover)
   })
 
   it("框走 border（粉笔槽），不走 accent，不加粗", () => {
@@ -78,13 +81,13 @@ describe("LectureMotif（粉笔槽细框）", () => {
     expect(markup).not.toContain(t.colors.primary)
   })
 
-  it("几何：26,26 起，右缘 1254，下边 624", () => {
+  it("几何：26,26 起，右缘 1254。未声明 branding 时下边走板上 inset 694", () => {
     const { root } = draw("lecture", coverSlide)
     const el = frame(root)!
     expect(num(el, "x")).toBe(26)
     expect(num(el, "y")).toBe(26)
     expect(num(el, "x") + num(el, "width")).toBe(1254)
-    expect(num(el, "y") + num(el, "height")).toBe(624)
+    expect(num(el, "y") + num(el, "height")).toBe(694)
   })
 
   it("单层：只有一道框，不是 luxe 的双层金框", () => {
@@ -123,8 +126,8 @@ describe("LectureMotif（粉笔槽细框）", () => {
     expect(top + half).toBeLessThan(TITLE_ZONE.y)
   })
 
-  it("安全区：下边上移到 y624，让开右下 logo 盒上沿 y630 和页脚带", () => {
-    const { root } = draw("lecture", coverSlide)
+  it("安全区：branding full 时下边 y624，让开右下 logo 盒上沿 y630 和页脚带", () => {
+    const { root } = draw("lecture", coverSlide, undefined, "full")
     const el = frame(root)!
     const bottom = num(el, "y") + num(el, "height")
     expect(bottom).toBe(624)
@@ -133,8 +136,8 @@ describe("LectureMotif（粉笔槽细框）", () => {
     expect(bottom).toBeGreaterThan(BODY_ZONE.y + BODY_ZONE.h)
   })
 
-  it("第五带发丝豁免：下边落在 y620-664 里，描边 ≤1.5px", () => {
-    const { root } = draw("lecture", coverSlide)
+  it("第五带发丝豁免：branding full 时下边落在 y620-664 里，描边 ≤1.5px", () => {
+    const { root } = draw("lecture", coverSlide, undefined, "full")
     const el = frame(root)!
     const bottom = num(el, "y") + num(el, "height")
     expect(bottom).toBeGreaterThanOrEqual(FIFTH_BAND.y)
@@ -181,5 +184,25 @@ describe("LectureMotif（粉笔槽细框）", () => {
     for (const slide of ALL_SLIDES) {
       expect(() => assertSubset(draw("lecture", slide).root)).not.toThrow()
     }
+  })
+
+  it("omitted branding drops the outer frame to the board inset y694", () => {
+    const { root } = draw("lecture", contentSlide)
+    const el = frame(root)!
+    expect(num(el, "y") + num(el, "height")).toBe(694)
+  })
+
+  it("branding full keeps the frame at y624 to clear the logo box", () => {
+    const { root } = draw("lecture", contentSlide, undefined, "full")
+    const el = frame(root)!
+    const bottom = num(el, "y") + num(el, "height")
+    expect(bottom).toBe(624)
+    expect(bottom).toBeLessThan(LOGO_BOX.y)
+  })
+
+  it("layout branding none drops the frame even on a full deck", () => {
+    const slide = { ...contentSlide, layout: "stat-hero" } as Slide
+    const { root } = draw("lecture", slide, undefined, "full")
+    expect(num(frame(root)!, "y") + num(frame(root)!, "height")).toBe(694)
   })
 })

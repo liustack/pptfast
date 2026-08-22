@@ -1,5 +1,7 @@
 import type { DecorProps } from "./types"
 import { accessibleInk } from "../ink"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
 
 /**
  * corner-ornament-motif v2 —— 「报头双线」（2026-08-20 编辑组皮肤重设计，
@@ -128,7 +130,7 @@ export function CornerOrnamentMotif({ ir, slide, ctx }: DecorProps) {
 
   return (
     <>
-      {/* 顶缘文武双线 */}
+      <DecorPiece id="masthead">
       <line
         x1={RULE_X1}
         y1={THICK_RULE_Y}
@@ -136,6 +138,7 @@ export function CornerOrnamentMotif({ ir, slide, ctx }: DecorProps) {
         y2={THICK_RULE_Y}
         stroke={rule}
         strokeWidth={THICK_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, rule, bg)}
       />
       <line
         x1={RULE_X1}
@@ -144,8 +147,10 @@ export function CornerOrnamentMotif({ ir, slide, ctx }: DecorProps) {
         y2={THIN_RULE_Y}
         stroke={rule}
         strokeWidth={THIN_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, rule, bg)}
       />
-      {/* 底缘单线 */}
+      </DecorPiece>
+      <DecorPiece id="foot">
       <line
         x1={FOOT_RULE_X1}
         y1={FOOT_RULE_Y}
@@ -153,6 +158,7 @@ export function CornerOrnamentMotif({ ir, slide, ctx }: DecorProps) {
         y2={FOOT_RULE_Y}
         stroke={rule}
         strokeWidth={FOOT_RULE_STROKE}
+        opacity={leafRecessOpacity(slide.type, rule, bg)}
       />
       {/* 线上中点期号——装饰件唯一的字符 */}
       <text
@@ -166,6 +172,7 @@ export function CornerOrnamentMotif({ ir, slide, ctx }: DecorProps) {
       >
         {issueLabel(ir.meta.date)}
       </text>
+      </DecorPiece>
     </>
   )
 }

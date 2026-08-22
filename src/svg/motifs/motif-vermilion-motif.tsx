@@ -1,4 +1,7 @@
 import type { DecorProps } from "./types"
+import { DecorPiece } from "./decor-piece"
+import { leafRecessOpacity } from "./decor-budget"
+import { yieldsOnSparsePin } from "./branded-frame"
 
 /**
  * vermilion-motif v2 —— 「文件金线」（2026-08-19 暖纸组皮肤重设计，设计源
@@ -86,44 +89,72 @@ const DIAMOND_CY = FOOT_Y
 export function VermilionMotif({ slide, ctx }: DecorProps) {
   const gold = ctx.colors.accent
   const red = ctx.colors.primary
+  const bg = ctx.defaultBg ?? ctx.colors.bg
+  const fade = (ink: string, preferred?: number) => leafRecessOpacity(slide.type, ink, bg, preferred)
 
   // chapter 是整版 primary 正红底——底缘红线消失、金线与巨幅标题抢面
-  // （见文件头）。
+  // （见文件头）。content 稀排钉 pin 让位：脸自己已有横线，叠上去超预算。
   if (slide.type === "chapter") return null
+  if (yieldsOnSparsePin(slide)) return null
 
   return (
     <>
-      {/* 顶缘金双线。真正的 <line>，不用只走一根轴的 <path> — svg2pptx 会把
-          <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被 package-audit
-          硬门的 invalid-shape-transform 规则拒绝（spec §4.4）。 */}
-      <line x1={RULE_X1} y1={RULE_THICK_Y} x2={RULE_X2} y2={RULE_THICK_Y} stroke={gold} strokeWidth={RULE_THICK_W} />
-      <line x1={RULE_X1} y1={RULE_THIN_Y} x2={RULE_X2} y2={RULE_THIN_Y} stroke={gold} strokeWidth={RULE_THIN_W} />
+      <DecorPiece id="gold-rules">
+        <line
+          x1={RULE_X1}
+          y1={RULE_THICK_Y}
+          x2={RULE_X2}
+          y2={RULE_THICK_Y}
+          stroke={gold}
+          strokeWidth={RULE_THICK_W}
+          opacity={fade(gold)}
+        />
+        <line
+          x1={RULE_X1}
+          y1={RULE_THIN_Y}
+          x2={RULE_X2}
+          y2={RULE_THIN_Y}
+          stroke={gold}
+          strokeWidth={RULE_THIN_W}
+          opacity={fade(gold)}
+        />
+      </DecorPiece>
 
-      {/* 右上角金芒扇 */}
-      <g stroke={gold} strokeWidth={RAY_STROKE} opacity={RAY_OPACITY}>
+      <DecorPiece id="rays">
         {RAY_TIPS.map(([x2, y2]) => (
-          <line key={`${x2}-${y2}`} x1={RAY_ORIGIN[0]} y1={RAY_ORIGIN[1]} x2={x2} y2={y2} />
+          <line
+            key={`${x2}-${y2}`}
+            x1={RAY_ORIGIN[0]}
+            y1={RAY_ORIGIN[1]}
+            x2={x2}
+            y2={y2}
+            stroke={gold}
+            strokeWidth={RAY_STROKE}
+            opacity={fade(gold, RAY_OPACITY)}
+          />
         ))}
-      </g>
+      </DecorPiece>
 
-      {/* 底缘红细线 + 中点金菱 */}
-      <line
-        x1={FOOT_X1}
-        y1={FOOT_Y}
-        x2={FOOT_X2}
-        y2={FOOT_Y}
-        stroke={red}
-        strokeWidth={FOOT_W}
-        opacity={FOOT_OPACITY}
-      />
-      <rect
-        x={DIAMOND_CX - DIAMOND_SIZE / 2}
-        y={DIAMOND_CY - DIAMOND_SIZE / 2}
-        width={DIAMOND_SIZE}
-        height={DIAMOND_SIZE}
-        fill={gold}
-        transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
-      />
+      <DecorPiece id="foot">
+        <line
+          x1={FOOT_X1}
+          y1={FOOT_Y}
+          x2={FOOT_X2}
+          y2={FOOT_Y}
+          stroke={red}
+          strokeWidth={FOOT_W}
+          opacity={fade(red, FOOT_OPACITY)}
+        />
+        <rect
+          x={DIAMOND_CX - DIAMOND_SIZE / 2}
+          y={DIAMOND_CY - DIAMOND_SIZE / 2}
+          width={DIAMOND_SIZE}
+          height={DIAMOND_SIZE}
+          fill={gold}
+          transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
+          opacity={fade(gold)}
+        />
+      </DecorPiece>
     </>
   )
 }
