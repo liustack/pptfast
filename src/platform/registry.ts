@@ -59,6 +59,12 @@ export interface PptfastPlatform {
    * network or a tainted canvas.
    */
   rasterizeSvg?: (svgMarkup: string, width: number, height: number) => Promise<RasterizedImage>
+  /**
+   * Optional fetch used when inlining remote assets. The Node CLI installs a
+   * proxy-aware implementation. Absent, callers fall back to global fetch
+   * (tests that `vi.stubGlobal("fetch")` without installing a platform).
+   */
+  fetch?: typeof fetch
 }
 
 let current: PptfastPlatform = {}

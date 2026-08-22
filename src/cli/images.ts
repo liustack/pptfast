@@ -33,6 +33,8 @@ import {
   type ProcessRunner,
 } from "./image-generators"
 import { defaultSleep, loadOpenverseDetail, searchOpenverse, type SleepFn } from "./image-openverse"
+import { proxyFetch } from "./proxy-fetch"
+import { assertSafeRemoteTarget, defaultDnsLookup, pinnedFetch, type DnsLookup } from "./ssrf"
 import { redactSecrets } from "./redact"
 import { resolveWorkspaceLocation, type WorkspaceLocation } from "./workspace"
 
@@ -92,6 +94,7 @@ export interface ImagesFetchOptions {
   env?: NodeJS.ProcessEnv
   now?: () => Date
   sleep?: SleepFn
+  lookup?: DnsLookup
 }
 
 export interface ImagesListOptions {
@@ -319,7 +322,7 @@ export async function runImagesSearch(query: string, opts: ImagesSearchOptions =
   const env = opts.env ?? process.env
   const keys = await loadKeys(env)
   const secrets = knownSecretsFrom(keys)
-  const fetchImpl = opts.fetch ?? globalThis.fetch
+  const fetchImpl = opts.fetch ?? proxyFetch
   const sleep = opts.sleep ?? defaultSleep
 
   if (keys.pexels.apiKey) {
@@ -415,11 +418,25 @@ function assertSafeDownloadUrl(url: string): URL {
   return parsed
 }
 
-async function downloadBytes(url: string, fetchImpl: FetchImpl, secrets: string[]): Promise<Buffer> {
+async function downloadBytes(
+  url: string,
+  fetchImpl: FetchImpl | undefined,
+  secrets: string[],
+  lookup?: DnsLookup,
+): Promise<Buffer> {
   const parsed = assertSafeDownloadUrl(url)
+  let pin
+  try {
+    pin = await assertSafeRemoteTarget(parsed, lookup)
+  } catch (e) {
+    throw new PptfastError(redactSecrets(e instanceof Error ? e.message : String(e), secrets))
+  }
   let res: Response
   try {
-    res = await fetchImpl(parsed.toString(), { headers: { "User-Agent": userAgent() } })
+    const init = { headers: { "User-Agent": userAgent() } }
+    res = fetchImpl
+      ? await fetchImpl(parsed.toString(), init)
+      : await pinnedFetch(parsed, pin, init)
   } catch (e) {
     throw new PptfastError(
       redactSecrets(`download failed: ${e instanceof Error ? e.message : String(e)}`, secrets),
@@ -585,8 +602,10 @@ export async function runImagesFetch(ref: string, opts: ImagesFetchOptions): Pro
     }
   }
 
-  const fetchImpl = opts.fetch ?? globalThis.fetch
+  const fetchImpl = opts.fetch ?? proxyFetch
   const sleep = opts.sleep ?? defaultSleep
+  const downloadFetch = opts.fetch
+  const lookup = opts.lookup ?? (opts.fetch ? undefined : defaultDnsLookup)
   let meta: PhotoMeta
   if (provider === "openverse") {
     const hit = await loadOpenverseDetail(
@@ -619,10 +638,10 @@ export async function runImagesFetch(ref: string, opts: ImagesFetchOptions): Pro
 
   let bytes: Buffer
   try {
-    bytes = await downloadBytes(meta.downloadUrl, fetchImpl, secrets)
+    bytes = await downloadBytes(meta.downloadUrl, downloadFetch, secrets, lookup)
   } catch (e) {
     if (meta.fallbackUrl) {
-      bytes = await downloadBytes(meta.fallbackUrl, fetchImpl, secrets)
+      bytes = await downloadBytes(meta.fallbackUrl, downloadFetch, secrets, lookup)
     } else {
       throw e
     }
