@@ -4,7 +4,17 @@ import { fileURLToPath } from "node:url"
 
 export const PLANTED_DIR = dirname(fileURLToPath(import.meta.url))
 
-export const PLANTED_CLASSES = ["strikethrough", "overflow", "overlap", "radius", "rotate"] as const
+export const PLANTED_CLASSES = [
+  "strikethrough",
+  "overflow",
+  "overlap",
+  "radius",
+  "rotate",
+  "depth-order",
+  "depth-contrast",
+  "mid-text-bleed",
+  "isolated-mid-piece",
+] as const
 export type PlantedClass = (typeof PLANTED_CLASSES)[number]
 
 export interface PlantedEntry {

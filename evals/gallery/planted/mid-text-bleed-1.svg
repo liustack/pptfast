@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <g data-depth="bg">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+  <g data-depth="mid">
+    <text x="1260" y="700" font-family="Georgia, serif" font-size="180" font-weight="700" fill="#777777" opacity="0.1" data-bleed="true">09</text>
+  </g>
+  <g data-depth="fg">
+    <text x="96" y="132" font-family="Arial, sans-serif" font-size="40" font-weight="700" fill="#191919">Quarterly signal</text>
+  </g>
+</svg>

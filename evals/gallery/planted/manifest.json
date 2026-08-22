@@ -100,6 +100,46 @@
       "l1Expected": [],
       "l2Expected": "rework",
       "l2Findings": ["rotate"]
+    },
+    {
+      "id": "depth-order-1",
+      "class": "depth-order",
+      "sourcePageId": "planted--depth-order",
+      "svg": "depth-order-1.svg",
+      "png": "../rubric/examples/depth-order-1.png",
+      "l1Expected": ["depth-contract"],
+      "l2Expected": "rework",
+      "l2Findings": ["depth-order"]
+    },
+    {
+      "id": "depth-contrast-1",
+      "class": "depth-contrast",
+      "sourcePageId": "planted--depth-contrast",
+      "svg": "depth-contrast-1.svg",
+      "png": "../rubric/examples/depth-contrast-1.png",
+      "l1Expected": ["depth-contract"],
+      "l2Expected": "rework",
+      "l2Findings": ["depth-contrast"]
+    },
+    {
+      "id": "mid-text-bleed-1",
+      "class": "mid-text-bleed",
+      "sourcePageId": "planted--mid-text-bleed",
+      "svg": "mid-text-bleed-1.svg",
+      "png": "../rubric/examples/mid-text-bleed-1.png",
+      "l1Expected": ["mid-text-bleed"],
+      "l2Expected": "rework",
+      "l2Findings": ["mid-text-bleed"]
+    },
+    {
+      "id": "isolated-mid-piece-1",
+      "class": "isolated-mid-piece",
+      "sourcePageId": "planted--isolated-mid-piece",
+      "svg": "isolated-mid-piece-1.svg",
+      "png": "../rubric/examples/isolated-mid-piece-1.png",
+      "l1Expected": ["isolated-mid-piece"],
+      "l2Expected": "rework",
+      "l2Findings": ["isolated-mid-piece"]
     }
   ]
 }
