@@ -67,7 +67,9 @@ export async function replayPlanted(opts: ReplayPlantedOpts = {}): Promise<Repla
       l1: auditL1(svg),
       run: opts.run,
       grokBin: opts.grokBin,
-      playwright: false,
+      // Fake runners must not launch a browser. Live replay keeps the
+      // overflow/overlap playwright track.
+      playwright: opts.run ? false : undefined,
     })
     const hit = verdict.verdict === "rework" || verdict.verdict === "limit"
     if (!hit) missedL2.push(entry.id)
