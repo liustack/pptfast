@@ -167,9 +167,9 @@
       "color": "5roxz"
     },
     "theme--classroom--zh--p04": {
-      "hash": "12qy724",
-      "geometry": "f0llsk",
-      "color": "93ty7c"
+      "hash": "12wxeox",
+      "geometry": "1jtqrqv",
+      "color": "1e461bg"
     },
     "theme--classroom--zh--p05": {
       "hash": "ro5zax",
@@ -287,9 +287,9 @@
       "color": "11vvg3b"
     },
     "theme--crayon--zh--p08": {
-      "hash": "ta71ts",
-      "geometry": "1ehqjia",
-      "color": "es93hx"
+      "hash": "59m6y2",
+      "geometry": "1wetnf9",
+      "color": "19ogft0"
     },
     "theme--crayon--zh--p09": {
       "hash": "8z3gf7",
@@ -492,9 +492,9 @@
       "color": "mrli90"
     },
     "theme--ink--zh--p09": {
-      "hash": "19kdwsr",
-      "geometry": "u6f9sz",
-      "color": "15hj4c9"
+      "hash": "1gcbybw",
+      "geometry": "1hmhqoo",
+      "color": "qgj3o7"
     },
     "theme--ink--zh--p10": {
       "hash": "8zc5c6",
@@ -927,9 +927,9 @@
       "color": "145po70"
     },
     "theme--runway--zh--p06": {
-      "hash": "b51bo6",
-      "geometry": "4p27wc",
-      "color": "oht96z"
+      "hash": "1sdu478",
+      "geometry": "1h4qta",
+      "color": "3q9sjv"
     },
     "theme--runway--zh--p07": {
       "hash": "12k3jqn",
@@ -1182,9 +1182,9 @@
       "color": "2ibfjn"
     },
     "theme--vermilion--zh--p07": {
-      "hash": "1nqyuwz",
-      "geometry": "1lj0vwj",
-      "color": "1mvgvo3"
+      "hash": "v75hec",
+      "geometry": "69ocpw",
+      "color": "1yi34qv"
     },
     "theme--vermilion--zh--p08": {
       "hash": "tzolhh",
@@ -2800,21 +2800,6 @@
       "hash": "1yvd97w",
       "geometry": "n3i633",
       "color": "n3iv9d"
-    },
-    "component--logo-wall--zh": {
-      "hash": "1xky98",
-      "geometry": "oj0bei",
-      "color": "d9fo8r"
-    },
-    "component--logo-wall--en": {
-      "hash": "2s18bk",
-      "geometry": "3i8fq4",
-      "color": "oncrvm"
-    },
-    "component--logo-wall--mixed": {
-      "hash": "vht7ga",
-      "geometry": "mes5k8",
-      "color": "d9fo8r"
     },
     "component--matrix--zh": {
       "hash": "66je18",
