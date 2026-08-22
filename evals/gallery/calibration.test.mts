@@ -36,6 +36,23 @@ describe("human-verdicts calibration set", () => {
     expect(replay.sha).toBe("321748d")
     expect(Object.keys(replay.pages).sort()).toEqual(human.verdicts.map((v) => v.id).sort())
   })
+
+  it("keeps new-rubric pre-fix and HEAD L2 stores keyed by the same 44 ids", () => {
+    const human = JSON.parse(readFileSync(join(DIR, "calibration/human-verdicts.json"), "utf8")) as {
+      verdicts: { id: string }[]
+    }
+    const ids = human.verdicts.map((v) => v.id).sort()
+    const pre = JSON.parse(readFileSync(join(DIR, "calibration/pre-fix-l2-replay.json"), "utf8")) as Record<
+      string,
+      { verdict?: string }
+    >
+    const post = JSON.parse(readFileSync(join(DIR, "calibration/post-fix-l2.json"), "utf8")) as Record<
+      string,
+      { verdict?: string }
+    >
+    expect(Object.keys(pre).sort()).toEqual(ids)
+    expect(Object.keys(post).sort()).toEqual(ids)
+  })
 })
 
 describe("L2 dual-run skip", () => {
