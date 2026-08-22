@@ -15,6 +15,7 @@ import {
   type ExecFileOptions,
   type SpawnOptions,
 } from "node:child_process"
+import { resolveSpawnPlan } from "./win-exec"
 
 export const DRAIN_GRACE_MS = 500
 
@@ -66,9 +67,12 @@ export async function runChild(
   options: RunChildOptions = {},
 ): Promise<RunChildResult> {
   const { timeoutMs, signal, ...spawnOptions } = options
+  const cwd = typeof spawnOptions.cwd === "string" ? spawnOptions.cwd : undefined
+  const plan = await resolveSpawnPlan(command, args, spawnOptions.env ?? process.env, cwd)
   return new Promise((resolve, reject) => {
-    const child = spawnHidden(command, [...args], {
+    const child = spawnHidden(plan.command, plan.args, {
       ...spawnOptions,
+      env: plan.env ?? spawnOptions.env,
       stdio: ["ignore", "pipe", "pipe"],
     })
 
