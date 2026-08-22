@@ -51,6 +51,16 @@ const DIAMOND_FRAC_MULTI = 0.6
 const LABEL_NODE_CLEAR = 6
 const STROKE_W = 1.5
 const ARROW_SIZE = 6
+/** Page-space corner radius for orthogonal elbows. Tight gaps may go down to CORNER_R_MIN. */
+const CORNER_R = 8
+const CORNER_R_MIN = 6
+/** Outward stub before the first bend, in local (dagre) units. */
+const PORT_STUB = 12
+/** Minimum along-side spacing between same-side attachment points, local units. */
+const PORT_FAN_MIN = 12
+/** Page-space gap from an edge-label chip's near edge to the connector stroke. */
+const LABEL_LINE_CLEAR = 8
+const PATH_EPS = 0.05
 /**
  * Max height (px) the flowchart may occupy in the content area. The dagre layout
  * is scaled to fit BOTH the target width and this height, so a tall top-to-bottom
@@ -230,6 +240,92 @@ interface Layout {
   height: number
 }
 
+type Side = "N" | "S" | "E" | "W"
+
+function almostEq(a: number, b: number): boolean {
+  return Math.abs(a - b) < PATH_EPS
+}
+
+function collapseColinear(pts: { x: number; y: number }[]): { x: number; y: number }[] {
+  const cleaned: { x: number; y: number }[] = []
+  for (const p of pts) {
+    const last = cleaned[cleaned.length - 1]
+    if (last && almostEq(last.x, p.x) && almostEq(last.y, p.y)) continue
+    cleaned.push(p)
+  }
+  const out: { x: number; y: number }[] = []
+  for (let i = 0; i < cleaned.length; i++) {
+    const b = cleaned[i]!
+    if (out.length >= 1 && i < cleaned.length - 1) {
+      const a = out[out.length - 1]!
+      const c = cleaned[i + 1]!
+      const colinear =
+        (almostEq(a.x, b.x) && almostEq(b.x, c.x)) || (almostEq(a.y, b.y) && almostEq(b.y, c.y))
+      if (colinear) continue
+    }
+    out.push(b)
+  }
+  return out
+}
+
+function pickSides(src: LayoutNode, tgt: LayoutNode): { from: Side; to: Side } {
+  const dx = tgt.x + tgt.w / 2 - (src.x + src.w / 2)
+  const dy = tgt.y + tgt.h / 2 - (src.y + src.h / 2)
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    return dy >= 0 ? { from: "S", to: "N" } : { from: "N", to: "S" }
+  }
+  return dx >= 0 ? { from: "E", to: "W" } : { from: "W", to: "E" }
+}
+
+function outward(side: Side): { x: number; y: number } {
+  if (side === "N") return { x: 0, y: -1 }
+  if (side === "S") return { x: 0, y: 1 }
+  if (side === "E") return { x: 1, y: 0 }
+  return { x: -1, y: 0 }
+}
+
+function portOnSide(node: LayoutNode, side: Side, t: number): { x: number; y: number } {
+  const u = Math.min(0.9, Math.max(0.1, t))
+  let x: number
+  let y: number
+  if (side === "N") {
+    x = node.x + u * node.w
+    y = node.y
+  } else if (side === "S") {
+    x = node.x + u * node.w
+    y = node.y + node.h
+  } else if (side === "E") {
+    x = node.x + node.w
+    y = node.y + u * node.h
+  } else {
+    x = node.x
+    y = node.y + u * node.h
+  }
+  const cx = node.x + node.w / 2
+  const cy = node.y + node.h / 2
+  const pull = node.kind === "diamond" ? 0.22 : 0.04
+  return { x: x + (cx - x) * pull, y: y + (cy - y) * pull }
+}
+
+function routeOrthogonal(
+  start: { x: number; y: number },
+  startSide: Side,
+  end: { x: number; y: number },
+  endSide: Side,
+): { x: number; y: number }[] {
+  const so = outward(startSide)
+  const eo = outward(endSide)
+  const a1 = { x: start.x + so.x * PORT_STUB, y: start.y + so.y * PORT_STUB }
+  const b1 = { x: end.x + eo.x * PORT_STUB, y: end.y + eo.y * PORT_STUB }
+  const pts: { x: number; y: number }[] = [start, a1]
+  if (!(almostEq(a1.x, b1.x) || almostEq(a1.y, b1.y))) {
+    if (startSide === "N" || startSide === "S") pts.push({ x: b1.x, y: a1.y })
+    else pts.push({ x: a1.x, y: b1.y })
+  }
+  pts.push(b1, end)
+  return collapseColinear(pts)
+}
+
 function computeLayout(component: FlowchartComponent, direction: FlowDirection): Layout {
   const g = new dagre.graphlib.Graph()
   g.setGraph({
@@ -278,11 +374,75 @@ function computeLayout(component: FlowchartComponent, direction: FlowDirection):
     }
   })
 
-  const edges: LayoutEdge[] = g.edges().map((e) => {
-    const edge = g.edge(e) as { points: { x: number; y: number }[]; label?: string }
+  const nodeById = new Map(nodes.map((n) => [n.id, n]))
+  const planned = component.edges.flatMap((e, edgeI) => {
+    const from = nodeById.get(e.from)
+    const to = nodeById.get(e.to)
+    if (!from || !to) return []
+    const sides = pickSides(from, to)
+    return [
+      {
+        edgeI,
+        from,
+        to,
+        sides,
+        label: (e.label ?? "").replace(/<br\s*\/?>|\n/gi, " ").trim(),
+      },
+    ]
+  })
+
+  type FanItem = { edgeI: number; end: "from" | "to"; otherX: number; otherY: number }
+  const groups = new Map<string, FanItem[]>()
+  const addFan = (nodeId: string, side: Side, item: FanItem) => {
+    const key = `${nodeId}\0${side}`
+    const list = groups.get(key) ?? []
+    list.push(item)
+    groups.set(key, list)
+  }
+  for (const p of planned) {
+    addFan(p.from.id, p.sides.from, {
+      edgeI: p.edgeI,
+      end: "from",
+      otherX: p.to.x + p.to.w / 2,
+      otherY: p.to.y + p.to.h / 2,
+    })
+    addFan(p.to.id, p.sides.to, {
+      edgeI: p.edgeI,
+      end: "to",
+      otherX: p.from.x + p.from.w / 2,
+      otherY: p.from.y + p.from.h / 2,
+    })
+  }
+
+  const tOf = new Map<string, number>()
+  for (const [key, items] of groups) {
+    const side = key.split("\0")[1] as Side
+    const sorted = [...items].sort((a, b) => {
+      const primary = side === "N" || side === "S" ? a.otherX - b.otherX : a.otherY - b.otherY
+      if (primary !== 0) return primary
+      return a.edgeI - b.edgeI
+    })
+    const n = sorted.length
+    const nodeId = key.split("\0")[0]!
+    const host = nodeById.get(nodeId)
+    const sideLen = host ? (side === "N" || side === "S" ? host.w : host.h) : NODE_H
+    const cramped = n > 1 && sideLen / (n + 1) < PORT_FAN_MIN
+    const usable = cramped ? Math.max(0.2, 1 - (PORT_FAN_MIN * 2) / Math.max(sideLen, 1)) : 1
+    for (let k = 0; k < n; k++) {
+      const item = sorted[k]!
+      const t = cramped ? 0.5 - usable / 2 + (usable * k) / (n - 1) : (k + 1) / (n + 1)
+      tOf.set(`${item.edgeI}:${item.end}`, t)
+    }
+  }
+
+  const edges: LayoutEdge[] = planned.map((p) => {
+    const tFrom = tOf.get(`${p.edgeI}:from`) ?? 0.5
+    const tTo = tOf.get(`${p.edgeI}:to`) ?? 0.5
+    const start = portOnSide(p.from, p.sides.from, tFrom)
+    const end = portOnSide(p.to, p.sides.to, tTo)
     return {
-      points: edge.points,
-      label: edge.label ?? "",
+      points: routeOrthogonal(start, p.sides.from, end, p.sides.to),
+      label: p.label,
     }
   })
 
@@ -399,6 +559,26 @@ function aabbOverlap(a: Aabb, b: Aabb): boolean {
  * vertical one) so the chip sits outside the connected node boxes instead of
  * on the diamond vertices.
  */
+function longestSegment(points: { x: number; y: number }[]): {
+  a: { x: number; y: number }
+  b: { x: number; y: number }
+  len: number
+} | null {
+  if (points.length < 2) return null
+  let best = 0
+  let bestLen = -1
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!
+    const b = points[i + 1]!
+    const len = Math.hypot(b.x - a.x, b.y - a.y)
+    if (len > bestLen) {
+      bestLen = len
+      best = i
+    }
+  }
+  return { a: points[best]!, b: points[best + 1]!, len: bestLen }
+}
+
 function parkEdgeLabel(
   x: number,
   y: number,
@@ -407,20 +587,10 @@ function parkEdgeLabel(
   edge: LayoutEdge,
   nodeBoxes: Aabb[],
   scale: number,
+  horizontal: boolean,
 ): { x: number; y: number } {
-  const { points } = edge
-  const midIdx = Math.floor(points.length / 2)
-  const mid = points[midIdx]
-  const before = points[Math.max(0, midIdx - 1)]
-  const after = points[Math.min(points.length - 1, midIdx + 1)]
-  if (!mid || !before || !after) return { x, y }
-  const horizontal = Math.abs(after.x - before.x) >= Math.abs(after.y - before.y)
-  const lean = horizontal ? mid.y - (before.y + after.y) / 2 : mid.x - (before.x + after.x) / 2
-  const preferPositive = lean > 0.5
   const connected = connectedNodeBoxes(edge, nodeBoxes, scale)
   const hit = connected.length > 0 ? connected : nodeBoxes
-  if (hit.length === 0) return { x, y }
-  const signs = preferPositive ? [1, -1] : [-1, 1]
   const chipAt = (cx: number, cy: number): Aabb => ({
     x: cx - chipW / 2,
     y: cy - chipH / 2,
@@ -428,8 +598,20 @@ function parkEdgeLabel(
     h: chipH,
   })
   const overlaps = (cx: number, cy: number) => nodeBoxes.some((n) => aabbOverlap(chipAt(cx, cy), n))
-
-  const candidates: { x: number; y: number }[] = []
+  const lineClear = horizontal
+    ? [
+        { x, y: y - (LABEL_LINE_CLEAR + chipH / 2) },
+        { x, y: y + (LABEL_LINE_CLEAR + chipH / 2) },
+      ]
+    : [
+        { x: x - (LABEL_LINE_CLEAR + chipW / 2), y },
+        { x: x + (LABEL_LINE_CLEAR + chipW / 2), y },
+      ]
+  const onLine = lineClear.find((c) => !overlaps(c.x, c.y))
+  if (onLine) return onLine
+  if (hit.length === 0) return lineClear[0] ?? { x, y }
+  const signs = [1, -1]
+  const candidates: { x: number; y: number }[] = [...lineClear]
   if (horizontal) {
     const top = Math.min(...hit.map((n) => n.y))
     const bot = Math.max(...hit.map((n) => n.y + n.h))
@@ -457,13 +639,12 @@ function parkEdgeLabel(
 function computeEdgeLabel(edge: LayoutEdge, scale: number, nodeBoxes: Aabb[]): EdgeLabelVisual | null {
   if (!edge.label) return null
   const { points } = edge
-  const midIdx = Math.floor(points.length / 2)
-  const mid = points[midIdx]
-  if (!mid) return null
+  const seg = longestSegment(points)
+  if (!seg) return null
 
-  const before = points[Math.max(0, midIdx - 1)]
-  const after = points[Math.min(points.length - 1, midIdx + 1)]
-  const spanLocal = Math.hypot(after.x - before.x, after.y - before.y)
+  const mid = { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 }
+  const horizontal = Math.abs(seg.b.x - seg.a.x) >= Math.abs(seg.b.y - seg.a.y)
+  const spanLocal = seg.len
   // Margin subtracted in local space *before* scaling (see LABEL_FIT_MARGIN)
   // so it shrinks together with the gap instead of eating a scale-independent
   // bite out of an already-scaled-down span.
@@ -480,7 +661,16 @@ function computeEdgeLabel(edge: LayoutEdge, scale: number, nodeBoxes: Aabb[]): E
   const labelW = measureTextUnits(fitted.text) * fitted.fontSize
   const chipW = labelW + LABEL_CHIP_PAD_X * 2
   const chipH = fitted.fontSize + LABEL_CHIP_PAD_Y * 2
-  const parked = parkEdgeLabel(mid.x * scale, mid.y * scale, chipW, chipH, edge, nodeBoxes, scale)
+  const parked = parkEdgeLabel(
+    mid.x * scale,
+    mid.y * scale,
+    chipW,
+    chipH,
+    edge,
+    nodeBoxes,
+    scale,
+    horizontal,
+  )
   const x = parked.x
   const y = parked.y
   // The *un-margined* gap, centered on the same point as the chip/text —
@@ -573,33 +763,48 @@ function prepareFlow(component: FlowchartComponent, w: number): PreparedFlow {
   }
 }
 
+function pathCoord(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
 /**
- * 平滑 edge 路径（2026-07-14 用户裁决：流程图连线用曲线不用折线）：把
- * dagre 路由的折点用 Catmull-Rom → 三次贝塞尔连成平滑曲线。端点钳制
- * （首/末点重复）使起止切线沿首/末段方向，箭头（用末两点算方向）仍贴合。
- * 共线折点得到的曲线退化为直线（不硬弯），<3 点直连。svg2pptx 支持 C。
+ * 正交圆角肘（2026-08-23 用户裁定，推翻 2026-07-14「一律曲线」）：共轴直段，
+ * 非共轴走直角弯，弯角 Q r=8（紧时至少 6）。禁斜线。箭头仍用 polygon，
+ * svg2pptx 会跳过 marker。
  */
-function smoothEdgePath(
+function orthogonalRoundedPath(
   points: { x: number; y: number }[],
   sx: number,
   sy: number,
 ): string {
-  const p = points.map((q) => ({ x: q.x * sx, y: q.y * sy }))
-  if (p.length < 3) {
-    return p.map((q, j) => `${j === 0 ? "M" : "L"} ${q.x} ${q.y}`).join(" ")
+  const p = collapseColinear(points.map((q) => ({ x: q.x * sx, y: q.y * sy })))
+  if (p.length === 0) return ""
+  if (p.length === 1) return `M ${pathCoord(p[0]!.x)} ${pathCoord(p[0]!.y)}`
+  if (p.length === 2) {
+    return `M ${pathCoord(p[0]!.x)} ${pathCoord(p[0]!.y)} L ${pathCoord(p[1]!.x)} ${pathCoord(p[1]!.y)}`
   }
-  let d = `M ${p[0].x} ${p[0].y}`
-  for (let i = 0; i < p.length - 1; i++) {
-    const p0 = p[i === 0 ? 0 : i - 1]
-    const p1 = p[i]
-    const p2 = p[i + 1]
-    const p3 = p[i + 2 < p.length ? i + 2 : p.length - 1]
-    const c1x = p1.x + (p2.x - p0.x) / 6
-    const c1y = p1.y + (p2.y - p0.y) / 6
-    const c2x = p2.x - (p3.x - p1.x) / 6
-    const c2y = p2.y - (p3.y - p1.y) / 6
-    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`
+  let d = `M ${pathCoord(p[0]!.x)} ${pathCoord(p[0]!.y)}`
+  for (let i = 1; i < p.length - 1; i++) {
+    const a = p[i - 1]!
+    const b = p[i]!
+    const c = p[i + 1]!
+    const inLen = Math.hypot(b.x - a.x, b.y - a.y)
+    const outLen = Math.hypot(c.x - b.x, c.y - b.y)
+    let r = Math.min(CORNER_R, inLen / 2, outLen / 2)
+    if (r < CORNER_R_MIN) r = r < 0.5 ? 0 : r
+    const inDirX = Math.sign(b.x - a.x)
+    const inDirY = Math.sign(b.y - a.y)
+    const outDirX = Math.sign(c.x - b.x)
+    const outDirY = Math.sign(c.y - b.y)
+    const entryX = b.x - inDirX * r
+    const entryY = b.y - inDirY * r
+    const exitX = b.x + outDirX * r
+    const exitY = b.y + outDirY * r
+    d += ` L ${pathCoord(entryX)} ${pathCoord(entryY)}`
+    if (r > 0) d += ` Q ${pathCoord(b.x)} ${pathCoord(b.y)} ${pathCoord(exitX)} ${pathCoord(exitY)}`
   }
+  const last = p[p.length - 1]!
+  d += ` L ${pathCoord(last.x)} ${pathCoord(last.y)}`
   return d
 }
 
@@ -621,7 +826,7 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
         {/* Edges: lines + arrowheads only. Labels render in their own layer
             after the nodes (below) so a node card can never cover one. */}
         {layout.edges.map((edge, i) => {
-          const d = smoothEdgePath(edge.points, scaleX, scaleY)
+          const d = orthogonalRoundedPath(edge.points, scaleX, scaleY)
 
           return (
             <Fragment key={`e${i}`}>
