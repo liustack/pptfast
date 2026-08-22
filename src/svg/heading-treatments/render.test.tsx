@@ -580,6 +580,19 @@ describe("center_mirror vermilion", () => {
     const right = rectAt(root, 690, 60, 120, 1.5)
     expect(left.getAttribute("fill")).toBe(colors.accent)
     expect(right.getAttribute("fill")).toBe(colors.accent)
+    expect(root.querySelector("path")).toBeNull()
+  })
+
+  it("enhanced: diamond returns between title and sub", () => {
+    const { treated, colors } = withChapter("vermilion", { subheading: SUB })
+    expect(treated!.contentRect.y).toBe(236)
+    const root = rootOf(treated!.chrome)
+    const sub = textContaining(root, SUB)
+    expect(num(sub, "x")).toBe(640)
+    expect(num(sub, "y")).toBe(176)
+    const diamond = root.querySelector("path")!
+    expect(diamond.getAttribute("d")).toBe("M 640 156 l 5 7 l -5 7 l -5 -7 z")
+    expect(diamond.getAttribute("fill")).toBe(colors.accent)
   })
 })
 

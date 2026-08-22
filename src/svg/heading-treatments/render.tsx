@@ -667,7 +667,7 @@ function renderCenterMirror(args: RenderArgs): { chrome: ReactNode; contentRect:
             {line}
           </text>
         ))}
-        {args.knobs.diamond && (
+        {(args.knobs.diamond || (hasSub && mirror === "gold-rule")) && (
           <g data-decor="">
             <path d="M 640 156 l 5 7 l -5 7 l -5 -7 z" fill={colors.accent} />
           </g>
