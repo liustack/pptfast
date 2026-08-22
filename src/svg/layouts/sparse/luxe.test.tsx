@@ -82,6 +82,50 @@ describe("luxe sparse faces", () => {
     expect(em?.getAttribute("fill")).toBe(ctx.colors.accent)
   })
 
+  it("pull-quote diamond is a 45° square matching the clockwise bake, not the negated angle", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "pull-quote",
+      heading: QUOTE,
+      subheading: "陈砚清 · 首席技术官",
+      components: [],
+    } as Slide
+    const { root } = render(
+      <PullQuoteContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const points = root.querySelector("polygon")!.getAttribute("points")!
+    const round1 = (v: number) => Math.round(v * 10) / 10
+    const bake = (deg: number) => {
+      const a = (deg * Math.PI) / 180
+      const ca = Math.cos(a)
+      const sa = Math.sin(a)
+      const hw = 7
+      const hh = 7
+      return (
+        [
+          [-hw, -hh],
+          [hw, -hh],
+          [hw, hh],
+          [-hw, hh],
+        ] as [number, number][]
+      )
+        .map(([lx, ly]) => `${round1(640 + lx * ca - ly * sa)},${round1(180 + lx * sa + ly * ca)}`)
+        .join(" ")
+    }
+    expect(points).toBe(bake(45))
+    expect(points).not.toBe(bake(-45))
+    const pts = points.split(/\s+/).map((p) => {
+      const [x, y] = p.split(",").map(Number)
+      return { x: x!, y: y! }
+    })
+    const dist = (p: { x: number; y: number }) => Math.hypot(p.x - 640, p.y - 180)
+    const d0 = dist(pts[0]!)
+    for (const p of pts) expect(dist(p)).toBeCloseTo(d0, 5)
+    const xs = pts.map((p) => p.x)
+    const ys = pts.map((p) => p.y)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(Math.max(...ys) - Math.min(...ys), 5)
+  })
+
   it("pull-quote without ** still uses accent as the face color, with no extra tspan", () => {
     const slide: Slide = { type: "content", layout: "pull-quote", heading: QUOTE_PLAIN, subheading: "陈砚清", components: [] } as Slide
     const { root } = render(

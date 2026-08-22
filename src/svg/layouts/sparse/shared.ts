@@ -35,8 +35,10 @@ export function fitHeroLine(
 }
 
 /**
- * Bake a CSS-clockwise rotated rect into polygon points (y-down). Same
- * convention as playbill-motif: the matrix uses the negated angle.
+ * Bake a CSS-clockwise rotated rect into polygon points (y-down). Positive
+ * `cssDeg` is SVG/CSS clockwise. The y-down matrix already turns a positive
+ * angle clockwise (same as playbill-motif after PATCH_DEG = +4), so the
+ * angle is not negated.
  */
 export function rotateRectPolygon(
   cx: number,
@@ -45,7 +47,7 @@ export function rotateRectPolygon(
   height: number,
   cssDeg: number,
 ): string {
-  const a = (-cssDeg * Math.PI) / 180
+  const a = (cssDeg * Math.PI) / 180
   const ca = Math.cos(a)
   const sa = Math.sin(a)
   const hw = width / 2
