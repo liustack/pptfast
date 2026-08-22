@@ -154,8 +154,7 @@ they conflict (stability first):
    Layouts, motifs and tokens are invisible to the model (selection is
    compile-side), so they may grow freely.
 2. **Cover, chapter, and ending are the theme's face.** The roster is
-   25 theme ids and 24 structural identities (`bloom` is a classroom
-   recolor). When a Claude Design board exists for that page type, the
+   24 theme ids. When a Claude Design board exists for that page type, the
    theme's `layouts` set for that type narrows to the board construction
    (one layout, or the pair the board names). That set is a lock. Soft
    weights cannot keep a cover identical. A theme whose board has not
