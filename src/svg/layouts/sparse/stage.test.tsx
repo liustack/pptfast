@@ -7,6 +7,7 @@ import { resolveStyle } from "../../../themes"
 import { StatementContent } from "../content-statement"
 import { PullQuoteContent } from "../content-pull-quote"
 import { StatHeroContent } from "../content-stat-hero"
+import { measureTextUnits } from "../../../lib/svg-text-layout"
 import type { PptxIR, Slide } from "@/ir"
 
 const VERSE = "设备不会突然坏，只是没人**听它说话**。"
@@ -63,6 +64,29 @@ describe("stage sparse faces", () => {
     expect(hair?.getAttribute("stroke")).toBe(ctx.colors.border)
     expect(markup).not.toContain(LUXE_GOLD)
     expect(markup).not.toContain(BOARD_TEXT)
+  })
+
+  it("statement attribution stays inside the page on a long source line", () => {
+    const long =
+      "试点产线九十天运行数据表明非计划停机从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
+    const slide: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: VERSE_PLAIN,
+      components: [{ type: "paragraph", text: long }],
+    } as Slide
+    const { root } = render(
+      <StatementContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const attr = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").length > 20 && !(t.textContent ?? "").includes("设备不会"))!
+    const x = Number(attr.getAttribute("x"))
+    const size = Number(attr.getAttribute("font-size"))
+    const w = measureTextUnits(attr.textContent ?? "", { fontFamily: ctx.fonts.body }) * size
+    const anchor = attr.getAttribute("text-anchor")
+    const left = anchor === "middle" ? x - w / 2 : x
+    const right = anchor === "middle" ? x + w / 2 : x + w
+    expect(left).toBeGreaterThanOrEqual(0)
+    expect(right).toBeLessThanOrEqual(1280)
   })
 
   it("statement without ** keeps the whole verse on text fill", () => {

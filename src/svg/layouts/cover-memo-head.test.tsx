@@ -6,6 +6,7 @@ import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle, CANONICAL_THEME_IDS } from "../../themes"
 import { contrastRatio, requiredContrastRatio } from "../ink"
 import { MemoHeadCover, layoutDef } from "./cover-memo-head"
+import { underlineYFromBaseline } from "./underline"
 import type { PptxIR, Slide } from "@/ir"
 
 const HEADING = "关于下半年交付侧投入的决定"
@@ -71,6 +72,21 @@ describe("cover-memo-head — board geometry", () => {
     const underline = lines.find((l) => l.getAttribute("stroke-width") === "6")!
     expect(underline.getAttribute("stroke")).toBe(tokens.colors.accent)
     expect(Number(underline.getAttribute("x2"))).toBeGreaterThan(Number(underline.getAttribute("x1")))
+  })
+
+  it("sits the last-run underline below glyph ink at descent+air, not a flat 8px gap", () => {
+    const { root } = renderCover("memo")
+    const headings = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("x") === "96" && t.getAttribute("font-weight") === "400",
+    )
+    const last = headings[headings.length - 1]!
+    const baseline = Number(last.getAttribute("y"))
+    const fontSize = Number(last.getAttribute("font-size"))
+    const underline = Array.from(root.querySelectorAll("line")).find((l) => l.getAttribute("stroke-width") === "6")!
+    expect(Number(underline.getAttribute("y1"))).toBe(
+      underlineYFromBaseline(baseline, fontSize, last.textContent ?? ""),
+    )
+    expect(Number(underline.getAttribute("y1")) - baseline).toBeGreaterThan(8)
   })
 
   it("underlines the last two CJK characters of a one-word heading", () => {

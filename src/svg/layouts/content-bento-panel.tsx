@@ -32,6 +32,7 @@ import {
 import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
 
 /**
  * bento-panel content layout（spec §3.2，Wave 3 Task 22，本 wave 体量最大
@@ -786,7 +787,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     x: 96,
     y: headingLastY + 36 + subheadingBudget,
     w: 1088,
-    h: Math.max(0, 620 - (headingLastY + 36 + subheadingBudget)),
+    h: Math.max(0, FRAMED_CONTENT_BOTTOM - (headingLastY + 36 + subheadingBudget)),
   }
 
   // Explode kpi_cards components into one bento tile per item *before* the grid

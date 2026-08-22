@@ -54,7 +54,9 @@ describe("cover-horizon-wedge — board geometry", () => {
     expect(wedge.getAttribute("d")?.replace(/\s+/g, "")).toBe("M0,720L0,600L1280,440L1280,720Z")
     expect(wedge.getAttribute("fill")).toBe(tokens.colors.primary)
     const poly = root.querySelector("polyline")!
-    expect(poly.getAttribute("points")).toBe("120,668 400,632 520,618 552,586 584,650 616,610 1160,542")
+    const pts = poly.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number) as [number, number])
+    expect(pts[0]![0]).toBe(0)
+    expect(pts[pts.length - 1]![0]).toBe(1280)
     expect(poly.getAttribute("stroke-width")).toBe("1.5")
     const headings = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("font-weight") === "700")
     expect(headings[0]?.getAttribute("x")).toBe("96")

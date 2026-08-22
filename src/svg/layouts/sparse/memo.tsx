@@ -92,7 +92,6 @@ export function pullQuote({ slide, ctx }: SvgTemplateProps) {
           {from}
         </text>
       )}
-      <InkDouble x={96} width={1088} yThick={624} yThin={620} stroke={colors.text} />
     </>
   )
 }

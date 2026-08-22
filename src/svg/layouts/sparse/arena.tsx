@@ -2,7 +2,8 @@ import type { SvgTemplateProps } from "../types"
 import { pickEvidence } from "../../component-traits"
 import { renderEmphasisTspans } from "../../emphasis"
 import { heroCaption, heroValue } from "../minimal-shared"
-import { renderFittedEvidence } from "../fitted-evidence"
+import { fitSvgLine } from "../../../lib/svg-text-layout"
+import { renderFittedEvidence, textColumnMaxWidth } from "../fitted-evidence"
 import { evidenceSource, fitHeroLine, fitSparseHeading, pad2 } from "./shared"
 
 /** arena 稀排脸：内缩 HUD、量能条、对角亮括弧。不画页角 12px 括弧和底带能量条。 */
@@ -95,8 +96,11 @@ export function statement({ slide, ctx }: SvgTemplateProps) {
 export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const evidence = pickEvidence(slide.components)
+  const evidenceRect = { x: 600, y: 230, w: 480, h: 250 }
+  const textX = 224
+  const textW = evidence ? textColumnMaxWidth(textX, evidenceRect.x) : 880
   const heading = fitSparseHeading(slide.heading, {
-    maxWidth: 880,
+    maxWidth: textW,
     fontSize: 42,
     maxLines: 2,
     minPt: 24,
@@ -105,7 +109,16 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
     bold: false,
   })
   const note = slide.subheading
-  const source = evidenceSource(slide)
+    ? evidence
+      ? fitSvgLine(slide.subheading, { maxWidth: textW, fontSize: 21, minFontSize: 14, fontFamily: fonts.body })
+      : { text: slide.subheading, fontSize: 21 }
+    : null
+  const sourceRaw = evidenceSource(slide)
+  const source = sourceRaw
+    ? evidence
+      ? fitSvgLine(sourceRaw, { maxWidth: textW, fontSize: 16, minFontSize: 12, fontFamily: fonts.body })
+      : { text: sourceRaw, fontSize: 16 }
+    : null
   return (
     <>
       <rect x={160} y={190} width={960} height={320} fill={colors.surface} stroke={colors.border} strokeWidth={1} />
@@ -133,16 +146,16 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
         </text>
       ))}
       {note && (
-        <text x={224} y={428} fontFamily={fonts.body} fontSize={21} fill={colors.muted} dominantBaseline="alphabetic">
-          {note}
+        <text x={224} y={428} fontFamily={fonts.body} fontSize={note.fontSize} fill={colors.muted} dominantBaseline="alphabetic">
+          {note.text}
         </text>
       )}
       {source && (
-        <text x={224} y={478} fontFamily={fonts.body} fontSize={16} fill={colors.muted} dominantBaseline="alphabetic">
-          {source}
+        <text x={224} y={478} fontFamily={fonts.body} fontSize={source.fontSize} fill={colors.muted} dominantBaseline="alphabetic">
+          {source.text}
         </text>
       )}
-      {evidence && renderFittedEvidence(evidence, { x: 600, y: 230, w: 480, h: 250 }, ctx)}
+      {evidence && renderFittedEvidence(evidence, evidenceRect, ctx)}
     </>
   )
 }

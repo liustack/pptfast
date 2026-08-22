@@ -3,6 +3,7 @@ import { sectionNameFor } from "../../../lib/derive"
 import { pickEvidence } from "../../component-traits"
 import { renderEmphasisTspans } from "../../emphasis"
 import { heroCaption, heroValue } from "../minimal-shared"
+import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { renderFittedEvidence } from "../fitted-evidence"
 import { evidenceSource, fitHeroLine, fitSparseHeading, pad2 } from "./shared"
 
@@ -77,8 +78,19 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
     fontFamily: fonts.heading,
     bold: false,
   })
+  const headingY = evidence ? 220 : 300
+  const headingLast = headingY + Math.max(0, heading.lines.length - 1) * heading.lineHeight
+  const noteY = evidence ? headingLast + 18 : 366
   const note = slide.subheading
+    ? evidence
+      ? fitSvgLine(slide.subheading, { maxWidth: 720, fontSize: 22, minFontSize: 14, fontFamily: fonts.body })
+      : { text: slide.subheading, fontSize: 22 }
+    : null
   const source = evidenceSource(slide)
+  const textBottom = note ? noteY + note.fontSize * 0.25 : headingLast + heading.fontSize * 0.25
+  const panelBottom = 500
+  const evidenceY = Math.min(Math.max(Math.ceil(textBottom + 14), 340), panelBottom - 140)
+  const evidenceRect = { x: 280, y: evidenceY, w: 720, h: Math.max(140, panelBottom - 10 - evidenceY) }
   return (
     <>
       <rect x={240} y={170} width={800} height={330} fill={colors.surface} stroke={colors.border} strokeWidth={1} />
@@ -86,7 +98,7 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
         <text
           key={i}
           x={640}
-          y={300 + i * heading.lineHeight}
+          y={headingY + i * heading.lineHeight}
           textAnchor="middle"
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
@@ -102,11 +114,11 @@ export function oneEvidence({ slide, index, ctx }: SvgTemplateProps) {
         </text>
       ))}
       {note && (
-        <text x={640} y={366} textAnchor="middle" fontFamily={fonts.body} fontSize={22} fill={colors.muted} dominantBaseline="alphabetic">
-          {note}
+        <text x={640} y={noteY} textAnchor="middle" fontFamily={fonts.body} fontSize={note.fontSize} fill={colors.muted} dominantBaseline="alphabetic">
+          {note.text}
         </text>
       )}
-      {evidence && renderFittedEvidence(evidence, { x: 280, y: 390, w: 720, h: 90 }, ctx)}
+      {evidence && renderFittedEvidence(evidence, evidenceRect, ctx)}
       <rect x={560} y={540} width={160} height={40} fill="none" stroke={colors.accent} strokeWidth={1} />
       <text x={640} y={566} textAnchor="middle" fontFamily={fonts.body} fontSize={15} fill={colors.accent} dominantBaseline="alphabetic">
         {`展品 № ${pad2(index + 1)}`}

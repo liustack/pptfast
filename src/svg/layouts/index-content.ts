@@ -9,7 +9,6 @@ import { BentoPanelContent } from "./content-bento-panel"
 import { SideHighlightContent } from "./content-side-highlight"
 import { AsymmetricTriptychContent } from "./content-asymmetric-triptych"
 import { QuietFrameContent } from "./content-quiet-frame"
-import { ImageLeadSplitContent } from "./content-image-lead-split"
 import { SplitBandContent } from "./content-split-band"
 import { QuoteStageContent } from "./content-quote-stage"
 import { StatementContent } from "./content-statement"
@@ -25,18 +24,11 @@ export type { ContentLayout, ContentLayoutId } from "./types"
 // Partial 过渡态（沿用 chapter 页型在 Wave 2 收尾任务的同一模式）。
 // P1 variety wave, task 4：content 池 7 -> 10，新增三个（顺序与
 // `LAYOUT_REGISTRY`/`CONTENT_LAYOUT_DEFS` 的声明顺序一致，见 registry.ts）。
-// Content-layout expansion wave, task T1：content 池 10 -> 11，新增
-// image-lead-split（见该文件自己的构图注释）。
-// Content-layout expansion wave, task T2：content 池 11 -> 12，新增
-// split-band（见该文件自己的构图注释）。
-// quote-stage wave, task T2：content 池 12 -> 13，新增 quote-stage——但它是
-// `pinOnly`（见 registry.ts 的 `LayoutDefinition.pinOnly`），不进任何主题的
-// 自动选型池，"12 auto-selectable + 1 pin-only" 而不是简单的 "13"（SKILL/docs
-// 措辞由 T3 收尾）。
-// editorial-verse wave：再加 statement / pull-quote 两个 pinOnly，自动池仍是
-// 12，"12 auto-selectable + 3 pin-only"。
-// speech-layouts wave：再加 stat-hero / one-evidence / mono-bleed 三个
-// pinOnly，自动池仍是 12，"12 auto-selectable + 6 pin-only"。
+// Content-layout expansion wave, task T2：新增 split-band。
+// quote-stage / editorial-verse / speech-layouts waves：pinOnly members
+// (quote-stage, statement, pull-quote, stat-hero, one-evidence, mono-bleed).
+// Gallery r2 D10 retired image-lead-split. Auto-selectable content pool is
+// 11, plus 6 pin-only.
 export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -48,7 +40,6 @@ export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "side-highlight": SideHighlightContent,
   "asymmetric-triptych": AsymmetricTriptychContent,
   "quiet-frame": QuietFrameContent,
-  "image-lead-split": ImageLeadSplitContent,
   "split-band": SplitBandContent,
   "quote-stage": QuoteStageContent,
   statement: StatementContent,

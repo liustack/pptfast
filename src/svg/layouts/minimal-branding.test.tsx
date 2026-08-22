@@ -152,14 +152,12 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     "stacked-poster",
     "bento-panel",
     "tone-adaptive-content",
-    "side-highlight",
     "asymmetric-triptych",
     "quiet-frame",
-    "image-lead-split",
     "split-band",
   ]
 
-  it("consulting's auto content pool is the 12-id set, and no built-in theme lists a pinOnly editorial-verse id", () => {
+  it("consulting's auto content pool is the 11-id set, and no built-in theme lists a pinOnly editorial-verse id", () => {
     expect([...THEME_DEFINITIONS.consulting.layouts.content]).toEqual(AUTO_CONTENT)
     for (const id of BUILTIN_THEME_IDS) {
       expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("statement")
@@ -203,10 +201,10 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     expect(ids).toEqual([
       "verdict-index",
       "constellation-chapter",
-      "narrow-column",
+      "tone-adaptive-content",
       "split-band",
       "poster-chapter",
-      "two-column",
+      "banner-heading",
       "tone-adaptive-ending",
     ])
     for (const id of ids) {

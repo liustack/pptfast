@@ -7,6 +7,8 @@ import { resolveStyle } from "../../../themes"
 import { StatementContent } from "../content-statement"
 import { StatHeroContent } from "../content-stat-hero"
 import { OneEvidenceContent } from "../content-one-evidence"
+import { measureTextUnits } from "../../../lib/svg-text-layout"
+import { underlineYFromBaseline } from "../underline"
 import type { PptxIR, Slide } from "@/ir"
 
 const VERSE = "预测性维护值得**全线推开**，而且应该从今天开始。"
@@ -101,9 +103,15 @@ describe("consulting sparse faces", () => {
     expect(Number(hero.getAttribute("font-size"))).toBe(310)
     expect(hero.getAttribute("font-weight")).toBe("700")
     expect(hero.getAttribute("fill")).toBe(ctx.colors.primary)
-    const bar = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "140")
-    expect(bar?.getAttribute("x")).toBe("104")
-    expect(bar?.getAttribute("y")).toBe("496")
+    const bar = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("height") === "10")
+    const numberW = Math.round(
+      measureTextUnits(hero.textContent ?? "", { bold: true, fontFamily: ctx.fonts.heading }) * Number(hero.getAttribute("font-size")),
+    )
+    expect(bar?.getAttribute("x")).toBe("96")
+    expect(Number(bar?.getAttribute("width"))).toBe(numberW)
+    expect(Number(bar?.getAttribute("y"))).toBe(
+      underlineYFromBaseline(Number(hero.getAttribute("y")), Number(hero.getAttribute("font-size")), hero.textContent ?? ""),
+    )
     expect(bar?.getAttribute("height")).toBe("10")
     expect(bar?.getAttribute("fill")).toBe(ctx.colors.accent)
     expect(markup).toContain("非计划停机时长下降")

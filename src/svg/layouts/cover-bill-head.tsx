@@ -56,10 +56,6 @@ function hasCjk(text: string): boolean {
   return /[\u3400-\u9fff]/.test(text)
 }
 
-function hangingBaseline(top: number, fontSize: number): number {
-  return top + Math.round(fontSize * 0.8)
-}
-
 export function BillHeadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const bg = ctx.defaultBg ?? colors.bg
@@ -75,7 +71,9 @@ export function BillHeadCover({ ir, slide, ctx }: SvgTemplateProps) {
     fontFamily: fonts.heading,
     typeScale: ctx.shape?.typeScale,
   })
-  const titleY = hangingBaseline(TITLE_TOP, title.fontSize)
+  const bandCenter = (TITLE_TOP + RULE_Y) / 2
+  const blockSpan = Math.max(0, title.lines.length - 1) * title.lineHeight
+  const titleY = Math.round(bandCenter - blockSpan / 2 + 0.35 * title.fontSize)
 
   const leftTracking = org && !hasCjk(org) ? FOOT_LEFT_TRACKING : undefined
   const left = org

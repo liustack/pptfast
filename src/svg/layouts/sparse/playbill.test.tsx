@@ -126,7 +126,7 @@ describe("playbill sparse faces", () => {
     expect(tr.x).toBeGreaterThan(unrotatedTr.x)
   })
 
-  it("mono-bleed paints primary, keeps the caption in bg, and never writes a placeholder", () => {
+  it("mono-bleed without an image falls back to the generic type-on-field face", () => {
     const slide: Slide = {
       type: "content",
       layout: "mono-bleed",
@@ -139,12 +139,13 @@ describe("playbill sparse faces", () => {
     expect(() => assertSubset(root)).not.toThrow()
     const field = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("width") === "1280")
     expect(field?.getAttribute("fill")).toBe(ctx.colors.primary)
-    const caption = Array.from(root.querySelectorAll("text")).find((t) =>
+    const heading = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("凌晨两点"),
     )!
-    expect(caption.getAttribute("x")).toBe("96")
-    expect(caption.getAttribute("y")).toBe("672")
-    expect(caption.getAttribute("fill")).toBe(ctx.colors.bg)
+    expect(heading.getAttribute("x")).toBe("640")
+    expect(heading.getAttribute("y")).toBe("260")
+    expect(heading.getAttribute("text-anchor")).toBe("middle")
+    expect(root.querySelector("image")).toBeNull()
     expect(markup).not.toContain(PLACEHOLDER)
   })
 })

@@ -7,6 +7,7 @@ import { resolveStyle } from "../../../themes"
 import { StatementContent } from "../content-statement"
 import { StatHeroContent } from "../content-stat-hero"
 import { OneEvidenceContent } from "../content-one-evidence"
+import { measureTextUnits } from "../../../lib/svg-text-layout"
 import type { PptxIR, Slide } from "@/ir"
 
 const VERSE = "设备不会突然坏，只是没人**听它说话**。"
@@ -63,6 +64,25 @@ describe("lecture sparse faces", () => {
     expect(markup).toContain("预测性维护开课第一句")
     expect(markup).not.toContain(LUXE_GOLD)
     expect(markup).not.toContain(BOARD_TEXT)
+  })
+
+  it("statement attribution fits inside the page instead of running past x=1280", () => {
+    const long =
+      "试点产线九十天运行数据表明非计划停机从每周两次降到每月不到一次，维护工单平均提前六点五天生成，并且故障预测准确率已经稳定在百分之八十八以上。"
+    const slide: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: VERSE_PLAIN,
+      components: [{ type: "paragraph", text: long }],
+    } as Slide
+    const { root } = render(
+      <StatementContent ir={ir([slide])} slide={slide} index={0} ctx={ctx} />,
+    )
+    const attr = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").length > 20 && !(t.textContent ?? "").includes("设备不会"))!
+    const x = Number(attr.getAttribute("x"))
+    const size = Number(attr.getAttribute("font-size"))
+    const w = measureTextUnits(attr.textContent ?? "", { fontFamily: ctx.fonts.body }) * size
+    expect(x + w).toBeLessThanOrEqual(1280)
   })
 
   it("statement without ** draws no chalk arc", () => {

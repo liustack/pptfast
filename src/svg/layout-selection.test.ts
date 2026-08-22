@@ -55,9 +55,8 @@ const CONTENT_LAYOUT_IDS = [
   "side-highlight",
   "asymmetric-triptych",
   "quiet-frame",
-  // content-layout expansion wave, task T1: content pool 10 -> 11.
-  "image-lead-split",
-  // content-layout expansion wave, task T2: content pool 11 -> 12.
+  // content-layout expansion wave, task T2. Gallery r2 D10 retired
+  // image-lead-split. Auto-selectable content pool is 11.
   "split-band",
 ]
 
@@ -73,13 +72,9 @@ describe("resolveLayoutId", () => {
   })
 
   it("an explicit pin outside the allowed set is still honored when it's a registered layout applicable to the slide type (spec §3: explicit bypasses curation)", () => {
-    // "banner-heading" is luxe's one curated content exclusion (W4 design
-    // decision 7's contrast adjudication — see definitions.ts) — not a
-    // member of luxe's own curated set, proving an explicit pin still
-    // bypasses curation even for the one layout a theme deliberately
-    // excludes (every other layout id is now in every theme's full-set
-    // curated pool, so this exclusion is the only "outside the family"
-    // example left post-W4).
+    // "banner-heading" is outside luxe's framed content pool (gallery r2 D20:
+    // framed themes do not sample banner-heading / split-band / stacked-poster).
+    // An explicit pin still bypasses that curation.
     expect(
       resolveLayoutId("content", THEME_DEFINITIONS.luxe.layouts, 1, "0", "banner-heading", "briefing", null),
     ).toBe("banner-heading")
@@ -298,22 +293,11 @@ describe("resolveLayoutId", () => {
   })
 
   it("regression (P1 fix round): storytelling × beat 'breathing' no longer compounds narrow-column into a majority pick — the exact pathology the reviewer measured at ~53% under the old multiplicative formula", () => {
-    // storytelling's layoutTendencies is now {narrow-column, stacked-poster,
-    // quiet-frame} (P1 variety wave, task 4 added quiet-frame) and beat
-    // "breathing"'s tendency set is now {narrow-column, quiet-frame,
-    // image-lead-split} (image-lead-split added by the content-layout
-    // expansion wave's own T3 task, see `layout-selection.ts`'s
-    // `BEAT_TENDENCIES` doc comment) — narrow-column stays a member of
-    // *both* sets, still the most natural real-author pairing (an
-    // "unhurried single flow" beat under a "tension, image-forward"
-    // strategy that already reaches for the same spacious layout), and
-    // still exactly the case the reviewer flagged: the old
-    // `strategyWeight * beatWeight` formula would give narrow-column weight
-    // 3×3=9 against the pool's stacked-poster (strategy-only, weight 3),
-    // quiet-frame (itself a shared member, weight 3×3=9 too), image-lead-
-    // split (beat-only, weight 1×3=3), and 8 other weight-1 members — a
-    // compounding that would only have gotten worse as content-pool growth
-    // keeps adding shared/beat-only ids, not better.
+    // storytelling's layoutTendencies is {narrow-column, stacked-poster,
+    // quiet-frame} and beat "breathing"'s tendency set is {narrow-column,
+    // quiet-frame} (gallery r2 D10 retired image-lead-split). narrow-column
+    // stays a member of both sets, still the most natural real-author
+    // pairing, and still exactly the case the reviewer flagged.
     const N = 5000
     let narrowColumnHits = 0
     for (let i = 0; i < N; i++) {
@@ -329,27 +313,16 @@ describe("resolveLayoutId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max, full 12-id pool (content-layout expansion
-    // wave, task T3 re-derivation — image-lead-split joining `breathing`
-    // moves narrow-column's share down from the pre-T3 3/16 = 0.1875):
-    // narrow-column=max(3,3)=3 and quiet-frame=max(3,3)=3 (both layers
-    // agree on both ids — capped, not squared), stacked-poster=max(3,1)=3
-    // (strategy only), image-lead-split=max(1,3)=3 (beat only, new this
-    // task), the remaining 8 ids (two-column/rail-numbered/banner-heading/
-    // bento-panel/tone-adaptive-content/side-highlight/asymmetric-triptych/
-    // split-band)=max(1,1)=1 each — total 3+3+3+3+8=20, narrow-column share
-    // = 3/20 = 0.15 exactly. Bounds set with margin on both sides of that
-    // point estimate for N=5000 sampling noise.
+    // Weights under Math.max, 11-id auto pool after D10 (image-lead-split
+    // retired): narrow-column=3, quiet-frame=3, stacked-poster=3, the
+    // remaining 8 ids at 1 — total 17, share 3/17 ≈ 0.176. Bounds set with
+    // margin on both sides of that point estimate for N=5000 sampling noise.
     const share = narrowColumnHits / N
     expect(share).toBeGreaterThan(0.11)
     expect(share).toBeLessThan(0.19)
-    // Explicitly below what the old multiplicative formula would give on
-    // this same 12-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
-    // stacked-poster=3×1=3, image-lead-split=1×3=3, 8 others at 1 — total
-    // 32, share 9/32 = 0.28125) — the regression this fix round closes,
-    // asserted concretely rather than only matching the new expected band
-    // (a band-only check could in principle still pass if the bug
-    // reintroduced a smaller-but-still-real compounding effect).
+    // Explicitly below what the old multiplicative formula would give
+    // (narrow-column=3×3=9 against a pool whose shared/beat-only members
+    // also square). The regression this fix round closes.
     expect(share).toBeLessThan(0.24)
   })
 
@@ -1169,18 +1142,14 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 1 used to collide here (content-layout expansion wave, task T2
-    // re-pin after the pool grew 11 -> 12). Second-front reweighted
-    // academic's content pool (`rail-numbered` + `narrow-column`), so seed
-    // 1 no longer collides. Seed 10 is the first seed where page 0 and
-    // page 1's raw pick both land on `rail-numbered`, so the redraw still
-    // fires. Re-found by brute-force search over this exact 2-page
-    // academic fixture, same method as T1's own re-pin.
+    // Gallery r2 D10 retired image-lead-split and shrank the auto pool.
+    // Seed 0 is the first academic 2-page fixture where page 0 and page 1's
+    // raw pick both land on `rail-numbered`, so the redraw still fires.
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 10 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 0 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
@@ -1202,7 +1171,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      10,
+      0,
       "1",
       undefined,
       resolveIrStrategy(ir),
@@ -1214,9 +1183,9 @@ describe("render parity with FullSlideSvg", () => {
     // actual collision the redraw exists to break.
     expect(unswappedRawPick).toBe("rail-numbered")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "narrow-column".
+    // branch, not some other code path, is what produced "two-column".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("narrow-column")
+    expect(resolved).toBe("two-column")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the layout branch is correctly skipped both sides)", () => {

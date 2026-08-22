@@ -70,6 +70,26 @@ describe("cover-bill-head — board geometry", () => {
     expect(root.querySelectorAll("polygon")).toHaveLength(0)
   })
 
+  it("vertically centers the display title in the band between TITLE_TOP and the rule", () => {
+    const TITLE_TOP = 56
+    const RULE_Y = 610
+    const bandCenter = (TITLE_TOP + RULE_Y) / 2
+    for (const heading of ["开演前十分钟", "Ten minutes to curtain", "开演前 Ten minutes"]) {
+      const { root } = renderCover("playbill", slide(heading))
+      const lines = Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("x") === "56" && t.getAttribute("font-weight") === "700",
+      )
+      expect(lines.length).toBeGreaterThanOrEqual(1)
+      const fontSize = Number(lines[0]!.getAttribute("font-size"))
+      const lineHeight = Number(lines[1]?.getAttribute("y") ?? lines[0]!.getAttribute("y")) - Number(lines[0]!.getAttribute("y")) || fontSize * 1.02
+      const blockSpan = Math.max(0, lines.length - 1) * (lines.length > 1 ? lineHeight : 0)
+      const firstY = Number(lines[0]!.getAttribute("y"))
+      const expected = Math.round(bandCenter - blockSpan / 2 + 0.35 * fontSize)
+      expect(firstY).toBe(expected)
+      expect(firstY).toBeGreaterThan(TITLE_TOP + fontSize * 0.5)
+    }
+  })
+
   it("keeps the thick rule above the fifth band", () => {
     const { root } = renderCover("playbill")
     const rule = root.querySelector("rect")!

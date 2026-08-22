@@ -44,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 53 layout-kind entries, all traceable to one of the four real registries (board-cover-restore wave 1: 47 -> 53)", () => {
+  it("has exactly 52 layout-kind entries, all traceable to one of the four real registries (gallery r2 D10: 53 -> 52, image-lead-split retired)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -52,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(53)
+    expect(layoutEntries).toHaveLength(52)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -223,11 +223,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 18 layouts and the 4 takeovers (speech-layouts wave: content 15 -> 18 — stat-hero + one-evidence + mono-bleed, all pinOnly; layoutsForSlideType reads slideTypes only, unaffected by pinOnly)", () => {
+  it("content includes both the 17 layouts and the 4 takeovers (gallery r2 D10 retired image-lead-split, 18 -> 17)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(18)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(17)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(22)
+    expect(contents).toHaveLength(21)
   })
 })
 

@@ -9,6 +9,7 @@ import { showsDocumentMeta } from "../document-meta"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
 
 /**
  * tone-adaptive-content layout（spec §3.2，Wave 3 Task 21）：custom 主题
@@ -226,7 +227,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       : colors.text
     const dividerY = 198 + headingExtra + subheadingBudget
     const contentRectY = 216 + headingExtra + subheadingBudget
-    const contentRectH = Math.max(120, 400 - headingExtra - subheadingBudget)
+    const contentRectH = Math.max(120, FRAMED_CONTENT_BOTTOM - 216 - headingExtra - subheadingBudget)
 
     // Post-v0.3 backlog closure (see file header "白卡分支墨色修复"): heading
     // + SvgContent body/bullets + footer meta all sit on this branch's own
@@ -366,7 +367,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
   }
 
   /* White background mode (no bg image). */
-  const contentH = slide.footnote ? 420 : 460
+  const contentH = slide.footnote ? 420 : FRAMED_CONTENT_BOTTOM - 180
   const sectionLabel = rawSectionLabel
     ? fitSvgLine(rawSectionLabel, {
         maxWidth: 1152,

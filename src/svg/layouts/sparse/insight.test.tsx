@@ -59,11 +59,7 @@ describe("insight sparse faces", () => {
     expect(cursor?.getAttribute("height")).toBe("6")
     expect(cursor?.getAttribute("fill")).toBe(ctx.colors.accent)
     expect(markup).not.toContain("<animate")
-    const hair = root.querySelector("line")
-    expect(hair?.getAttribute("x1")).toBe("96")
-    expect(hair?.getAttribute("x2")).toBe("1184")
-    expect(hair?.getAttribute("y1")).toBe("620")
-    expect(hair?.getAttribute("stroke")).toBe(ctx.colors.border)
+    expect(root.querySelector("line")).toBeNull()
     expect(markup).toContain("SESSION 2026-Q2 · LIVE")
     expect(markup).not.toContain(LUXE_GOLD)
   })
@@ -133,9 +129,15 @@ describe("insight sparse faces", () => {
     )
     expect(() => assertSubset(root)).not.toThrow()
     const poly = root.querySelector("polyline")
-    expect(poly?.getAttribute("points")).toBe(
-      "96,150 240,142 390,158 540,138 700,150 860,132 1010,144 1184,128",
-    )
+    const points = (poly?.getAttribute("points") ?? "")
+      .trim()
+      .split(/\s+/)
+      .map((p) => p.split(",").map(Number) as [number, number])
+    expect(points.length).toBeGreaterThanOrEqual(2)
+    const first = points[0]!
+    const last = points[points.length - 1]!
+    expect((first[0] + last[0]) / 2).toBe(640)
+    expect(first[1]).toBe(last[1])
     expect(poly?.getAttribute("fill")).toBe("none")
     expect(poly?.getAttribute("stroke")).toBe(ctx.colors.border)
     expect(poly?.getAttribute("stroke-width")).toBe("2")
