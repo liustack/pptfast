@@ -12,6 +12,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * stacked-poster content layout（spec §3.2，Wave 3 Task 20）：creative
@@ -174,7 +175,10 @@ function componentFitsSlot(component: Component, rect: ContentRect, ctx: Compone
  * degrade path (>=3 components, no components, or a hero/strip component too tall for its
  * slot), kept byte-identical (modulo the token replacement table above) so
  * its geometry is unaffected by this theme's grammar change. */
-function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+function renderStackedContent(
+  { ir, slide, index, ctx }: SvgTemplateProps,
+  treated: ReturnType<typeof tryContentHeadingTreatment>,
+) {
   const section = sectionNameFor(ir.slides, index)
   const chNum = chapterNumberFor(ir.slides, index)
   const rawSectionLabel = section
@@ -223,8 +227,38 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     ? accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, subheading.fontSize)
     : ctx.colors.accent
 
-  const contentRectY = 180 + headingExtra + subheadingBudget
-  const contentRectH = Math.max(120, contentH - headingExtra - subheadingBudget)
+  const contentRectY = treated ? treated.contentRect.y : 180 + headingExtra + subheadingBudget
+  const contentRectH = treated
+    ? Math.max(120, (slide.footnote ? 600 : 640) - treated.contentRect.y)
+    : Math.max(120, contentH - headingExtra - subheadingBudget)
+
+  if (treated) {
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent
+          arrangement={slide.arrangement}
+          components={slide.components}
+          rect={{ x: 56, y: contentRectY, w: 1168, h: contentRectH }}
+          ctx={ctx}
+        />
+        {slide.footnote && (
+          <text
+            x="56"
+            y={footnoteBaselineFor(20)}
+            fontFamily={ctx.fonts.body}
+            fontSize="20"
+            fill={ctx.colors.muted}
+            letterSpacing="4"
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {slide.footnote}
+          </text>
+        )}
+      </>
+    )
+  }
 
   return (
     <>
@@ -323,6 +357,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 }
 
 export function StackedPosterContent(props: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment(props)
   const { ir, slide, index, ctx } = props
 
   const heading = fitHeadingLines(slide.heading, {
@@ -349,7 +384,9 @@ export function StackedPosterContent(props: SvgTemplateProps) {
   const subheadingFill = subheading
     ? accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, subheading.fontSize)
     : ctx.colors.accent
-  const heroY = titleLastY + HERO_TITLE_GAP + (subheading ? SUBHEADING_SLOT : 0)
+  const heroY = treated
+    ? treated.contentRect.y
+    : titleLastY + HERO_TITLE_GAP + (subheading ? SUBHEADING_SLOT : 0)
   const isPair = slide.components.length === 2
   // Mirrors the stacked degrade path's `contentH = footnote ? 420 : 460`:
   // shrink the poster's full-budget floor when a footnote is present so it
@@ -381,7 +418,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
     slide.components.length <= 2 &&
     componentFitsSlot(slide.components[0], heroRect, ctx) &&
     (!isPair || componentFitsSlot(slide.components[1], stripRect, ctx))
-  if (!fits) return renderStackedContent(props)
+  if (!fits) return renderStackedContent(props, treated)
 
   const section = sectionNameFor(ir.slides, index)
   const chNum = chapterNumberFor(ir.slides, index)
@@ -400,6 +437,43 @@ export function StackedPosterContent(props: SvgTemplateProps) {
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: 1000, fontSize: 20, minFontSize: 14 })
     : null
+
+  if (treated) {
+    return (
+      <>
+        {treated.chrome}
+        {renderPosterSlot(slide.components[0], heroRect, ctx)}
+        {isPair && (
+          <>
+            <line
+              x1={HERO_X}
+              y1={STRIP_DIVIDER_Y}
+              x2={HERO_X + HERO_W}
+              y2={STRIP_DIVIDER_Y}
+              stroke={ctx.colors.border}
+              strokeWidth="1.4"
+            />
+            {renderPosterSlot(slide.components[1], stripRect, ctx)}
+          </>
+        )}
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={CENTER_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            textAnchor="middle"
+            fontFamily={ctx.fonts.body}
+            fontSize={footnote.fontSize}
+            fill={ctx.colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
 
   return (
     <>

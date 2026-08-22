@@ -57,7 +57,7 @@ function ir(
   return {
     version: "3",
     filename: "x.pptx",
-    theme: { id: "consulting" },
+    theme: { id: "classroom" },
     meta: {},
     assets: opts?.assets ?? { images: {} },
     brand: opts?.brand,
@@ -95,14 +95,14 @@ function ir(
 //     328->296. Pair stays 58.
 //   - `LEGACY_LONG_MARKUP`: rect 244->228 (h 376->392), lone block 276->244
 //     (rect.y + the 16px cap).
-const LEGACY_BANNER_MARKUP = `<text x="96" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="92" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="147" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="204" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,234,1088,386"><g data-audit-box="96,250,1088"><g transform="translate(96,250)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,308,1088"><g transform="translate(96,308)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>`
-const LEGACY_LONG_MARKUP = `<rect x="96" y="92" width="1088" height="132" rx="4" fill="#1E2A4A"></rect><text x="120" y="150.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及</text><text x="120" y="187.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">跨可用区容灾演练的完整落地路径说明</text><g data-audit-rect="96,240,1088,380"><g data-audit-box="96,256,1088"><g transform="translate(96,256)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">支撑论据。</text></g></g></g>`
-const LEGACY_NOLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="96" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="92" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="147" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="204" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,234,1088,386"><g data-audit-box="96,250,1088"><g transform="translate(96,250)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,308,1088"><g transform="translate(96,308)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
-const LEGACY_TLLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="176" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="92" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="147" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="204" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,234,1088,386"><g data-audit-box="96,250,1088"><g transform="translate(96,250)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,308,1088"><g transform="translate(96,308)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
+const LEGACY_BANNER_MARKUP = "<text x=\"96\" y=\"60\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"12\" fill=\"#5A6470\" letter-spacing=\"4\" dominant-baseline=\"alphabetic\">第一部分：研究背景</text><rect x=\"96\" y=\"92\" width=\"1088\" height=\"88\" rx=\"4\" fill=\"#4A6B8A\"></rect><text x=\"120\" y=\"147\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"34\" font-weight=\"600\" fill=\"#FFFFFF\" dominant-baseline=\"alphabetic\">结论先行：断言横幅</text><text x=\"96\" y=\"204\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"22\" fill=\"#4A6B8A\" dominant-baseline=\"alphabetic\"><tspan fill=\"#23282E\" font-weight=\"700\">核心结论</tspan><tspan fill=\"#4A6B8A\">：证据链完整</tspan></text><g data-audit-rect=\"96,234,1088,386\"><g data-audit-box=\"96,250,1088\"><g transform=\"translate(96,250)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">本节陈述关键论断。</text></g></g><g data-audit-box=\"96,308,1088\"><g transform=\"translate(96,308)\"><circle cx=\"5\" cy=\"18.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"26\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据一</text><circle cx=\"5\" cy=\"60.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"68\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据二</text><circle cx=\"5\" cy=\"102.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"110\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据三</text></g></g></g><text x=\"96\" y=\"645\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" fill=\"#5A6470\" font-style=\"italic\" dominant-baseline=\"alphabetic\">数据来源：内部埋点，2026Q2</text>"
+const LEGACY_LONG_MARKUP = "<rect x=\"96\" y=\"92\" width=\"1088\" height=\"132\" rx=\"4\" fill=\"#4A6B8A\"></rect><text x=\"120\" y=\"150.5\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"34\" font-weight=\"600\" fill=\"#FFFFFF\" dominant-baseline=\"alphabetic\">微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及</text><text x=\"120\" y=\"187.5\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"34\" font-weight=\"600\" fill=\"#FFFFFF\" dominant-baseline=\"alphabetic\">跨可用区容灾演练的完整落地路径说明</text><g data-audit-rect=\"96,240,1088,380\"><g data-audit-box=\"96,256,1088\"><g transform=\"translate(96,256)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">支撑论据。</text></g></g></g>"
+const LEGACY_NOLOGO_MARKUP = "<svg xmlns=\"http://www.w3.org/2000/svg\"><text x=\"96\" y=\"60\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"12\" fill=\"#5A6470\" letter-spacing=\"4\" dominant-baseline=\"alphabetic\">第一部分：研究背景</text><rect x=\"96\" y=\"92\" width=\"1088\" height=\"88\" rx=\"4\" fill=\"#4A6B8A\"></rect><text x=\"120\" y=\"147\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"34\" font-weight=\"600\" fill=\"#FFFFFF\" dominant-baseline=\"alphabetic\">结论先行：断言横幅</text><text x=\"96\" y=\"204\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"22\" fill=\"#4A6B8A\" dominant-baseline=\"alphabetic\"><tspan fill=\"#23282E\" font-weight=\"700\">核心结论</tspan><tspan fill=\"#4A6B8A\">：证据链完整</tspan></text><g data-audit-rect=\"96,234,1088,386\"><g data-audit-box=\"96,250,1088\"><g transform=\"translate(96,250)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">本节陈述关键论断。</text></g></g><g data-audit-box=\"96,308,1088\"><g transform=\"translate(96,308)\"><circle cx=\"5\" cy=\"18.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"26\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据一</text><circle cx=\"5\" cy=\"60.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"68\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据二</text><circle cx=\"5\" cy=\"102.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"110\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据三</text></g></g></g><text x=\"96\" y=\"645\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" fill=\"#5A6470\" font-style=\"italic\" dominant-baseline=\"alphabetic\">数据来源：内部埋点，2026Q2</text></svg>"
+const LEGACY_TLLOGO_MARKUP = "<svg xmlns=\"http://www.w3.org/2000/svg\"><text x=\"176\" y=\"60\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"12\" fill=\"#5A6470\" letter-spacing=\"4\" dominant-baseline=\"alphabetic\">第一部分：研究背景</text><rect x=\"96\" y=\"92\" width=\"1088\" height=\"88\" rx=\"4\" fill=\"#4A6B8A\"></rect><text x=\"120\" y=\"147\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"34\" font-weight=\"600\" fill=\"#FFFFFF\" dominant-baseline=\"alphabetic\">结论先行：断言横幅</text><text x=\"96\" y=\"204\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"22\" fill=\"#4A6B8A\" dominant-baseline=\"alphabetic\"><tspan fill=\"#23282E\" font-weight=\"700\">核心结论</tspan><tspan fill=\"#4A6B8A\">：证据链完整</tspan></text><g data-audit-rect=\"96,234,1088,386\"><g data-audit-box=\"96,250,1088\"><g transform=\"translate(96,250)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">本节陈述关键论断。</text></g></g><g data-audit-box=\"96,308,1088\"><g transform=\"translate(96,308)\"><circle cx=\"5\" cy=\"18.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"26\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据一</text><circle cx=\"5\" cy=\"60.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"68\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据二</text><circle cx=\"5\" cy=\"102.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"110\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">论据三</text></g></g></g><text x=\"96\" y=\"645\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"14\" fill=\"#5A6470\" font-style=\"italic\" dominant-baseline=\"alphabetic\">数据来源：内部埋点，2026Q2</text></svg>"
 
 describe("BannerHeadingContent", () => {
   it("consulting tokens 下与旧 MckinseyNavyContent 输出逐字节一致（档位一，含单/双行 banner、subheading、footnote、跨章节 kicker）", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide])
 
     const next = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />)
@@ -118,7 +118,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("brand 无 tl logo 时 kicker 逐字节一致，真实 tl logo 存在时侧移 dodge 也逐字节一致（hasTlLogo 随迁 helper 验证）", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
 
     function renderKickerNext(deck: PptxIR): { next: string; kickerX: string | null } {
       const next = renderSvgMarkup(
@@ -151,7 +151,7 @@ describe("BannerHeadingContent", () => {
   // （旧文件 consulting.test.tsx L220-227）：logo 存在但不在 tl 位时，仍视为
   // 无 tl logo，kicker 对齐 banner 左边。
   it("brand logo 存在但不是 tl 位（默认 br）：kicker 仍对齐 banner 左边，不触发侧移 dodge", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide], {
       brand: { logo_asset_id: "logo1" },
       assets: { images: { logo1: { src: "data:image/png;base64,AAAA" } } },
@@ -173,7 +173,7 @@ describe("BannerHeadingContent", () => {
   // 视为无 logo（镜像 Branding 自己的 `!logo.error` 判定），kicker 对齐
   // banner。
   it("tl 位 logo 资产加载失败（asset.error）：视为无 logo，kicker 对齐 banner", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide], {
       brand: { logo_asset_id: "logo1", position: "tl" },
       assets: { images: { logo1: { src: "data:image/png;base64,AAAA", error: "404" } } },
@@ -195,7 +195,7 @@ describe("BannerHeadingContent", () => {
   // banner 高度随 1/2 行变化（88 vs 132），content rect 的 y 相应下移
   // （bannerBottom + 32，无 subheading）。
   it("banner 2 行时高度变为 132（1 行为 88），content rect 的 y 随 bannerBottom + 16 下移", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const shortSlide: Slide = {
       type: "content",
       heading: "结论先行",
@@ -249,7 +249,7 @@ describe("BannerHeadingContent", () => {
   // 画自己的 y=648 源信息 hairline（Branding 已经画了），footnote 落在
   // 其下方。
   it("不画自己的 y=648 源信息 hairline，footnote 落在其下方", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "结论先行",
@@ -283,7 +283,7 @@ describe("BannerHeadingContent", () => {
   // 角落（色块，不含文字），但 banner 内的 heading 文字必须始终清空四个
   // logo 带。
   it("banner 实心填色可触碰 tl/tr logo 带角落（色块无文字），但 heading 文字永远清空四个 logo 带", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "结论先行",
@@ -326,7 +326,7 @@ describe("BannerHeadingContent", () => {
   // 回填旧测试「Content body passes subset validation」（旧文件
   // consulting.test.tsx L75-93）。
   it("输出通过 subset validation", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "验证子集",
@@ -345,7 +345,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("banner 结构断言：全宽 primary 填色矩形承载纯白居中标题（横幅式 content，非 kicker+标题+分隔线语法）", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([bannerSlide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -379,8 +379,8 @@ describe("BannerHeadingContent", () => {
   it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 标题对比度自适应出反白", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
-    const deck = ir([chapter1, bannerSlide])
-    const out = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />)
+    const deck = { ...ir([bannerSlide]), theme: { id: "tech" } }
+    const out = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={0} ctx={ctx} />)
 
     expect(out).toContain(ctx.colors.primary as string) // tech 的 primary 驱动 banner 填色/subheading
     expect(out).toContain(ctx.colors.muted as string) // tech 的 muted 驱动 kicker/footnote
@@ -410,7 +410,7 @@ describe("BannerHeadingContent", () => {
     // 三个既有 CONTENT_WITHOUT_BANNER_HEADING 排除主题。按 ../ink.ts 的同一
     // 套函数独立算出期望值（不是重新推导 WCAG 公式，是验证本 layout 确实
     // 调用了它们，而不是仍然写死白字/colors.primary）。
-    for (const themeId of ["luxe", "campaign", "classroom"] as const) {
+    for (const themeId of ["classroom", "swiss", "crayon"] as const) {
       const tokens = resolveStyle(themeId)
       const ctx = buildCtx(tokens, {})
       const deck = ir([chapter1, bannerSlide])
@@ -425,7 +425,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("keeps kicker-to-banner air large enough that the kicker reads as its own line", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -454,7 +454,7 @@ describe("BannerHeadingContent", () => {
 
   it("seats the kicker em box on the title-zone top (y=48), matching heading-family top breathing", () => {
     const TITLE_ZONE_TOP = 48
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -471,7 +471,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("keeps a lone table following the banner instead of hanging as a second island", () => {
-    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const tableSlide: Slide = {
       type: "content",
       heading: "本季度经营结果好于预期",
@@ -515,8 +515,8 @@ describe("BannerHeadingContent", () => {
   })
 
   it("scales the banner-to-body gap with gapScale", () => {
-    const tight = buildCtx({ ...resolveStyle("consulting"), shape: { gapScale: 0.8 } }, {})
-    const airy = buildCtx({ ...resolveStyle("consulting"), shape: { gapScale: 1.3 } }, {})
+    const tight = buildCtx({ ...resolveStyle("classroom"), shape: { gapScale: 0.8 } }, {})
+    const airy = buildCtx({ ...resolveStyle("classroom"), shape: { gapScale: 1.3 } }, {})
     const tableSlide: Slide = {
       type: "content",
       heading: "本季度经营结果好于预期",

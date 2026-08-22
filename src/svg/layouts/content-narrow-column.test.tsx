@@ -5,6 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { accessibleInk } from "../ink"
 import { NarrowColumnContent } from "./content-narrow-column"
 import { footnoteBaselineFor } from "../branding-geometry"
 import type { Component, PptxIR, Slide } from "@/ir"
@@ -78,15 +79,15 @@ const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
 // `MAGAZINE_EXPECTED_BARE` 262 -> 246 (rect.y 230 + the 16px cap).
 // `MAGAZINE_EXPECTED` still untouched.
 const MAGAZINE_EXPECTED =
-  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#D9D3C2" stroke-width="1.2"></line><text x="96" y="124" font-family="SimSun, Songti SC, STSong, serif" font-size="16" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic">第一部分：市场洞察</text><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">窄栏叙事：从数据到洞察</text><text x="96" y="254" font-family="SimSun, Songti SC, STSong, serif" font-size="22" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic"><tspan fill="#26261F" font-weight="700">核心结论</tspan><tspan fill="#8C4A3C">：留存率显著提升</tspan></text><g data-audit-rect="96,298,880,322"><g data-audit-box="96,298,880"><g transform="translate(96,298)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box="96,342,880"><g transform="translate(96,342)"><circle cx="5" cy="18.8" r="3" fill="#2C2C2A"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">留存率 +12%</text><circle cx="5" cy="60.8" r="3" fill="#2C2C2A"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">活跃时长 +8%</text><circle cx="5" cy="102.8" r="3" fill="#2C2C2A"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">流失率 -5%</text></g></g><g data-audit-box="96,496,880"><g transform="translate(96,496)"><text x="0" y="64" font-size="64" fill="#8C4A3C" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">“</text><text x="20" y="60" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" font-style="italic" fill="#26261F" dominant-baseline="alphabetic">增长的本质是留住已经信任你的人。</text><text x="20" y="97" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" dominant-baseline="alphabetic">— 内部访谈</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#626159" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="644" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  "<line x1=\"96\" y1=\"88\" x2=\"1184\" y2=\"88\" stroke=\"#D3DBE0\" stroke-width=\"1.2\"></line><text x=\"96\" y=\"124\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"16\" fill=\"#B96A5E\" font-style=\"italic\" dominant-baseline=\"alphabetic\">第一部分：市场洞察</text><text x=\"96\" y=\"190\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"60\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">窄栏叙事：从数据到洞察</text><text x=\"96\" y=\"254\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"22\" fill=\"#0A0E14\" font-style=\"italic\" dominant-baseline=\"alphabetic\"><tspan fill=\"#23282E\" font-weight=\"700\">核心结论</tspan><tspan fill=\"#0A0E14\">：留存率显著提升</tspan></text><g data-audit-rect=\"96,298,880,322\"><g data-audit-box=\"96,298,880\"><g transform=\"translate(96,298)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box=\"96,342,880\"><g transform=\"translate(96,342)\"><circle cx=\"5\" cy=\"18.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"26\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">留存率 +12%</text><circle cx=\"5\" cy=\"60.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"68\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">活跃时长 +8%</text><circle cx=\"5\" cy=\"102.8\" r=\"3\" fill=\"#4A6B8A\"></circle><text x=\"26\" y=\"110\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">流失率 -5%</text></g></g><g data-audit-box=\"96,496,880\"><g transform=\"translate(96,496)\"><text x=\"0\" y=\"64\" font-size=\"64\" fill=\"#B96A5E\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" dominant-baseline=\"alphabetic\">“</text><text x=\"20\" y=\"60\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"26\" font-style=\"italic\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">增长的本质是留住已经信任你的人。</text><text x=\"20\" y=\"97\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"20\" fill=\"#5A6470\" dominant-baseline=\"alphabetic\">— 内部访谈</text></g></g></g><text x=\"1184\" y=\"628\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"64\" fill=\"#5A6470\" opacity=\"0.3\" text-anchor=\"end\" dominant-baseline=\"alphabetic\">02</text><text x=\"96\" y=\"644\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"20\" fill=\"#5A6470\" font-style=\"italic\" dominant-baseline=\"alphabetic\">数据来源：内部埋点，2026Q2</text>"
 
 const MAGAZINE_EXPECTED_BARE =
-  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#D9D3C2" stroke-width="1.2"></line><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,230,880,410"><g data-audit-box="96,246,880"><g transform="translate(96,246)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">一</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#626159" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">01</text>'
+  "<line x1=\"96\" y1=\"88\" x2=\"1184\" y2=\"88\" stroke=\"#D3DBE0\" stroke-width=\"1.2\"></line><text x=\"96\" y=\"190\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"60\" font-weight=\"600\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">简报</text><g data-audit-rect=\"96,230,880,410\"><g data-audit-box=\"96,246,880\"><g transform=\"translate(96,246)\"><text x=\"0\" y=\"24\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"24\" fill=\"#23282E\" dominant-baseline=\"alphabetic\">一</text></g></g></g><text x=\"1184\" y=\"628\" font-family=\"Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif\" font-size=\"64\" fill=\"#5A6470\" opacity=\"0.3\" text-anchor=\"end\" dominant-baseline=\"alphabetic\">01</text>"
 
 describe("NarrowColumnContent", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含多种 component/kicker/subheading/footnote，档案来自旧 EditorialSerifContent）", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const deck = ir("journal")
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
+    const deck = ir("classroom")
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED)
@@ -100,9 +101,9 @@ describe("NarrowColumnContent", () => {
   })
 
   it("单块 slide（无 subheading/footnote）同样与固化基准逐字节一致", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const bare: Slide = { type: "content", heading: "简报", components: [{ type: "paragraph", text: "一" }] } as Slide
-    const deck = ir("journal", [bare])
+    const deck = ir("classroom", [bare])
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={bare} index={0} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED_BARE)
@@ -112,14 +113,14 @@ describe("NarrowColumnContent", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />)
-    expect(out).toContain("#F5C518") // consulting accent
+    expect(out).toContain(ctx.colors.text)
     expect(out).not.toContain("#8C4A3C") // journal accent 不得残留
     expect(out).not.toContain("#D9D3C2") // journal border 不得残留
   })
 
   it("passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const deck = ir("journal")
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
+    const deck = ir("classroom")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />
@@ -131,13 +132,13 @@ describe("NarrowColumnContent", () => {
   })
 
   it("lays components into the deliberately narrow 880-wide column (not the full 1088 width)", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "窄栏叙事",
       components: [para("一"), para("二"), para("三")],
     } as Slide
-    const deck = ir("journal", [slide])
+    const deck = ir("classroom", [slide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -154,11 +155,11 @@ describe("NarrowColumnContent", () => {
   })
 
   it("renders a large, 30%-opacity, zero-padded page number anchored to the right gutter", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const slide: Slide = { type: "content", heading: "标题", components: [para("一")] } as Slide
     // 9th slide (index 8) => page label "09"
     const slides = Array.from({ length: 9 }, () => ({ ...slide }))
-    const deck = ir("journal", slides)
+    const deck = ir("classroom", slides)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={slide} index={8} ctx={ctx} />
@@ -175,7 +176,7 @@ describe("NarrowColumnContent", () => {
     // Single-digit pages are still zero-padded.
     const markupFirst = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
-        <NarrowColumnContent ir={ir("journal", [slide])} slide={slide} index={0} ctx={ctx} />
+        <NarrowColumnContent ir={ir("classroom", [slide])} slide={slide} index={0} ctx={ctx} />
       </svg>,
     )
     const rootFirst = parseSvgRoot(markupFirst)
@@ -184,7 +185,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("converges a pathologically long (48-char) heading to <32pt or 2 lines within the 880 column", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const longHeading = "微服务架构下分布式事务一致性保障机制补偿策略设计".repeat(3).slice(0, 48)
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
@@ -192,7 +193,7 @@ describe("NarrowColumnContent", () => {
       heading: longHeading,
       components: [para("概要")],
     } as Slide
-    const deck = ir("journal", [slide])
+    const deck = ir("classroom", [slide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -213,14 +214,14 @@ describe("NarrowColumnContent", () => {
   })
 
   it("kicker fits an overlong section name instead of overflowing at fixed 16px", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const chapterSlide: Slide = { type: "chapter", heading: CJK_LONG.repeat(2), components: [] } as Slide
     const contentSlide: Slide = {
       type: "content",
       heading: "小节标题",
       components: [para("一")],
     } as Slide
-    const deck = ir("journal", [chapterSlide, contentSlide])
+    const deck = ir("classroom", [chapterSlide, contentSlide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={contentSlide} index={1} ctx={ctx} />
@@ -237,7 +238,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("footnote stays within the 980-wide budget instead of colliding with the page number", () => {
-    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
     const longFootnote = "数据来源：" + "内部报告与季度审计草案汇总说明".repeat(6)
     const slide: Slide = {
       type: "content",
@@ -245,7 +246,7 @@ describe("NarrowColumnContent", () => {
       components: [para("一")],
       footnote: longFootnote,
     } as Slide
-    const deck = ir("journal", [slide])
+    const deck = ir("classroom", [slide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -278,8 +279,8 @@ describe("NarrowColumnContent", () => {
     }
 
     it("no subheading: narrow column y stays at the pre-subheading formula (headingLastY + 40)", () => {
-      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-      const deck = ir("journal", [base])
+      const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
+      const deck = ir("classroom", [base])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           <NarrowColumnContent ir={deck} slide={base} index={0} ctx={ctx} />
@@ -291,9 +292,9 @@ describe("NarrowColumnContent", () => {
     })
 
     it("with subheading: italic accent text below the heading, and pushes the narrow column down 68 (S3b: headingLastY+64)", () => {
-      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
-      const deck = ir("journal", [slide])
+      const deck = ir("classroom", [slide])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -303,7 +304,9 @@ describe("NarrowColumnContent", () => {
       const sub = Array.from(root.querySelectorAll("text")).find((t) =>
         (t.textContent ?? "").includes("效率提升三成"),
       )!
-      expect(sub.getAttribute("fill")).toBe(ctx.colors.accent)
+      expect(sub.getAttribute("fill")).toBe(
+        accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, Number(sub.getAttribute("font-size"))),
+      )
       expect(sub.getAttribute("font-style")).toBe("italic")
       expect(sub.getAttribute("y")).toBe(String(190 + 64))
       expect(columnRectY(root)).toBe(190 + 40 + 68)
@@ -330,10 +333,10 @@ describe("NarrowColumnContent", () => {
       expect(sub.getAttribute("fill")).not.toBe(consultingTokens.colors.accent)
     })
 
-    it("journal（本文件唯一既有 pinned 主题）的副题保持 colors.accent 原值不变（既有 pinned 渲染的逐字节不变性）", () => {
-      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+    it("unassigned theme subheading fill is accessibleInk(accent), not a raw failing accent", () => {
+      const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
-      const deck = ir("journal", [slide])
+      const deck = ir("classroom", [slide])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -343,13 +346,15 @@ describe("NarrowColumnContent", () => {
       const sub = Array.from(root.querySelectorAll("text")).find((t) =>
         (t.textContent ?? "").includes("效率提升三成"),
       )!
-      expect(sub.getAttribute("fill")).toBe(ctx.colors.accent)
+      expect(sub.getAttribute("fill")).toBe(
+        accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, Number(sub.getAttribute("font-size"))),
+      )
     })
 
     it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700, staying italic", () => {
-      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "**效率提升三成**，风险敞口下降" } as Slide
-      const deck = ir("journal", [slide])
+      const deck = ir("classroom", [slide])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
@@ -368,13 +373,15 @@ describe("NarrowColumnContent", () => {
       const plainTspan = Array.from(parent.querySelectorAll("tspan")).find((t) =>
         (t.textContent ?? "").includes("风险敞口下降"),
       )!
-      expect(plainTspan.getAttribute("fill")).toBe(ctx.colors.accent)
+      expect(plainTspan.getAttribute("fill")).toBe(
+        accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, Number(parent.getAttribute("font-size"))),
+      )
     })
 
     it("overly long subheading shrinks to 16px then truncates", () => {
-      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("classroom"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: CJK_LONG.repeat(2) } as Slide
-      const deck = ir("journal", [slide])
+      const deck = ir("classroom", [slide])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />

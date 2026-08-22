@@ -7,6 +7,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, accessibleOpacity, readableOn } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * side-highlight content layout (P1 variety wave, task 4 — content-pool
@@ -90,6 +91,7 @@ const WATERMARK_FONT_SIZE = 128
 const ORG_FONT_SIZE = 14
 
 export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
   const kicker = section
@@ -158,6 +160,86 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
   const org = ir.meta.organization
     ? fitSvgLine(ir.meta.organization, { maxWidth: PANEL_W - PANEL_PAD * 2, fontSize: ORG_FONT_SIZE, minFontSize: 10 })
     : null
+
+  const panel = (
+    <>
+      <rect x={PANEL_X} y={PANEL_Y} width={PANEL_W} height={PANEL_H} rx={ctx.shape?.radius ?? PANEL_RADIUS} fill={colors.primary} />
+      <text
+        data-truncated={badge.truncated ? "1" : undefined}
+        x={PANEL_X + PANEL_PAD}
+        y={PANEL_Y + 44}
+        fontFamily={fonts.body}
+        fontSize={badge.fontSize}
+        fontWeight="700"
+        letterSpacing={1}
+        fill={badgeInk}
+        opacity={badgeOpacity}
+        dominantBaseline="alphabetic"
+      >
+        {badge.text}
+      </text>
+      <text
+        x={PANEL_X + PANEL_W / 2}
+        y={watermarkCy}
+        textAnchor="middle"
+        fontFamily={fonts.heading}
+        fontSize={WATERMARK_FONT_SIZE}
+        fontWeight="800"
+        fill={badgeInk}
+        opacity={0.18}
+        dominantBaseline="alphabetic"
+      >
+        {watermark}
+      </text>
+      <rect x={PANEL_X + PANEL_PAD} y={ruleY} width={28} height={3} fill={badgeInk} opacity={0.4} />
+      {org && (
+        <text
+          data-truncated={org.truncated ? "1" : undefined}
+          x={PANEL_X + PANEL_PAD}
+          y={PANEL_BOTTOM - 40}
+          fontFamily={fonts.body}
+          fontSize={org.fontSize}
+          fill={badgeInk}
+          opacity={orgOpacity}
+          dominantBaseline="alphabetic"
+        >
+          {org.text}
+        </text>
+      )}
+    </>
+  )
+
+  if (treated) {
+    const x = treated.contentRect.x > BODY_X ? treated.contentRect.x : BODY_X
+    const w = x > BODY_X ? BODY_X + BODY_W - x : BODY_W
+    const treatedRect = {
+      x,
+      y: treated.contentRect.y,
+      w,
+      h: Math.max(120, contentRectBottom - treated.contentRect.y),
+    }
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent arrangement={slide.arrangement} components={slide.components} rect={treatedRect} ctx={ctx} />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={BODY_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+        {panel}
+      </>
+    )
+  }
 
   return (
     <>

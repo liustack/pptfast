@@ -9,6 +9,7 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../branding-geometry"
 import { goldenTopCap } from "../layout"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * banner-heading content layout（spec §3.2，Wave 3 Task 19）：consulting
@@ -113,6 +114,44 @@ const SUBHEADING_MIN_FONT_SIZE = 16
 const SUBHEADING_SLOT = 38
 
 export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
+  if (treated) {
+    const { fonts } = ctx
+    const footnote = slide.footnote
+      ? fitSvgLine(slide.footnote, { maxWidth: BANNER_W, fontSize: 14, minFontSize: 11 })
+      : null
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent
+          arrangement={slide.arrangement}
+          components={slide.components}
+          rect={{
+            x: treated.contentRect.x,
+            y: treated.contentRect.y,
+            w: treated.contentRect.w,
+            h: Math.max(0, CONTENT_RECT_BOTTOM - treated.contentRect.y),
+          }}
+          ctx={ctx}
+        />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={BANNER_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={ctx.colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
+
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
 

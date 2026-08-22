@@ -12,6 +12,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * image-lead-split content layout (content-layout expansion wave, task
@@ -259,6 +260,7 @@ function renderVisualPlaceholder(rect: ContentRect, ctx: ComponentCtx) {
 }
 
 export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
 
@@ -387,6 +389,38 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
   const visualRect: ContentRect = starved
     ? { x: STARVED_VISUAL_X, y: VISUAL_Y, w: STARVED_VISUAL_W, h: VISUAL_H }
     : { x: LEAD_VISUAL_X, y: visualBandY, w: LEAD_VISUAL_W, h: visualBandH }
+
+  if (treated) {
+    const treatedBody: ContentRect = {
+      x: treated.contentRect.x > TEXT_X ? treated.contentRect.x : TEXT_X,
+      y: treated.contentRect.y,
+      w: treated.contentRect.x > TEXT_X ? TEXT_X + TEXT_W - treated.contentRect.x : TEXT_W,
+      h: Math.max(120, bodyBottom - treated.contentRect.y),
+    }
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent arrangement={slide.arrangement} components={bodyComponents} rect={treatedBody} ctx={ctx} />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={TEXT_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+        {visualComponent
+          ? renderVisualComponent(visualComponent, visualRect, ctx, visualMeasured)
+          : renderVisualPlaceholder(visualRect, ctx)}
+      </>
+    )
+  }
 
   return (
     <>

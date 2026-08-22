@@ -8,6 +8,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * split-band content layout (content-layout expansion wave, task T2 —
@@ -175,6 +176,40 @@ function hasTlLogo(ir: PptxIR): boolean {
 }
 
 export function SplitBandContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
+  if (treated) {
+    const { fonts, colors } = ctx
+    const bodyBottom = slide.footnote ? BODY_BOTTOM_BASE - BODY_BOTTOM_FOOTNOTE_SHRINK : BODY_BOTTOM_BASE
+    const bodyRect = {
+      x: treated.contentRect.x,
+      y: treated.contentRect.y,
+      w: treated.contentRect.w,
+      h: Math.max(120, bodyBottom - treated.contentRect.y),
+    }
+    const footnote = slide.footnote
+      ? fitSvgLine(slide.footnote, { maxWidth: TEXT_MAX_W, fontSize: 14, minFontSize: 11 })
+      : null
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent arrangement={slide.arrangement} components={slide.components} rect={bodyRect} ctx={ctx} />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={TEXT_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
+
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
 

@@ -32,6 +32,7 @@ import {
 import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * bento-panel content layout（spec §3.2，Wave 3 Task 22，本 wave 体量最大
@@ -729,6 +730,7 @@ function renderCell(
 }
 
 export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
   // CJK has no case distinction, so the "uppercase kicker" convention just
@@ -782,12 +784,19 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
 
-  const bentoRect: ContentRect = {
-    x: 96,
-    y: headingLastY + 36 + subheadingBudget,
-    w: 1088,
-    h: Math.max(0, 620 - (headingLastY + 36 + subheadingBudget)),
-  }
+  const bentoRect: ContentRect = treated
+    ? {
+        x: treated.contentRect.x,
+        y: treated.contentRect.y,
+        w: treated.contentRect.w,
+        h: Math.max(0, 620 - treated.contentRect.y),
+      }
+    : {
+        x: 96,
+        y: headingLastY + 36 + subheadingBudget,
+        w: 1088,
+        h: Math.max(0, 620 - (headingLastY + 36 + subheadingBudget)),
+      }
 
   // Explode kpi_cards components into one bento tile per item *before* the grid
   // math runs — the grid's input is a mixed sequence of units (KPI items +
@@ -873,6 +882,28 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       >
         {cells.map((cell, i) => renderCell(cell, i, ctx, colors))}
       </g>
+    )
+  }
+
+  if (treated) {
+    return (
+      <>
+        {treated.chrome}
+        {body}
+        {slide.footnote && (
+          <text
+            x="96"
+            y="652"
+            fontFamily={fonts.body}
+            fontSize="20"
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {slide.footnote}
+          </text>
+        )}
+      </>
     )
   }
 

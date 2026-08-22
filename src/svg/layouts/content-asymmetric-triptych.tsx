@@ -8,6 +8,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * asymmetric-triptych content layout (P1 variety wave, task 4 — content-
@@ -86,6 +87,7 @@ const ROW_GAP = 24
 const PANEL_RADIUS = 6
 
 export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
   const kicker = section
@@ -115,7 +117,7 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
 
-  const bodyTop = headingLastY + 36 + subheadingBudget
+  const bodyTop = treated ? treated.contentRect.y : headingLastY + 36 + subheadingBudget
   const bodyBottom = slide.footnote ? 616 : 632
   const bodyH = Math.max(120, bodyBottom - bodyTop)
 
@@ -152,6 +154,87 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: HEADING_MAX_W, fontSize: 14, minFontSize: 11 })
     : null
+
+  const triptychBody = (
+    <>
+      <line
+        x1={DIVIDER_X}
+        y1={bodyTop}
+        x2={DIVIDER_X}
+        y2={bodyTop + bodyH}
+        stroke={colors.border ?? colors.muted}
+        strokeWidth={1}
+        strokeOpacity={0.6}
+      />
+      <rect
+        x={topRect.x}
+        y={topRect.y}
+        width={topRect.w}
+        height={topRect.h}
+        rx={ctx.shape?.radius ?? PANEL_RADIUS}
+        fill="none"
+        stroke={colors.border ?? colors.muted}
+        strokeOpacity={0.45}
+        strokeWidth={1}
+      />
+      {!bottomStarved && (
+        <>
+          <rect
+            x={bottomRect.x}
+            y={bottomRect.y}
+            width={bottomRect.w}
+            height={bottomRect.h}
+            rx={ctx.shape?.radius ?? PANEL_RADIUS}
+            fill="none"
+            stroke={colors.border ?? colors.muted}
+            strokeOpacity={0.45}
+            strokeWidth={1}
+          />
+          <line
+            x1={RIGHT_X}
+            y1={dividerY}
+            x2={RIGHT_X + RIGHT_W}
+            y2={dividerY}
+            stroke={colors.border ?? colors.muted}
+            strokeWidth={1}
+            strokeOpacity={0.3}
+          />
+        </>
+      )}
+      {leadComponent && (
+        <SvgContent arrangement={undefined} components={[leadComponent]} rect={leadRect} ctx={ctx} />
+      )}
+      {topComponents.length > 0 && (
+        <SvgContent arrangement={undefined} components={topComponents} rect={topRect} ctx={ctx} />
+      )}
+      {bottomComponents.length > 0 && (
+        <SvgContent arrangement={undefined} components={bottomComponents} rect={bottomRect} ctx={ctx} />
+      )}
+      {footnote && (
+        <text
+          data-truncated={footnote.truncated ? "1" : undefined}
+          x="96"
+          y={footnoteBaselineFor(footnote.fontSize)}
+          fontFamily={fonts.body}
+          fontSize={footnote.fontSize}
+          fill={colors.muted}
+          fontStyle="italic"
+          dominantBaseline="alphabetic"
+        >
+          {footnote.text}
+        </text>
+      )}
+    </>
+  )
+
+  if (treated) {
+    return (
+      <>
+        {treated.chrome}
+        {triptychBody}
+      </>
+    )
+  }
 
   return (
     <>
