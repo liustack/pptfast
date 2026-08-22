@@ -253,7 +253,7 @@ non-default brand frame. A new theme also needs a `layouts` entry in
 page types defaults to `FULL_LAYOUTS.<type>` (every registered layout for
 that type), and as of the post-v0.3 W8 fix round **all 17 built-ins point
 every page type there** — the last three chapter-only curation exclusions
-(bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
+(classroom/heritage excluding `fashion-chapter`, an artifact of
 `readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
 real dual-ink contrast comparison confirmed all three clear 3:1 without the
 exclusion (`src/themes/definitions.ts:121-146` has the full history). Narrowing

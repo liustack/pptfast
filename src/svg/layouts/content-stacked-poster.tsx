@@ -74,7 +74,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  * 对比度自适应修复（W4 fix round，Important I1「content layout 的
  * subheading 出现同类回声」台账）：两条路径（poster / renderStackedContent
  * 降级）的 subheading 都原样消费 `colors.accent`，同 content-narrow-
- * column.tsx 先例——对 consulting/bloom/classroom/heritage/academic 五个
+ * column.tsx 先例——对 consulting/classroom/heritage/academic 四个
  * 主题不达标。两处都改用 `accessibleInk(colors.accent, ctx.defaultBg,
  * fontSize)`，通过校验的主题（含本文件原生 insight/creative 系）原样返回、
  * 逐字节不变。

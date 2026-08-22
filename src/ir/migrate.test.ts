@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { PptfastError } from "../errors"
-import { migrateChromeToBranding, migrateIrV3ToV4 } from "./migrate"
+import { migrateBloomToClassroom, migrateChromeToBranding, migrateIrV3ToV4 } from "./migrate"
 import { PptxIRV3Schema, type PptxIRV3 } from "./legacy-v3"
 import { STRATEGY_VALUES, PACING_VALUES, AUDIENCE_VALUES } from "./narrative-values"
 
@@ -223,6 +223,18 @@ describe("migrateIrV3ToV4", () => {
     expect(v4.branding).toBe("minimal")
     expect("chrome" in v4).toBe(false)
   })
+
+  it("rewrites bloom theme id to classroom so a v3 object that carried bloom comes out v4 classroom", () => {
+    const v3 = baseV3({
+      scenario: { mode: "narrative", delivery: "text" },
+      theme: { id: "bloom", style: { colors: { primary: "#D89A8E" } } },
+    })
+    const v4 = migrateIrV3ToV4(v3)
+    expect(v4.version).toBe("4")
+    expect(v4.theme.id).toBe("classroom")
+    expect(v4.theme.style).toEqual({ colors: { primary: "#D89A8E" } })
+    expect(v4.narrative).toEqual({ strategy: "storytelling", pacing: "dense" })
+  })
 })
 
 describe("migrateChromeToBranding", () => {
@@ -267,5 +279,52 @@ describe("migrateChromeToBranding", () => {
     expect(input).toEqual(snapshot)
     expect(result).not.toBe(input)
     expect(result).toEqual({ branding: "full", meta: { organization: "ACME" } })
+  })
+})
+
+describe("migrateBloomToClassroom", () => {
+  it("rewrites IR theme.id bloom to classroom and preserves other theme fields", () => {
+    const input = { theme: { id: "bloom", style: { colors: { primary: "#D89A8E" } }, brand: { footer: false } } }
+    const result = migrateBloomToClassroom(input) as { theme: Record<string, unknown> }
+    expect(result.theme.id).toBe("classroom")
+    expect(result.theme.style).toEqual({ colors: { primary: "#D89A8E" } })
+    expect(result.theme.brand).toEqual({ footer: false })
+    expect(result.theme).not.toBe(input.theme)
+  })
+
+  it("rewrites spec theme string bloom to classroom", () => {
+    const result = migrateBloomToClassroom({ theme: "bloom", pages: [] }) as Record<string, unknown>
+    expect(result.theme).toBe("classroom")
+    expect(result.pages).toEqual([])
+  })
+
+  it("classroom / omitted theme / other ids are identity: same reference", () => {
+    const classroomIr = { theme: { id: "classroom" } }
+    expect(migrateBloomToClassroom(classroomIr)).toBe(classroomIr)
+    const classroomSpec = { theme: "classroom" }
+    expect(migrateBloomToClassroom(classroomSpec)).toBe(classroomSpec)
+    const omitted = { filename: "x" }
+    expect(migrateBloomToClassroom(omitted)).toBe(omitted)
+    const other = { theme: { id: "consulting" } }
+    expect(migrateBloomToClassroom(other)).toBe(other)
+    const otherSpec = { theme: "tech" }
+    expect(migrateBloomToClassroom(otherSpec)).toBe(otherSpec)
+  })
+
+  it("non-object input passes through unchanged", () => {
+    expect(migrateBloomToClassroom(null)).toBeNull()
+    expect(migrateBloomToClassroom("not-an-object")).toBe("not-an-object")
+    expect(migrateBloomToClassroom(42)).toBe(42)
+    const arr = [{ theme: "bloom" }]
+    expect(migrateBloomToClassroom(arr)).toBe(arr)
+  })
+
+  it("does not mutate the input", () => {
+    const input = { theme: { id: "bloom", style: { colors: { primary: "#D89A8E" } } } }
+    const snapshot = JSON.parse(JSON.stringify(input))
+    const result = migrateBloomToClassroom(input)
+    expect(input).toEqual(snapshot)
+    expect(result).not.toBe(input)
+    expect((result as { theme: unknown }).theme).not.toBe(input.theme)
   })
 })

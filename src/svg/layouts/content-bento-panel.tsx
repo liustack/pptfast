@@ -94,7 +94,7 @@ import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
  *
  * 对比度自适应修复（W4 fix round，Important I1「content layout 的
  * subheading 出现同类回声」台账）：subheading 原样消费 `colors.accent`，同
- * content-narrow-column.tsx 先例——对 consulting/bloom/classroom/heritage/
+ * content-narrow-column.tsx 先例——对 consulting/classroom/heritage/
  * academic 五个主题不达标（该 layout 在这些主题 pre-W4 策展集里都不
  * 存在，全集放开新暴露）。改用 `accessibleInk(colors.accent, ctx.defaultBg,
  * fontSize)`，通过校验的主题（包括本文件原生 tech）原样返回、逐字节不变。
@@ -108,7 +108,7 @@ import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
  * `accessibleInk(colors.accent, ctx.colors.surface, fittedValue.fontSize)`
  * ——背景参数是 `colors.surface`，不是 `ctx.defaultBg`。数值字号固定
  * >=24px（56/72 两档，仅在极端窄卡下可能收缩到 `BENTO_KPI_VALUE_MIN_SIZE`
- * =20），大字号 3:1 门槛下实测 consulting/bloom/classroom/heritage 四个
+ * =20），大字号 3:1 门槛下实测 consulting/classroom/heritage 三个
  * 主题不达标（`pptfast audit` 实测 consulting 1.56:1，见
  * `full-matrix-contrast.test.ts` 的同名回归网）——与 subheading 22px 走
  * 4.5:1 门槛时不达标的五主题集合不是同一批，纯粹是字号不同导致门槛不同，非

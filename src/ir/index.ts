@@ -89,7 +89,6 @@ export const BUILTIN_THEME_IDS = [
   "academic",
   "insight",
   "campaign",
-  "bloom",
   "classroom",
   "ink",
   "tech",

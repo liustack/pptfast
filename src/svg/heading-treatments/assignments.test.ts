@@ -114,7 +114,6 @@ describe("resolveHeadingTreatment", () => {
   describe("unassigned / missing themeId → undefined", () => {
     it.each([
       "classroom",
-      "bloom",
       "swiss",
       "stage",
       "memo",
@@ -151,9 +150,8 @@ describe("resolveHeadingTreatment", () => {
     })
   })
 
-  it("bloom is not in the table (classroom recolor)", () => {
-    expect(resolveHeadingTreatment("bloom")).toBeUndefined()
-    expect(assignedThemeIds()).not.toContain("bloom")
+  it("classroom is not in the table", () => {
+    expect(resolveHeadingTreatment("classroom")).toBeUndefined()
     expect(assignedThemeIds()).not.toContain("classroom")
   })
 

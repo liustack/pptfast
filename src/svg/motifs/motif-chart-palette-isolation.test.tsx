@@ -2,7 +2,7 @@
 //
 // Review fix round (P1 variety wave, task 2 — Major finding): buildCtx used
 // to rotate `ctx.colors.chartPalette` itself, which is the exact token
-// campaign-motif/classroom-motif/bloom-motif destructure by fixed position
+// campaign-motif/classroom-motif destructure by fixed position
 // for their own decorative fills (`ctx.colors.chartPalette` — see each
 // file's own header comment: "颜色取 ctx.colors.chartPalette"). Chart
 // palette rotation therefore silently leaked into decor color choice —
@@ -46,10 +46,6 @@ describe("decorative chartPalette-reading motifs are isolated from chart-palette
   it.each([
     ["campaign", CampaignMotif, coverSlide] as const,
     ["classroom", ClassroomMotif, coverSlide] as const,
-    // 柔和组重设计（2026-08-20）后 bloom 是 classroom 的色板 preset，锚点
-    // motif 就是 `classroom-motif`——本行渲的是同一个组件、bloom 自己的
-    // tokens，覆盖没有减少（`motif-bloom-motif.tsx` 已随水彩色板一并删除）。
-    ["bloom", ClassroomMotif, endingSlide] as const,
     // cover 撤底带且太阳让位，不再读 chartPalette。ending 才有太阳芯与彩虹划。
     ["crayon", CrayonMotif, endingSlide] as const,
     ["arena", ArenaMotif, coverSlide] as const,

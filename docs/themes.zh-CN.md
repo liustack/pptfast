@@ -1,5 +1,5 @@
 ---
-summary: '24 套内置主题（25 个 id）、从 PowerPoint 模板抽取自家品牌，以及通过 CLI flag、IR、项目配置做 style 覆盖'
+summary: '24 套内置主题（24 个 id）、从 PowerPoint 模板抽取自家品牌，以及通过 CLI flag、IR、项目配置做 style 覆盖'
 read_when:
   - 挑主题，或查某个主题 id
   - 想让产出看起来像自己公司（`pptfast brand extract`）
@@ -8,7 +8,7 @@ read_when:
 
 # 主题
 
-主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素：logo、页脚、页码）与每个页型各自的版式集合。内置 24 套（25 个 id，`bloom` 是 `classroom` 的纯换色）。
+主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素：logo、页脚、页码）与每个页型各自的版式集合。内置 24 套（24 个 id）。
 
 | id | label |
 |---|---|
@@ -17,7 +17,6 @@ read_when:
 | `academic` | Academic |
 | `insight` | Financial Insight |
 | `campaign` | Marketing Campaign |
-| `bloom` | Soft Bloom（`classroom` 的换色版）|
 | `classroom` | Classroom |
 | `ink` | Ink Wash |
 | `tech` | Tech |
@@ -43,8 +42,6 @@ read_when:
 封面、章节、结尾三类页面，有 Claude Design 设计板就锁到板上的构造。软偏好保不住这三类页。第七波五家已经锁了封面：`stage` 用 `poster-center`，`lecture` 用 `board-head`，`swiss` 用 `institutional-block`，`memo` 用 `memo-head`，`playbill` 用 `bill-head`。这五家的章节和结尾，以及其它主题里尚未画板的同类页，仍走各页型全集，等下一轮设计画板后再锁。这是在等板，不是漏锁。内容页仍走全集，再按分配表加权。
 
 版式仍住在共享池里。锁定是主题怎么用池，不是给一家另开一份私有文件。每家内置也会点名自己更常抽到的封面、章节、内容页和结尾，所以两家主题用同一份 deck、同一个 seed，通常会抽到不同版式。软偏好（`layoutTendencies`）留给内容页，以及还没锁定的身份页。已经锁死的封面，偏好就是那把锁本身。某一页必须是某一个版式时，在那一页写 `slide.layout` 钉死。封面锁定不会因为后面某一波把另外三类页填上而跟着动。每个版式都会按主题的实际背景色自适应取色，所以池在任何主题下都保持可读。
-
-`bloom` 就是换了五个色值的 `classroom`，别的一处不差：结构、字体、圆角、装饰几何全部相同，只是渲成自己的色板。想要樱粉纸和干玫瑰选 `bloom`，想要雾蓝讲义纸选 `classroom`，同一份 deck 在两者下抽到的版式相同。所以是 25 个主题 id、24 套设计。
 
 `memo` 是打字机决定（印章红只成线与字，永不成面）。与 deck 声明 `branding: "full"` 天然搭配，页脚、页码、机构名留在页上。搭配写在这里，引擎不绑定，品牌框仍归 deck 声明。
 

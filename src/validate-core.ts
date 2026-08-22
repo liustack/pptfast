@@ -787,12 +787,17 @@ export function validateIr(input: unknown): ValidateResult {
   // BUILTIN_THEME_IDS-only check, same error shape.
   const installedThemeIds = getInstalledThemeIds()
   if (!installedThemeIds.includes(r.data.theme.id)) {
+    const themeId = r.data.theme.id
+    const message =
+      themeId === "bloom"
+        ? 'theme id "bloom" was removed — run `pptfast migrate <input> -o <output>` to rewrite it to "classroom"'
+        : `unknown theme "${themeId}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`
     return withNormalized({
       ok: false,
       errors: [
         {
           path: "theme.id",
-          message: `unknown theme "${r.data.theme.id}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
+          message,
         },
       ],
     })

@@ -370,7 +370,7 @@ export const kpi: SvgComponent<KpiComponent> = {
           )
           // bold-metrics fix (2026-07-24): this text renders `fontWeight=
           // "bold"` in `ctx.fonts.heading` below — audit-baseline.test.ts's
-          // ink/journal/runway/bloom "kpi" cases caught this the same way
+          // ink/journal/runway "kpi" cases caught this the same way
           // they caught the reported cover defect (that test's own header
           // comment: "if a case fails, the residual overflow is real and
           // belongs to the renderer") once svg-audit.ts's overflow walker

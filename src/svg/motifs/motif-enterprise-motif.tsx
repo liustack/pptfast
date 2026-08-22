@@ -51,7 +51,7 @@ import { leafRecessOpacity } from "./decor-budget"
  * border = 尺身、muted = 齿）。设计板给刻度齿标的是 `#7A7F87`——那是
  * enterprise `chartPalette` 的第四格（机灰）。本文件改读 `muted`：motif 读
  * `chartPalette` 是有先例的坑（`motif-chart-palette-isolation.test.tsx` 的
- * 文件头记着 campaign/classroom/bloom 三家被图表调色板轮转悄悄改色的那次
+ * 文件头记着 campaign/classroom 被图表调色板轮转悄悄改色的那次
  * Major），而一枚刻度齿在语义上本来就是「安静的记号」，`muted` 是它的岗位
  * 色。两者同为中性灰，齿比板上略深半档。
  *

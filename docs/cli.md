@@ -27,7 +27,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> [-o <dir>] [--html] [--no-git-ignore]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages. Without `-o`, writes `<project>/.pptfast/<deck>/` |
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes |
-| `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
+| `migrate <input> -o <output>` | Convert a v3 IR file to v4, rewrite chrome to branding or a retired theme id onto classroom, or convert a `deck.plan.json` project directory to `deck.spec.json`. Deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
 | `config set <key> [value]` / `config show` | Store Pexels/Pixabay/Openverse credentials and generator switches in `$PPTFAST_HOME/config.json`. Omit the value for an apiKey or clientSecret to enter it hidden. `show` masks secrets and labels `(file)` / `(env)` |
 | `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | Search Pexels, then Pixabay if keyed, then Openverse (cc0/pdm). Prints attribution lines |

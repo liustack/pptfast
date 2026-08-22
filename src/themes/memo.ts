@@ -1,8 +1,8 @@
 import type { StyleTokens } from "./tokens";
 
 /**
- * memo（打字机决定）——2026-08-21 新增第 22 个 theme id（第 21 个结构身份。
- * bloom 仍是 classroom 的换色）。性格：这不是讨论，是已经写下的决定。
+ * memo（打字机决定）——2026-08-21 新增第 22 个 theme id（第 21 个结构身份）。
+ * 性格：这不是讨论，是已经写下的决定。
  * 目标场景：决策通报、会后 leave-behind、政策落地。页脚、页码、
  * 机构名这些 branding 在一份给人带走的备忘录上是该在的，与 deck 声明
  * `branding: "full"` 天然搭配。搭配写在本注释与 `docs/themes`，引擎不绑定

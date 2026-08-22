@@ -83,7 +83,7 @@ interface StepItemTextLayout {
 // `fontFamily` (bold-metrics fix, 2026-07-24): both `title` render call
 // sites (`renderStepCardBody`/`renderVertical`, below) declare
 // `fontWeight="600"`/`"700"` in `ctx.fonts.heading` — audit-baseline.test.ts's
-// ink/journal/runway/bloom "new_components_stress" case caught this the same
+// ink/journal/runway "new_components_stress" case caught this the same
 // class of defect as the reported cover overflow once svg-audit.ts's
 // overflow walker became weight/face-aware (that test's own header comment:
 // "if a case fails, the residual overflow is real and belongs to the

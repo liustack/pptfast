@@ -10,8 +10,8 @@ import {
 // lookup contract, independent of any component renderer: missing /
 // unknown / unassigned pairs stay undefined so today's default face is
 // unchanged. campaign × cycle is hub_spoke (first-listed wins), never
-// petal_wheel. bloom is a classroom recolor preset and is not in the
-// table. 65 rows (41 prior + 24 callout).
+// petal_wheel. 65 rows (41 prior + 24 callout). classroom is listed
+// on callout like every other canonical theme.
 
 type AssignmentRow = {
   componentType: string
@@ -376,12 +376,6 @@ describe("resolveComponentForm", () => {
     expect(resolveComponentForm("cycle", "campaign")?.form).not.toBe("petal_wheel")
   })
 
-  it("bloom + numbered_cards / timeline / callout → undefined (bloom not in the table)", () => {
-    expect(resolveComponentForm("numbered_cards", "bloom")).toBeUndefined()
-    expect(resolveComponentForm("timeline", "bloom")).toBeUndefined()
-    expect(resolveComponentForm("callout", "bloom")).toBeUndefined()
-  })
-
   it("consulting + comparison → pill_panels, consulting + icon_cards → undefined", () => {
     expect(resolveComponentForm("comparison", "consulting")?.form).toBe("pill_panels")
     expect(resolveComponentForm("icon_cards", "consulting")).toBeUndefined()
@@ -423,8 +417,7 @@ describe("assignedThemeIds", () => {
     expect(assignedThemeIds("not-a-component")).toEqual([])
   })
 
-  it("callout lists 24 themes (bloom omitted)", () => {
+  it("callout lists 24 themes", () => {
     expect(assignedThemeIds("callout")).toHaveLength(24)
-    expect(assignedThemeIds("callout")).not.toContain("bloom")
   })
 })

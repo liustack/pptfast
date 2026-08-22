@@ -96,7 +96,7 @@ describe("fashion 家族（runway）", () => {
   // 与上面 chapter org 行同型的既有缺陷，这次是 ending 的两处：顶部 org 小字
   // 固定叠 0.72、底部 meta 行固定叠 0.6，混到满版 primary 上都可能跌破正文的
   // 4.5:1。17 家钉 fashion-ending 实测，8 家在违例——org 行 academic 4.24 /
-  // campaign 4.10 / bloom 3.77 / classroom 3.76 / pulse 3.98 / ember 3.44 /
+  // campaign 4.10 / classroom 3.76 / pulse 3.98 / ember 3.44 /
   // vermilion 4.14，meta 行再多一家 terra 3.75。两处各走 `accessibleOpacity`
   // 之后，达标的保留原不透明度、不达标的退回全不透明。
   it("ending：org 与 meta 两处不透明度各走 accessibleOpacity——按各自字号独立判定", () => {
@@ -145,8 +145,8 @@ describe("fashion 家族（runway）", () => {
     // 集合，随 token 变动：冷调组把 academic 的绿加深（#006A4E → #0E6245）
     // 后它退出过一次；柔和组（2026-08-20）把 campaign 的 primary 从品红
     // #F0559E 翻成舞台暗紫 #23173A，白字 @0.72 在 21px 上重新过线，
-    // **campaign 也退出**。classroom/bloom 的 primary 换了色相但仍在明度谷
-    // 里（#4A6B8A / #92535E），留在名单上。逐主题实测工具：
+    // **campaign 也退出**。classroom 的 primary 换了色相但仍在明度谷
+    // 里（#4A6B8A），留在名单上。逐主题实测工具：
     // `.issues/2026-08-18-theme-redesign/skins/tools/probe-fashion-flip.mts`
     // ——这个数组钉的是当前 token 下的实测结果，token 换血时它应当跟着换
     // （合并语义冲突的第一现场：两个各自全绿的分支在这里相遇）。
@@ -158,7 +158,7 @@ describe("fashion 家族（runway）", () => {
     // 越出这个盒子 35.1px。**这条测试要判的那件事没变**：21 和 14 同在 24px
     // 大字号线以下，floor 都是 4.5:1，FLIPPED 名单逐个主题实测前后完全一致，
     // 动的只是那个被扣款扣小了的字号常量。
-    const FLIPPED = ["bloom", "classroom", "pulse", "ember", "vermilion", "crayon"]
+    const FLIPPED = ["classroom", "pulse", "ember", "vermilion", "crayon"]
     const longDeck = ir([endingLongSub])
     for (const themeId of CANONICAL_THEME_IDS) {
       const markup = renderSvgMarkup(

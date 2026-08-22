@@ -28,19 +28,13 @@ function isEdgeBar(rect: Element, cardW: number, cardH: number): boolean {
   return (w <= 12 && h >= cardH * 0.7) || (h <= 6 && w >= cardW * 0.7)
 }
 
-describe("callout form assignment covers every built-in theme except bloom", () => {
-  const assigned = CANONICAL_THEME_IDS.filter((id) => id !== "bloom")
-
-  it("every non-bloom canonical theme resolves a callout form", () => {
-    for (const id of assigned) {
+describe("callout form assignment covers every canonical theme", () => {
+  it("every canonical theme resolves a callout form", () => {
+    for (const id of CANONICAL_THEME_IDS) {
       const row = resolveComponentForm("callout", id)
       expect(row, id).toBeDefined()
       expect(["tint_panel", "hanging_bare", "lead_word"]).toContain(row!.form)
     }
-  })
-
-  it("bloom is omitted like the other form tables", () => {
-    expect(resolveComponentForm("callout", "bloom")).toBeUndefined()
   })
 
   it("heritage is TintPanel, not the hanging/lead reference skins", () => {

@@ -10,7 +10,6 @@ installNodePlatform()
 
 const UNASSIGNED = [
   "classroom",
-  "bloom",
   "swiss",
   "stage",
   "memo",
@@ -112,9 +111,9 @@ describe("unassigned heading bytes stay pinned to the pre-change fixture", () =>
     }
   }
 
-  it("captures 414 keys matching the fixture", () => {
-    expect(Object.keys(pages)).toHaveLength(414)
-    expect(Object.keys(fixture.pages)).toHaveLength(414)
+  it("captures 378 keys matching the fixture", () => {
+    expect(Object.keys(pages)).toHaveLength(378)
+    expect(Object.keys(fixture.pages)).toHaveLength(378)
   })
 
   it.each(Object.keys(fixture.pages))("%s", (key) => {

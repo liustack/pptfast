@@ -1397,8 +1397,8 @@ describe("unoffered sparse pins warn and fall back", () => {
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("statement")
   })
 
-  it("classroom and bloom both refuse statement and verse-chapter", () => {
-    for (const themeId of ["classroom", "bloom"] as const) {
+  it("classroom refuses statement and verse-chapter", () => {
+    for (const themeId of ["classroom"] as const) {
       const statement: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
       const verse: Slide = { type: "chapter", layout: "verse-chapter", heading: "Chapter", components: [] }
       const statementIr = makeIR([statement], themeId)

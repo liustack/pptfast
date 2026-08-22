@@ -31,7 +31,7 @@
  * own doc comment has the full story). `ctx.colors.chartPalette` itself is
  * **never** rotated — an earlier version of this task rotated it in place
  * inside `buildCtx`, which silently leaked into every other reader of that
- * same token: `campaign-motif`/`classroom-motif`/`bloom-motif` all
+ * same token: `campaign-motif`/`classroom-motif` all
  * destructure `ctx.colors.chartPalette` by fixed position for their own
  * decorative fills (unrelated to any chart), so a motif's decoration color
  * drifted with the chart phase — campaign (a settled 1-member motif

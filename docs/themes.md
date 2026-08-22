@@ -8,7 +8,7 @@ read_when:
 
 # Themes
 
-A theme bundles a style (design tokens), a brand (identity frame: logo, footer, page number), and a layout set for each page type. There are 24 built-ins — 25 theme ids, since `bloom` is a pure recolor of `classroom`.
+A theme bundles a style (design tokens), a brand (identity frame: logo, footer, page number), and a layout set for each page type. There are 24 built-in themes, 24 ids.
 
 | id | label |
 |---|---|
@@ -17,7 +17,6 @@ A theme bundles a style (design tokens), a brand (identity frame: logo, footer, 
 | `academic` | Academic |
 | `insight` | Financial Insight |
 | `campaign` | Marketing Campaign |
-| `bloom` | Soft Bloom (a recolor of `classroom`) |
 | `classroom` | Classroom |
 | `ink` | Ink Wash |
 | `tech` | Tech |
@@ -43,8 +42,6 @@ A theme bundles a style (design tokens), a brand (identity frame: logo, footer, 
 Cover, chapter, and ending lock to the Claude Design board when a board exists for that page type. Soft preference cannot hold those pages in place. Every builtin now locks `layouts.cover` to its board face (wave7 + restore w1 + restore w2). Chapter and ending stay on the full registered set until the next design pass draws those boards. That wait is marked on the theme. It is waiting on a board, not a forgotten lock. Content pages still pick from the full set, weighted by the allocation table.
 
 Layouts still live in the shared pool. A lock is how a theme uses the pool, not a private fork of a layout file. Every built-in also names the covers, chapter breaks, content pages, and endings it leans toward, so two themes rendering the same deck under the same seed usually pick different layouts. Soft preference (`layoutTendencies`) remains for content, and for identity pages that have not locked yet. For a locked cover the preference is the lock itself. Pin `slide.layout` when a single page has to be exactly one thing. Cover locks do not move when a later wave fills the other three page types. Every layout adapts its text color to the theme's actual background, so the pool stays readable everywhere.
-
-`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 25 theme ids and 24 distinct designs.
 
 `memo` is a typewriter decision memo (stamp-red rules, never a red fill). It pairs naturally with deck `branding: "full"` so the footer, page numbers, and organization line stay on the page. The pairing is a note, not an engine lock. `branding` still belongs to the deck.
 

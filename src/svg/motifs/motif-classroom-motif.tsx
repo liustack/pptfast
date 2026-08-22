@@ -18,10 +18,10 @@ import { leafRecessOpacity } from "./decor-budget"
  *     页脚的页上画**（2026-08-20 第四轮评审，见下）。
  *   - ~~右上回形针弧~~：2026-08-20 第四轮评审删除，见下。
  * 斑块/点阵/波浪线/短线组整族退役——设计板 classroom 那格的原话是「恒位；
- * 现状斑块水彩退役」，同一句也判了 bloom 的水彩（`motif-bloom-motif.tsx`
- * 本轮整个删除，bloom 的 motif 锚点改指本文件）。
+ * 现状斑块水彩退役」。水彩兄弟 motif 本轮整个删除，classroom-motif 是
+ * 剩下的拍纸簿。
  *
- * ## 第四轮评审的两处返工（2026-08-20，bloom p01 / p03）
+ * ## 第四轮评审的两处返工（2026-08-20，p01 / p03）
  *
  * 1. **回形针删除**。用户原话：「顶部那个绿色别针一样的是什么东西，跟空心
  *    圆挤在一起干什么，非常难看。」两件东西确实是贴着的：最后一枚装订孔
@@ -29,7 +29,7 @@ import { leafRecessOpacity } from "./decor-budget"
  *    重叠着排，读起来不是「别在打孔边上的一枚针」，而是两个零件挤在一角。
  *    位置写死不能内容感知，挪去别处又只是把同一个问题换个角落，所以整件
  *    删掉：留下的十二枚孔本来就是一条完整的节奏，少一枚针不缺什么。
- *    accent（陶土红/bloom 的绿）因此退出本 motif，全件只剩铅笔灰一色。
+ *    accent（陶土红）因此退出本 motif，全件只剩铅笔灰一色。
  * 2. **铅笔虚线只在无页脚的页上画**。用户原话：「底部那个虚线是干什么用
  *    的，放这里太拥挤了，空的页面放放还差不多，这个有 footer 的页面还放，
  *    太拥挤不好看了。」页脚 meta 行的基线在 y700（`branding.tsx`），
@@ -46,7 +46,7 @@ import { leafRecessOpacity } from "./decor-budget"
  * classroom 的 chapter 默认底色是整版 primary 雾蓝（`themes/classroom.ts`
  * 的 `defaultBackgrounds.chapter`），本 motif 三件东西走 muted（铅笔灰）与
  * accent（陶土红）——压 primary 实测 1.08:1 与 1.41:1，画上去不是「克制」
- * 而是「看不见」。bloom 作为色板 preset 同理：1.04:1 与 1.55:1。
+ * 而是「看不见」。
  *
  * 安全区：板上四条红虚线是「意图」，实测排字外沿是「事实」
  *
@@ -88,9 +88,9 @@ import { leafRecessOpacity } from "./decor-budget"
  * 纪律：零 theme id、零 hex，颜色只来自 ctx（muted 铅笔灰；回形针删除后
  * accent 不再出现在本 motif 里）。**本轮起不再读 `chartPalette`**——v1 按固定下标解构那四格，图表
  * 调色板一轮转就会悄悄改掉装饰色（`motif-chart-palette-isolation.test.tsx`
- * 的文件头记着那次 Major，campaign/classroom/bloom 三家同时中招）。
- * 本 motif 现在是 classroom 与 bloom 共用的唯一候选（`motif-selection.ts`
- * 的 `MOTIF_CANDIDATES`），两家渲的是同一张几何、各自的色板。
+ * 的文件头记着那次 Major，campaign/classroom 同时中招）。
+ * 本 motif 现在是 classroom 的唯一候选（`motif-selection.ts`
+ * 的 `MOTIF_CANDIDATES`）。
  */
 
 // ── 顶缘装订孔排 ────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export function ClassroomMotif({ slide, ctx }: DecorProps) {
   const pencil = ctx.colors.muted
   const bg = ctx.defaultBg ?? ctx.colors.bg
   // 有页脚的页（content）不画底缘虚线：它会贴着页脚 meta 行排成第二条
-  // 横线（第四轮评审 bloom p03，推导见文件头）。
+  // 横线（第四轮评审 p03，推导见文件头）。
   const drawPencil = slide.type !== "content"
 
   return (

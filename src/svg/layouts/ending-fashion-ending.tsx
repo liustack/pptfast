@@ -24,7 +24,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
   // 否则退回全不透明（`ink.ts` 的同名函数注释）。
   // 17 家钉 fashion-ending 实测：满版 primary 的明度只要落在 readableOn
   // 两墨的交叠带附近，固定值就必然不够——org 行 academic 4.24 / campaign
-  // 4.10 / bloom 3.77 / classroom 3.76 / pulse 3.98 / ember 3.44 /
+  // 4.10 / classroom 3.76 / pulse 3.98 / ember 3.44 /
   // vermilion 4.14，meta 行连 terra 3.75 一起共 8 家违例，`deck-audit` 的
   // low-contrast 逐次报出。混合后本就达标的主题（consulting 9.36、
   // runway 10.20 等）逐字节不变。
@@ -67,7 +67,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
   // 大字号一侧只需 3:1，长副题被缩到 21px 就翻到正文的 4.5:1，量错字号
   // 就等于量错该过的那条线。实测：短副题 17 家全部 28px 保留 0.72（今天
   // 全矩阵逐字节不变），长副题缩到 21px 时 academic 4.24 / campaign 4.10 /
-  // bloom 3.77 / classroom 3.76 / pulse 3.98 / ember 3.44 / vermilion 4.14
+  // classroom 3.76 / pulse 3.98 / ember 3.44 / vermilion 4.14
   // 共 7 家翻线——守卫在爆雷前就位，而不是等长副题进来才补。
   const subtitleOpacity = accessibleOpacity(fg, ctx.colors.primary, subtitle.fontSize, 0.72)
 

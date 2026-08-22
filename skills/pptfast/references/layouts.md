@@ -20,7 +20,7 @@ A deck is for speaking. Extra words that will not fit on the slide go in `slide.
 
 This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts, `notes`, and deck `branding`.
 
-Climax, quote, and evidence pages pin a sparse pin-only layout when the theme offers it. Name it: `statement`, `pull-quote`, `verse-chapter`, `stat-hero`, `one-evidence`, `mono-bleed`. Do not leave those pages to auto-selection. A page that truly is one sentence still gets this pin even when pacing is `dense`. crayon, classroom (including bloom), enterprise, pulse, runway, and ember do not offer these layouts. If `validate` warns that the pin is not a sparse page this theme offers, drop the pin and write a regular content page.
+Climax, quote, and evidence pages pin a sparse pin-only layout when the theme offers it. Name it: `statement`, `pull-quote`, `verse-chapter`, `stat-hero`, `one-evidence`, `mono-bleed`. Do not leave those pages to auto-selection. A page that truly is one sentence still gets this pin even when pacing is `dense`. crayon, classroom, enterprise, pulse, runway, and ember do not offer these layouts. If `validate` warns that the pin is not a sparse page this theme offers, drop the pin and write a regular content page.
 
 When the interview or request chose `spacious`: tighten the on-slide budget. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
 

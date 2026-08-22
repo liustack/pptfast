@@ -23,6 +23,29 @@ export function migrateChromeToBranding(raw: unknown): unknown {
 }
 
 /**
+ * One-shot relocation of the removed `bloom` theme id onto `classroom`.
+ * This is not a long-term alias. After this lands, bloom is not a
+ * registered theme. Never mutates `raw`. Non-object / null / array input
+ * is returned as-is. Identity when there is no bloom theme id: the same
+ * `raw` reference, like chrome when chrome is absent.
+ */
+export function migrateBloomToClassroom(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw
+  const obj = raw as Record<string, unknown>
+  const theme = obj.theme
+  if (theme === "bloom") {
+    return { ...obj, theme: "classroom" }
+  }
+  if (typeof theme === "object" && theme !== null && !Array.isArray(theme)) {
+    const themeObj = theme as Record<string, unknown>
+    if (themeObj.id === "bloom") {
+      return { ...obj, theme: { ...themeObj, id: "classroom" } }
+    }
+  }
+  return raw
+}
+
+/**
  * `scenario.mode` → `narrative.strategy` value map (spec §9.1): only the
  * `"narrative"` mode value renames (the abstraction/instance collision spec
  * §1 flags), every other mode value (`pyramid`/`instructional`/`showcase`/
@@ -127,5 +150,5 @@ export function migrateIrV3ToV4(v3: PptxIRV3): PptxIR {
     ...(v3.seed !== undefined ? { seed: v3.seed } : {}),
     slides: v3.slides,
   }
-  return migrateChromeToBranding(v4) as PptxIR
+  return migrateBloomToClassroom(migrateChromeToBranding(v4)) as PptxIR
 }

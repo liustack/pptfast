@@ -82,8 +82,8 @@ describe("THEME_DEFINITIONS", () => {
   // 钉的是十三主题四页型的纯全集终态。design decision 7 的三处既有对比度
   // 裁定（luxe/campaign/classroom 的 content 排除 banner-heading）、design
   // decision 8 新增的三处阳性裁定（tech 的 cover/content、consulting 的
-  // chapter）、以及 W4 fix round 全矩阵扫描新发现的三处（bloom/classroom/
-  // heritage 的 chapter 排除 fashion-chapter）——共九处——已随 `src/svg/ink.ts`
+  // chapter）、以及 W4 fix round 全矩阵扫描新发现的两处（classroom/
+  // heritage 的 chapter 排除 fashion-chapter）——共八处——已随 `src/svg/ink.ts`
   // 的 readableOn 两轮根因修复（W4 引入自适应 ink helper；post-v0.3 W8 把
   // 固定 0.4 明度阈值换成两墨实测对比度取优）全部撤销。四个 FULL_* 常量是
   // 手工钉的字面数组（人审基线，不经 layoutsForSlideType 派生）——未来
@@ -249,11 +249,7 @@ describe("THEME_DEFINITIONS", () => {
     expect(THEME_DEFINITIONS.consulting.motif).toBe("banner-motif")
 
     expect(THEME_DEFINITIONS.classroom.layouts.cover).toEqual(["band-title"])
-    expect(THEME_DEFINITIONS.bloom.layouts.cover).toEqual(["band-title"])
-    expect(THEME_DEFINITIONS.bloom.layouts).toBe(THEME_DEFINITIONS.classroom.layouts)
-    expect(THEME_DEFINITIONS.bloom.layoutTendencies).toBe(THEME_DEFINITIONS.classroom.layoutTendencies)
     expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
-    expect(THEME_DEFINITIONS.bloom.motif).toBe("classroom-motif")
 
     expect(THEME_DEFINITIONS.enterprise.layouts.cover).toEqual(["band-title"])
     expect(THEME_DEFINITIONS.enterprise.layoutTendencies?.cover).toEqual(["band-title"])
@@ -745,7 +741,7 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   })
 
   // Hostile-review finding (backlog-sweep task I2 self-review): 4 of the 13
-  // builtins (bloom/ink/journal/runway) resolve their *heading* font to
+  // builtins (ink/journal/runway plus the later SimSun/KaiTi headings) resolve their *heading* font to
   // SimSun or KaiTi — real, deliberate CJK-serif design choices (see each
   // theme file's own inline comment — SimSun/KaiTi are the only CJK serif
   // entries in `SAFE_FONTS`) that have no exact width table. Every builtin's
@@ -768,10 +764,8 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // 衬线，因此**加入**这份名单；vermilion 从 SimSun 换成雅黑无衬线，因此
   // **退出**（它的标题从此走精确宽度表，不再是保守包络）。terra 从 Georgia
   // 换成雅黑——两者都在精确宽度表里，名单不变。
-  // 2026-08-20 柔和组皮肤重设计：bloom 成为 classroom 的色板 preset（token
-  // 对象直接 spread `CLASSROOM_TOKENS`），字体随之继承雅黑，宋体衬线报题
-  // 退役——bloom 因此**退出**这份名单，标题从保守包络改回精确宽度表
-  // （vermilion 在 gov-theme 波做过同一次移动）。
+  // 2026-08-20 柔和组皮肤重设计：classroom 走雅黑，宋体衬线报题退役，标题
+  // 从保守包络改回精确宽度表（vermilion 在 gov-theme 波做过同一次移动）。
   it("regression: heritage/ink/journal/lecture/luxe/memo/museum/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const nonExactHeadingBuiltins = new Set(["heritage", "ink", "journal", "lecture", "luxe", "memo", "museum", "runway"])
@@ -905,7 +899,7 @@ describe("pinOnly layout tier: registerTheme still legally allows curating a pin
   })
 })
 
-const EMPTY_SPARSE_THEME_IDS = ["crayon", "classroom", "bloom", "enterprise", "pulse", "runway", "ember"] as const
+const EMPTY_SPARSE_THEME_IDS = ["crayon", "classroom", "enterprise", "pulse", "runway", "ember"] as const
 const OMITTED_SPARSE_THEME_IDS: readonly string[] = []
 
 describe("sparseLayouts offer table", () => {
@@ -920,7 +914,7 @@ describe("sparseLayouts offer table", () => {
     }
   })
 
-  it("the seven no-sparse themes declare an empty offer list", () => {
+  it("the six no-sparse themes declare an empty offer list", () => {
     for (const id of EMPTY_SPARSE_THEME_IDS) {
       expect(THEME_DEFINITIONS[id].sparseLayouts, id).toEqual([])
     }
@@ -950,7 +944,6 @@ describe("sparseLayouts offer table", () => {
     expect(themeOffersSparse("consulting", "two-column")).toBe(false)
     for (const layoutId of SPARSE_LAYOUT_IDS) {
       expect(themeOffersSparse("classroom", layoutId), `classroom/${layoutId}`).toBe(false)
-      expect(themeOffersSparse("bloom", layoutId), `bloom/${layoutId}`).toBe(false)
     }
   })
 })

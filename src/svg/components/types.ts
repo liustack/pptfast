@@ -98,7 +98,7 @@ export interface ComponentCtx {
    * (review fix round, Major finding): an earlier version of this feature
    * rotated `colors.chartPalette` directly inside `buildCtx`, which silently
    * leaked into every *other* consumer of that same token —
-   * `campaign-motif`/`classroom-motif`/`bloom-motif` all destructure
+   * `campaign-motif`/`classroom-motif` all destructure
    * `ctx.colors.chartPalette` by fixed position for their own decorative
    * fills (see each file's own header comment), so a motif's decoration
    * color drifted with the chart's phase even though nothing about motif

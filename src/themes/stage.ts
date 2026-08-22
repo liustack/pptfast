@@ -1,8 +1,8 @@
 import type { StyleTokens } from "./tokens";
 
 /**
- * stage（黑场）——2026-08-21 新增第 21 个 theme id（第 20 个结构身份。
- * bloom 仍是 classroom 的换色）。性格：灯灭之后只剩一句话。
+ * stage（黑场）——2026-08-21 新增第 21 个 theme id（第 20 个结构身份）。
+ * 性格：灯灭之后只剩一句话。
  * 目标场景：产品发布会、主题演讲、keynote 式叙事。极简版式家族
  * statement / pull-quote 的天然宿主（版式本轮不动，倾向只用现有池）。
  *

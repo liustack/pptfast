@@ -111,7 +111,7 @@ describe("ClassroomMotif（拍纸簿）", () => {
   })
 
   /**
-   * 第四轮评审（bloom p03）的返工点：用户原话「底部那个虚线是干什么用的，
+   * 第四轮评审（p03）的返工点：用户原话「底部那个虚线是干什么用的，
    * 放这里太拥挤了，空的页面放放还差不多，这个有 footer 的页面还放，太拥挤
    * 不好看了。」页脚 meta 行在 y700、虚线在 y712，有页脚的页上两条挨着排。
    * `branding.tsx` 的 `showFooter` 以 `slide.type === "content"` 打头，
@@ -138,21 +138,6 @@ describe("ClassroomMotif（拍纸簿）", () => {
     expect(root.children).toHaveLength(0)
     // 退让的实测依据，而不是「感觉太淡」。
     expect(contrastRatio(t.colors.muted, t.colors.primary)).toBeLessThan(1.5)
-  })
-
-  /**
-   * 回形针（唯一一件 accent）删掉之后，本 motif 只剩 muted 一色，而 bloom
-   * 这个 preset 恰恰继承 classroom 的 muted——两家因此渲得逐字节相同，不再
-   * 只是「同几何不同色」。记在这里是为了让下一个人一眼看到这个后果，而不是
-   * 撞见一条看不懂的相等断言。
-   */
-  it("bloom 作为色板 preset 与 classroom 渲得逐字节相同（本 motif 只剩共享的 muted 一色）", () => {
-    const classroom = draw("classroom", coverSlide)
-    const bloom = draw("bloom", coverSlide)
-    expect(resolveStyle("bloom").colors.muted).toBe(resolveStyle("classroom").colors.muted)
-    expect(bloom.markup).toBe(classroom.markup)
-    expect(contrastRatio(resolveStyle("bloom").colors.muted, resolveStyle("bloom").colors.primary)).toBeLessThan(1.5)
-    expect(draw("bloom", chapterSlide).root.children).toHaveLength(0)
   })
 
   it("颜色一律读 token：孔与虚线都走 muted（铅笔灰），accent 一处不出现", () => {
@@ -223,7 +208,7 @@ describe("ClassroomMotif（拍纸簿）", () => {
   })
 
   /**
-   * 第四轮评审（bloom p01）的返工点：用户原话「顶部那个绿色别针一样的是
+   * 第四轮评审（p01）的返工点：用户原话「顶部那个绿色别针一样的是
    * 什么东西，跟空心圆挤在一起干什么，非常难看。」回形针的左缘 x1180.25
    * 与最后一枚装订孔的右缘 x1180.6 是重叠着排的。整件删除，这条钉的是
    * 「顶带上只剩装订孔一件东西」，免得有人把它捡回来。

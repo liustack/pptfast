@@ -157,8 +157,8 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
         // accent-colored label) — here the sibling is right there, so
         // falling back to a generic near-black instead of the heading's own
         // ink would visibly split one sentence into two different darks on
-        // any theme whose `colors.text` isn't already near-black (bloom
-        // `#4A4258`, classroom `#48545C`, ember `#26221E`, ...). Falling
+        // any theme whose `colors.text` isn't already near-black (
+        // classroom `#48545C`, ember `#26221E`, ...). Falling
         // back to `colors.text` keeps the sentence visually one piece, and
         // is always safe: every theme's `colors.text` is calibrated to
         // clear 4.5:1 against its own `colors.bg`, comfortably above this
@@ -168,7 +168,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
         // A real 16-theme sweep (`deck-audit.test.ts`'s own
         // "constellation-ending accent period contrast" block) found 7
         // themes below the floor on the raw accent fill — consulting
-        // (1.45:1), academic (2.92:1), bloom (2.09:1), classroom (2.09:1),
+        // (1.45:1), academic (2.92:1), classroom (2.09:1),
         // heritage (2.61:1), pulse (1.94:1), ember (1.57:1) — all seven now
         // fall back to their own `colors.text` (not a shared neutral ink,
         // and not identical to each other — see the fix commit message for

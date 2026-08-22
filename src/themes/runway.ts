@@ -56,7 +56,7 @@ import type { StyleTokens } from "./tokens";
  *   - **正文 22**：板上这一档在浅底上走 `muted`，搬进黑底构造就得走
  *     `readableOn(primary)` 的 0.72 淡出复合色。实测把该行从 30px 降到
  *     22px，会让复合色从「大字 3:1 门槛」掉进「正文 4.5:1 门槛」，
- *     bloom 3.87 / classroom 3.79 / pulse 4.17 / ember 3.44 / vermilion
+ *     classroom 3.79 / pulse 4.17 / ember 3.44 / vermilion
  *     4.14 五家组外主题当场新增违例（`fashion-masthead` 是全主题共享构造）。
  *     变异先跑后宣称：这一档一降就是五条新审计发现，不是零新增。
  *   - **展示 132**：该版式的字号常量是**上限**不是定值，真实渲染由
