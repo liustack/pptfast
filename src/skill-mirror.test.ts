@@ -156,7 +156,9 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(en).toContain("pptfast asset-brief")
     expect(en).toContain("pptfast images search")
     expect(en).toContain("pptfast images fetch")
+    expect(en).toContain("pptfast images generate")
     expect(en).toContain("pptfast config set pexels.apiKey")
+    expect(en).toContain("pptfast config set images.generators.grok.enabled true")
   })
 
   it("both files carry the Brand-themes section with the same CLI command lines", () => {

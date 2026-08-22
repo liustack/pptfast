@@ -3,12 +3,15 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { persistImageApiKey } from "./image-config"
+import { persistImageApiKey, persistUserConfigValue } from "./image-config"
+import { resetOpenverseTokenCache } from "./image-openverse"
 import { runImagesFetch, runImagesList, runImagesSearch } from "./images"
 
 const originalHome = process.env.PPTFAST_HOME
 const originalPexels = process.env.PPTFAST_PEXELS_API_KEY
 const originalPixabay = process.env.PPTFAST_PIXABAY_API_KEY
+const originalOvId = process.env.PPTFAST_OPENVERSE_CLIENT_ID
+const originalOvSecret = process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
 
 afterEach(() => {
   if (originalHome === undefined) delete process.env.PPTFAST_HOME
@@ -17,6 +20,11 @@ afterEach(() => {
   else process.env.PPTFAST_PEXELS_API_KEY = originalPexels
   if (originalPixabay === undefined) delete process.env.PPTFAST_PIXABAY_API_KEY
   else process.env.PPTFAST_PIXABAY_API_KEY = originalPixabay
+  if (originalOvId === undefined) delete process.env.PPTFAST_OPENVERSE_CLIENT_ID
+  else process.env.PPTFAST_OPENVERSE_CLIENT_ID = originalOvId
+  if (originalOvSecret === undefined) delete process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
+  else process.env.PPTFAST_OPENVERSE_CLIENT_SECRET = originalOvSecret
+  resetOpenverseTokenCache()
 })
 
 const JPEG_TINY = Buffer.from([0xff, 0xd8, 0xff, 0xd9])
@@ -45,11 +53,37 @@ const PIXABAY_HIT = {
   imageHeight: 720,
 }
 
+const OPENVERSE_CC0_ID = "aaaa1111-bbbb-4ccc-8ddd-eeeeffff0001"
+const OPENVERSE_BYSA_ID = "bbbb2222-cccc-4ddd-8eee-ffff00001111"
+const OPENVERSE_CC0 = {
+  id: OPENVERSE_CC0_ID,
+  url: "https://live.staticflickr.com/123/office.jpg",
+  foreign_landing_url: "https://stocksnap.io/photo/office-desk",
+  creator: "Bench Accounting",
+  license: "cc0",
+  attribution:
+    '"Office Desk" by Bench Accounting is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.',
+  provider: "flickr",
+  source: "stocksnap",
+  width: 2000,
+  height: 1333,
+  thumbnail: "https://live.staticflickr.com/123/office-thumb.jpg",
+}
+const OPENVERSE_BYSA = {
+  ...OPENVERSE_CC0,
+  id: OPENVERSE_BYSA_ID,
+  license: "by-sa",
+  foreign_landing_url: "https://example.com/by-sa",
+  url: "https://live.staticflickr.com/123/bysa.jpg",
+}
+
 async function tmpHome(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "pptfast-images-"))
   process.env.PPTFAST_HOME = dir
   delete process.env.PPTFAST_PEXELS_API_KEY
   delete process.env.PPTFAST_PIXABAY_API_KEY
+  delete process.env.PPTFAST_OPENVERSE_CLIENT_ID
+  delete process.env.PPTFAST_OPENVERSE_CLIENT_SECRET
   return dir
 }
 
@@ -62,7 +96,7 @@ function bytesResponse(buf: Buffer): Response {
 }
 
 describe("runImagesSearch", () => {
-  it("uses Pexels first and does not call Pixabay on a hit, and prints attribution", async () => {
+  it("uses Pexels first and does not call Pixabay or Openverse on a hit, and prints attribution", async () => {
     await tmpHome()
     await persistImageApiKey("pexels", "TESTPEXELSKEY99")
     const urls: string[] = []
@@ -77,6 +111,7 @@ describe("runImagesSearch", () => {
       },
     })
     expect(urls.some((u) => u.includes("pixabay.com"))).toBe(false)
+    expect(urls.some((u) => u.includes("openverse.org"))).toBe(false)
     expect(out).toContain("pexels:123")
     expect(out).toContain("https://images.pexels.com/photos/123/medium.jpg")
     expect(out).toContain("Photo by Jane on Pexels")
@@ -110,27 +145,93 @@ describe("runImagesSearch", () => {
     expect(out).toContain("https://pixabay.com/photos/office-456/")
     expect(out).not.toContain("TESTPIXABAYKEY99")
     expect(out).not.toMatch(/key=/)
+    expect(urls.some((u) => u.includes("openverse.org"))).toBe(false)
   })
 
-  it("hard-fails with apply URLs and config set examples, no <key> placeholder", async () => {
+  it("falls through to Openverse when Pexels and Pixabay are empty, drops by-sa, keeps cc0", async () => {
     await tmpHome()
-    await expect(runImagesSearch("office")).rejects.toThrow(/https:\/\/www\.pexels\.com\/api\//)
-    await expect(runImagesSearch("office")).rejects.toThrow(/https:\/\/pixabay\.com\/api\/docs\//)
-    await expect(runImagesSearch("office")).rejects.toThrow(/pptfast config set pexels\.apiKey/)
-    await expect(runImagesSearch("office")).rejects.toThrow(/later version/)
-    try {
-      await runImagesSearch("office")
-    } catch (e) {
-      const message = (e as Error).message
-      expect(message).not.toContain("<key>")
-      expect(message).toContain("pptfast config set pixabay.apiKey")
-    }
+    await persistImageApiKey("pexels", "TESTPEXELSKEY99")
+    await persistImageApiKey("pixabay", "TESTPIXABAYKEY99")
+    const urls: string[] = []
+    const out = await runImagesSearch("office desk", {
+      fetch: async (input) => {
+        const url = String(input)
+        urls.push(url)
+        if (url.startsWith("https://api.pexels.com/v1/search")) {
+          return jsonResponse({ photos: [], total_results: 0 })
+        }
+        if (url.startsWith("https://pixabay.com/api/")) {
+          return jsonResponse({ hits: [] })
+        }
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          expect(url).toContain("license_type=commercial")
+          expect(url).toMatch(/license=cc0(%2C|,)pdm/)
+          return jsonResponse({ results: [OPENVERSE_BYSA, OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(out).not.toContain(OPENVERSE_BYSA_ID)
+    expect(out).toContain("stocksnap")
+    expect(out).toContain("Bench Accounting")
+    expect(out).toContain("cc0")
+    expect(out).toContain(OPENVERSE_CC0.attribution)
+    expect(out).toContain("https://stocksnap.io/photo/office-desk")
+    expect(out).toContain("Openverse does not verify individual licenses")
+    expect(out).not.toMatch(/https:\/\/api\.openverse\.org\/v1\/images\/[^\s]+/)
+    expect(out.split("https://stocksnap.io/photo/office-desk").length).toBeGreaterThan(1)
   })
 
-  it("hard-fails asking for Pexels even when only Pixabay is configured", async () => {
+  it("calls anonymous Openverse when no keys are configured, with a low-quota note and no missingKeysError", async () => {
+    await tmpHome()
+    const urls: string[] = []
+    const out = await runImagesSearch("office", {
+      fetch: async (input) => {
+        const url = String(input)
+        urls.push(url)
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          return jsonResponse({ results: [OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(urls.some((u) => u.startsWith("https://api.pexels.com"))).toBe(false)
+    expect(urls.some((u) => u.startsWith("https://pixabay.com"))).toBe(false)
+    expect(urls.some((u) => u.includes("auth_tokens"))).toBe(false)
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(out).toMatch(/anonymous/i)
+    expect(out).toContain("pptfast config set openverse.clientId")
+    expect(out).toContain("pptfast config set openverse.clientSecret")
+    expect(out).not.toContain("<key>")
+    expect(out).not.toContain("later version")
+    expect(out).toContain("Pixabay is unconfigured")
+  })
+
+  it("searches Pixabay then Openverse when only Pixabay is configured", async () => {
     await tmpHome()
     await persistImageApiKey("pixabay", "TESTPIXABAYKEY99")
-    await expect(runImagesSearch("office")).rejects.toThrow(/Pexels/)
+    const urls: string[] = []
+    const out = await runImagesSearch("office", {
+      fetch: async (input) => {
+        const url = String(input)
+        urls.push(url)
+        if (url.startsWith("https://api.pexels.com")) {
+          throw new Error("Pexels must not be called without a key")
+        }
+        if (url.startsWith("https://pixabay.com/api/")) {
+          return jsonResponse({ hits: [] })
+        }
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          return jsonResponse({ results: [OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(urls.some((u) => u.startsWith("https://pixabay.com/api/"))).toBe(true)
+    expect(urls.some((u) => u.startsWith("https://api.openverse.org/v1/images/"))).toBe(true)
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(out).not.toContain("Pexels API key")
   })
 
   it("notes that Pixabay is unconfigured when Pexels is empty", async () => {
@@ -162,6 +263,111 @@ describe("runImagesSearch", () => {
       const message = (e as Error).message
       expect(message).not.toContain("SUPERSECRET99")
       expect(message).not.toMatch(/key=SUPERSECRET99/)
+      expect(message).toContain("[redacted]")
+      return true
+    })
+  })
+
+  it("POSTs an Openverse token then sends Bearer, and reuses the cached token", async () => {
+    await tmpHome()
+    await persistUserConfigValue(["images", "openverse", "clientId"], "ov-client-id-99")
+    await persistUserConfigValue(["images", "openverse", "clientSecret"], "ov-client-secret-99")
+    let tokenPosts = 0
+    const out = await runImagesSearch("office", {
+      fetch: async (input, init) => {
+        const url = String(input)
+        if (url === "https://api.openverse.org/v1/auth_tokens/token/") {
+          tokenPosts += 1
+          const body = String((init as RequestInit | undefined)?.body ?? "")
+          expect(body).toContain("grant_type=client_credentials")
+          expect(body).toContain("client_id=ov-client-id-99")
+          expect(body).toContain("client_secret=ov-client-secret-99")
+          return jsonResponse({ access_token: "ovtoken99", expires_in: 36000 })
+        }
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          const headers = (init as RequestInit | undefined)?.headers as Record<string, string> | undefined
+          const auth = headers?.Authorization ?? (headers as unknown as { authorization?: string })?.authorization
+          expect(auth).toBe("Bearer ovtoken99")
+          return jsonResponse({ results: [OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(tokenPosts).toBe(1)
+    await runImagesSearch("office", {
+      fetch: async (input, init) => {
+        const url = String(input)
+        if (url === "https://api.openverse.org/v1/auth_tokens/token/") {
+          tokenPosts += 1
+          return jsonResponse({ access_token: "ovtoken-should-not", expires_in: 36000 })
+        }
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          const headers = (init as RequestInit | undefined)?.headers as Record<string, string>
+          expect(headers.Authorization).toBe("Bearer ovtoken99")
+          return jsonResponse({ results: [OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(tokenPosts).toBe(1)
+  })
+
+  it("retries a 429 then succeeds, and throws after 429×3 with a redacted body", async () => {
+    await tmpHome()
+    const slept: number[] = []
+    let n = 0
+    const out = await runImagesSearch("office", {
+      sleep: async (ms) => {
+        slept.push(ms)
+      },
+      fetch: async (input) => {
+        const url = String(input)
+        if (url.startsWith("https://api.openverse.org/v1/images/")) {
+          n += 1
+          if (n === 1) return new Response("slow down", { status: 429 })
+          return jsonResponse({ results: [OPENVERSE_CC0] })
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      },
+    })
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(slept).toEqual([500])
+
+    n = 0
+    await expect(
+      runImagesSearch("office", {
+        sleep: async () => {},
+        fetch: async (input) => {
+          const url = String(input)
+          if (url.startsWith("https://api.openverse.org/v1/images/")) {
+            n += 1
+            return new Response("rate body SUPERSECRET99", { status: 429 })
+          }
+          throw new Error(`unexpected fetch ${url}`)
+        },
+      }),
+    ).rejects.toSatisfy((e: unknown) => {
+      const message = (e as Error).message
+      expect(message).toMatch(/rate-limited \(HTTP 429\)/)
+      expect(n).toBe(3)
+      return true
+    })
+  })
+
+  it("redacts client_secret from a thrown Openverse URL", async () => {
+    await tmpHome()
+    await persistUserConfigValue(["images", "openverse", "clientId"], "ov-client-id-99")
+    await persistUserConfigValue(["images", "openverse", "clientSecret"], "OVSECRET99")
+    await expect(
+      runImagesSearch("office", {
+        fetch: async () => {
+          throw new Error("https://api.openverse.org/v1/auth_tokens/token/?client_secret=OVSECRET99")
+        },
+      }),
+    ).rejects.toSatisfy((e: unknown) => {
+      const message = (e as Error).message
+      expect(message).not.toContain("OVSECRET99")
       expect(message).toContain("[redacted]")
       return true
     })
@@ -234,6 +440,81 @@ describe("runImagesFetch", () => {
       /pptfast config set pixabay\.apiKey/,
     )
   })
+
+  it("fetches openverse:<uuid>, writes jpg + sidecar with cc0 attribution, and skips the second fetch", async () => {
+    await tmpHome()
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-fetch-ov-"))
+    const deck = join(cwd, "demo-deck")
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input)
+      if (url === `https://api.openverse.org/v1/images/${OPENVERSE_CC0_ID}/`) {
+        return jsonResponse(OPENVERSE_CC0)
+      }
+      if (url === OPENVERSE_CC0.url) {
+        return bytesResponse(JPEG_TINY)
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    }
+    const resize = async (bytes: Buffer) => bytes
+    const first = await runImagesFetch(`openverse:${OPENVERSE_CC0_ID}`, {
+      deck,
+      as: "hero",
+      cwd,
+      query: "office desk",
+      fetch: fetchImpl,
+      resizeToJpeg: resize,
+      now: () => new Date("2026-08-22T00:00:00.000Z"),
+    })
+    expect(first).toContain(`pinned openverse:${OPENVERSE_CC0_ID} as hero`)
+    const assets = join(cwd, ".pptfast", "demo-deck", "assets")
+    const sidecar = JSON.parse(await readFile(join(assets, "hero.json"), "utf8")) as Record<string, unknown>
+    expect(sidecar.provider).toBe("openverse")
+    expect(sidecar.photo_id).toBe(OPENVERSE_CC0_ID)
+    expect(sidecar.license).toBe("cc0")
+    expect(sidecar.author).toBe("Bench Accounting")
+    expect(sidecar.page_url).toBe("https://stocksnap.io/photo/office-desk")
+    expect(sidecar.attribution).toBe(OPENVERSE_CC0.attribution)
+    expect(sidecar.source).toBe("stocksnap")
+    expect(sidecar.query).toBe("office desk")
+    expect(JSON.stringify(sidecar)).not.toMatch(/"apiKey"\s*:/)
+    expect(JSON.stringify(sidecar)).not.toMatch(/"key"\s*:/)
+    expect(JSON.stringify(sidecar)).not.toMatch(/"clientSecret"\s*:/)
+
+    const second = await runImagesFetch(`openverse:${OPENVERSE_CC0_ID}`, {
+      deck,
+      as: "hero",
+      cwd,
+      fetch: async () => {
+        throw new Error("network must not run on an idempotent skip")
+      },
+      resizeToJpeg: resize,
+    })
+    expect(second).toContain("already pinned")
+    expect(second).toContain("skipped")
+  })
+
+  it("refuses to fetch an Openverse by-sa detail record and writes no file", async () => {
+    await tmpHome()
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-fetch-bysa-"))
+    const deck = join(cwd, "demo-deck")
+    await expect(
+      runImagesFetch(`openverse:${OPENVERSE_BYSA_ID}`, {
+        deck,
+        as: "hero",
+        cwd,
+        fetch: async (input) => {
+          const url = String(input)
+          if (url === `https://api.openverse.org/v1/images/${OPENVERSE_BYSA_ID}/`) {
+            return jsonResponse(OPENVERSE_BYSA)
+          }
+          throw new Error(`unexpected fetch ${url}`)
+        },
+        resizeToJpeg: async (bytes) => bytes,
+      }),
+    ).rejects.toThrow(/cc0|pdm|license/i)
+    const { pathExists } = await import("./deck-dir")
+    expect(await pathExists(join(cwd, ".pptfast", "demo-deck", "assets", "hero.jpg"))).toBe(false)
+  })
 })
 
 describe("runImagesList", () => {
@@ -259,5 +540,31 @@ describe("runImagesList", () => {
     expect(out).toContain("pexels:123")
     expect(out).toContain("Jane")
     expect(out).toContain("https://www.pexels.com/photo/office-desk-123/")
+  })
+
+  it("lists an Openverse sidecar", async () => {
+    await tmpHome()
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-list-ov-"))
+    const assets = join(cwd, ".pptfast", "demo-deck", "assets")
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(assets, { recursive: true })
+    await writeFile(
+      join(assets, "desk.json"),
+      JSON.stringify({
+        provider: "openverse",
+        photo_id: OPENVERSE_CC0_ID,
+        license: "cc0",
+        author: "Bench Accounting",
+        page_url: "https://stocksnap.io/photo/office-desk",
+        attribution: OPENVERSE_CC0.attribution,
+        source: "stocksnap",
+        downloaded_at: "2026-08-22T00:00:00.000Z",
+      }),
+    )
+    const out = await runImagesList({ deck: join(cwd, "demo-deck"), cwd })
+    expect(out).toContain("desk")
+    expect(out).toContain(`openverse:${OPENVERSE_CC0_ID}`)
+    expect(out).toContain("Bench Accounting")
+    expect(out).toContain("cc0")
   })
 })

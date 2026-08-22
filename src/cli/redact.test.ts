@@ -25,4 +25,11 @@ describe("redactSecrets", () => {
   it("does not exact-replace secrets shorter than 6 characters", () => {
     expect(redactSecrets("ab in a sentence", ["ab"])).toBe("ab in a sentence")
   })
+
+  it("redacts client_secret= from a query string even without a known list", () => {
+    const text = "https://api.openverse.org/v1/auth_tokens/token/?client_secret=OVSECRET99"
+    const out = redactSecrets(text, [])
+    expect(out).not.toContain("OVSECRET99")
+    expect(out).toContain("client_secret=[redacted]")
+  })
 })

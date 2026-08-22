@@ -306,6 +306,8 @@ Run `pptfast asset-brief <target>` first so the frame, crop, and palette are kno
 
 Query rules: short concrete nouns, English 2–4 words (`office desk`, `wind farm`). Chinese is a variant, not the only query. No mood or quality words (`beautiful`, `4k`, `cinematic`). No negative keywords (`not office`, `no people`).
 
+Search order is Pexels, then Pixabay if a key is set, then Openverse (cc0/pdm, commercial filter).
+
 ```bash
 pptfast config set pexels.apiKey
 pptfast images search "office desk" --orientation landscape
@@ -316,11 +318,20 @@ Do not auto-pick the first result. A person or a vision model picks from the ~8 
 ```bash
 pptfast images fetch pexels:123 --deck <dir> --as hero
 pptfast images list --deck <dir>
+pptfast images generate --deck <dir> --as <asset_id>
+```
+
+Local generators stay off until enabled:
+
+```bash
+pptfast config set images.generators.grok.enabled true
+pptfast config set images.generators.codex.enabled true
+pptfast config set images.generators.antigravity.enabled true
 ```
 
 The file lands in `.pptfast/<deck>/assets/<asset_id>.jpg` with a sidecar next to it. Reference that `asset_id` from the page. Do not delete `.pptfast/` wholesale to "rerun". That drops pinned photos.
 
-No key: leave the slot `missing` (grey frame). Do not invent a photo. Do not scrape. Do not use Unsplash or Openverse in this version. This is a local client fetching with the user's own key. Commercial use in a presentation is allowed. Do not resell the photo standalone. Print attribution in the terminal, not on the slide by default.
+No key: leave the slot `missing` (grey frame). Do not invent a photo. Do not scrape. Do not use Unsplash. This is a local client fetching with the user's own key. Commercial use in a presentation is allowed. Do not resell the photo standalone. Print attribution in the terminal, not on the slide by default.
 
 ### Pin-only layouts
 

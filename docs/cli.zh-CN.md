@@ -29,11 +29,12 @@ read_when:
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新 |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
-| `config set <key> [value]` / `config show` | 把 Pexels/Pixabay API key 存进 `$PPTFAST_HOME/config.json`。省略 value 则隐藏输入。`show` 掩码并标 `(file)` / `(env)` |
-| `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | 搜 Pexels（空结果再搜 Pixabay）。打印署名行 |
+| `config set <key> [value]` / `config show` | 把 Pexels/Pixabay/Openverse 凭据和生图开关存进 `$PPTFAST_HOME/config.json`。省略 apiKey 或 clientSecret 的 value 则隐藏输入。`show` 掩码秘密并标 `(file)` / `(env)` |
+| `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | 搜 Pexels，有 key 再 Pixabay，然后 Openverse（cc0/pdm）。打印署名行 |
 | `images fetch <provider>:<id> --deck <dir> --as <asset_id>` | 下载照片到 `.pptfast/<deck>/assets/`，带 sidecar |
 | `images list --deck <dir>` | 列出该 deck 已钉的图库照片 |
-| `doctor [--json]` | 体检本机安装：skill 副本、dsh 插件、运行时、可选能力、自检渲染、图库 key 是否就绪（见[体检](#体检)） |
+| `images generate --deck <dir> --as <asset_id> [--prompt]` | 用本机 CLI 生图（默认关闭，需显式打开）并钉进 `.pptfast/<deck>/assets/` |
+| `doctor [--json]` | 体检本机安装：skill 副本、dsh 插件、运行时、可选能力、自检渲染、图库 key、本机生图 CLI（见[体检](#体检)） |
 | `check-update` / `self-update` | 检查 npm 上的新版本 / 更新全局安装 |
 
 `--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。
@@ -86,9 +87,9 @@ pptfast asset-brief my-deck/
 
 ## 体检
 
-`pptfast doctor [--json]` 体检本机的安装状况。它只读本地状态：不写任何文件，不发任何网络请求。渲染 PPTX 仍然不需要凭据。images 段只报告 Pexels/Pixabay key 有没有、来自文件还是环境变量，从不打印值。
+`pptfast doctor [--json]` 体检本机的安装状况。它只读本地状态：不写任何文件，不发任何网络请求。渲染 PPTX 仍然不需要凭据。images 段只报告 Pexels/Pixabay/Openverse 凭据有没有、来自文件还是环境变量，从不打印值。随后的 generators 段报告 grok、codex、antigravity 是否在 PATH 上，以及是否已打开。
 
-七段内容，报告按这个顺序输出：
+八段内容，报告按这个顺序输出：
 
 - **已安装的 skill 副本。** 装好的 skill 是一份*拷贝*：[`INSTALL.md`](../INSTALL.md) 第 2 步把整个文件夹复制进 harness 的 skill 目录，那份拷贝就永远停在复制当天的启动器上。升级 CLI 不会碰它，于是 `pptfast --version` 报着新版本，机器上的副本却可能停在几个月前。doctor 会扫 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills`（Pi 和 OpenCode 都读最后这个）下有没有 `pptfast/` 文件夹，从每份副本的 `scripts/run.sh` 里读出 `PINNED` 版本，落后于当前 CLI 的标为 stale，并给出就地覆盖它的那一条 clone + copy（就是 [`INSTALL.md`](../INSTALL.md) 第 2 步的命令，指向那份副本）。一份副本都没找到是正常状态，不是问题：dsh 上 skill 随插件一起发，CLI 本身也能单独用。副本里没有 `run.sh`、或者 `run.sh` 里没有 `PINNED` 行，报成「版本未知」，而不是让扫描失败。
 - **DSH 插件。** `~/.dsh/` 存在时，逐个检查 `~/.dsh/profiles/` 下的每个 profile 有没有装 `@liustack/pptfast`，版本优先从该 profile 自己的 `node_modules` 里读（那才是真正会被加载的那份），读不到再退回它 `package.json` 里声明的版本。落后于当前 CLI 的 profile 会给出带版本号的安装命令 `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`：版本是故意写死的，因为 dsh 走的 pnpm 会压住 24 小时内发布的版本，`@latest` 会被悄悄解析成一个更旧的版本。没有 `~/.dsh/` 就是这项不适用，跟没通过不是一回事。
@@ -96,9 +97,10 @@ pptfast asset-brief my-deck/
 - **可选能力。** `sharp` 能不能 import、`soffice` 在不在 PATH 上。没有 sharp，预览光栅化和 `audit --pixels` 用不了，纯 SVG 预览和 `.pptx` 渲染不受影响。没有 soffice，PDF 导出这条路用不了，同样不影响主流程。
 - **自检渲染。** 一份内置的小 deck 走一遍真实管线，全程在内存里：校验、渲染一页 SVG、生成 `.pptx` 字节，不落盘。报告里带耗时毫秒数。其余几项都是在观察环境，这一项直接证明东西是能用的。
 - **工作区产物。** 从 cwd 解析出的项目根、`.pptfast/`（或配置的 `outDir`）的绝对路径、git 是否已经忽略它。只报告，不因此失败，也不写 exclude。
-- **Images。** 可选的图库搜索。每个源标 present 或 missing，带来源 `(file)` / `(env)`。缺 key 是 warning，不是硬失败。POSIX 上用户配置文件对组/其他人可读也是 warning（`chmod 600`）。值从不打印。
+- **Images。** 可选的图库搜索。每个源标 present 或 missing，带来源 `(file)` / `(env)`。缺 key 只是说明，不是硬失败。POSIX 上用户配置文件对组/其他人可读也是 warning（`chmod 600`）。值从不打印。
+- **Image generators。** 可选的本机生图 CLI（grok、codex、antigravity）。每个标 found 或 not found，enabled 或 disabled。没找到或未打开只是说明，不算 warning，也不是硬失败。打开用 `pptfast config set images.generators.<id>.enabled true`。
 
-exit code 只有硬失败才是 `1`：Node 低于下限，或自检渲染没跑通。skill 副本落后、dsh 插件落后、可选能力缺失、图库 key 未配都算 warning，仍然 exit `0`，因为写 IR → validate → render 这条主流程在这些情况下照样能走完。`--json` 输出完整的结构化报告（`skills.copies[]`、`dsh.profiles[]`、`capabilities[]`、`selfTest`、`workspace`、`images`，以及 exit code 所依据的 `errors`/`warnings` 两个数组）。
+exit code 只有硬失败才是 `1`：Node 低于下限，或自检渲染没跑通。skill 副本落后、dsh 插件落后、可选能力缺失、图库 key 未配都算 warning，仍然 exit `0`，因为写 IR → validate → render 这条主流程在这些情况下照样能走完。`--json` 输出完整的结构化报告（`skills.copies[]`、`dsh.profiles[]`、`capabilities[]`、`selfTest`、`workspace`、`images`、`generators`，以及 exit code 所依据的 `errors`/`warnings` 两个数组）。
 
 ```bash
 pptfast doctor

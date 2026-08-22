@@ -64,7 +64,7 @@ export type PptfastConfig = z.infer<typeof ConfigSchema>
  * User-level config schema (spec §7's four-layer chain — the layer between
  * project config and the artifact's own value): the same three deck-default
  * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`), plus optional
- * `images` (Pexels/Pixabay API keys for stock-photo search). `outDir` is
+ * `images` (Pexels/Pixabay keys and Openverse OAuth for stock-photo search). `outDir` is
  * deliberately absent — an artifact root belongs to this working tree, not
  * to the user's identity (see {@link ConfigSchema}'s own `outDir` comment).
  * `images` is user-layer only: project {@link ConfigSchema} rejects it so a

@@ -329,6 +329,23 @@ async function loadDeckTarget(
   }
 }
 
+/** Load, apply deck config, validate, and resolve local assets — the same
+ *  sequence `runAssetBrief` uses, exported so `images generate` can read
+ *  `suggested_prompt` without duplicating the chain. */
+export async function loadValidatedDeckIr(target: string, cwd: string): Promise<PptxIR> {
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir, workspaceAssetsDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  const v = validateIr(raw)
+  if (!v.ok) {
+    throw new PptfastError(
+      `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
+    )
+  }
+  await resolveLocalAssets(v.ir!, baseDir, workspaceAssetsDir)
+  return v.ir!
+}
+
 export interface RenderOptions {
   /** `-o <file>`. Optional (workspace-artifacts wave): omitted, the deck
    *  renders to `<anchor>/.pptfast/<slug>/<slug>.pptx` — see
