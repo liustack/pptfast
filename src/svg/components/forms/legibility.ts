@@ -5,6 +5,7 @@ import {
   truncateToUnits,
   type TextWeightHint,
 } from "../../../lib/svg-text-layout"
+import { accessibleInk } from "../../ink"
 
 /** User-visible type floors for component-form item titles and body (1280×720 px). */
 export const FORM_TITLE_FLOOR = 20
@@ -24,6 +25,11 @@ export const BOARD_CARD_H = 280
 export const BOARD_TITLE = 23
 export const BOARD_BODY = 16.5
 export const TITLE_BODY_RATIO = BOARD_TITLE / BOARD_BODY
+
+/** Keep a form's preferred text color when it is readable on its own fill. */
+export function formLegibleInk(preferredFill: string, fill: string, fontSize: number): string {
+  return accessibleInk(preferredFill, fill, fontSize)
+}
 
 /** Clamp body size to the title proportion cap without dropping the floor. */
 export function capFormBody(titleSize: number, bodySize: number): number {

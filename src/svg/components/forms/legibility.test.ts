@@ -10,10 +10,12 @@ import { resolveStyle } from "../../../themes"
 import { buildCtx } from "../../full-slide-svg"
 import type { ComponentCtx } from "../types"
 import { measureTextUnits } from "../../../lib/svg-text-layout"
+import { contrastRatio, requiredContrastRatio } from "../../ink"
 import {
   boardTypeScale,
   capFormBody,
   fillCardType,
+  formLegibleInk,
   formGridCols,
   formIconColumnCols,
   layoutFormBody,
@@ -22,6 +24,16 @@ import {
   FORM_BODY_TITLE_CAP,
   FORM_TITLE_FLOOR,
 } from "./legibility"
+
+describe("form text contrast", () => {
+  it("replaces unreadable white on consulting yellow with a passing ink", () => {
+    const fill = "#F5C518"
+    const fontSize = 20
+    const ink = formLegibleInk("#FFFFFF", fill, fontSize)
+    expect(ink).not.toBe("#FFFFFF")
+    expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(requiredContrastRatio(fontSize))
+  })
+})
 
 function themeCtx(id: string): ComponentCtx {
   return buildCtx(resolveStyle(id), {})

@@ -1768,6 +1768,12 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     const unmodelledTransformHere = underUnmodelledTransform || hasUnmodelledTransform(el)
 
     const tag = el.tagName.toLowerCase()
+    // An emphasis pad is a run-local foreground surface, not a page
+    // background. Its paired tspan carries the exact fill through
+    // `data-emphasis-pad-fill` below. Keeping the rect out of the global
+    // shape tables prevents its horizontal padding from being attributed to
+    // the neighboring runs whose glyph positions remain unchanged.
+    const isEmphasisPad = tag === "rect" && el.getAttribute("data-emphasis-pad") !== null
     // Decoration participates in text-background *attribution* by shape, not
     // by layer (see `findContrastIssues`'s own doc comment). Never in the
     // page-level `regions` table — decoration is painted *over* the real
@@ -1848,7 +1854,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // `hasUnmodelledTransform`). `image`/`path` never satisfy
       // that (`polygon` joined the exact set in fix/audit-polygon-attribution), so inside a decor subtree this whole block is unreachable for
       // them — identical to the blanket exclusion it replaces.
-      if (mayAttribute) {
+      if (mayAttribute && !isEmphasisPad) {
         if (tag === "image") {
           // Unchanged from before this fix, for both tables: a real photo's
           // pixels are genuinely unknown, and this renderer only ever emits
@@ -1995,7 +2001,9 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
 
       const content = directText(el)
       if (content) {
-        const background = backgroundAt(tx, ty)
+        const pairedPadFill = resolveCandidateFill(el.getAttribute("data-emphasis-pad-fill"))
+        const explicitPadBackground = typeof pairedPadFill === "string" ? pairedPadFill : null
+        const background = explicitPadBackground ?? backgroundAt(tx, ty)
         // `alpha` moved out of the `background !== null` branch (bench-
         // driven-fix-round-style additive change, audit-v2 phase B): the
         // `background !== null` branch below is byte-for-byte the same
@@ -2026,13 +2034,16 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
             const width = measureTextUnits(content) * renderedFontSize
             const left =
               currentAnchor === "end" ? tx - width : currentAnchor === "middle" ? tx - width / 2 : tx
-            const candidates = backgroundsUnderRun(
-              left,
-              left + width,
-              ty - renderedFontSize * TEXT_INK_ASCENT_RATIO,
-              ty + renderedFontSize * TEXT_INK_DESCENT_RATIO,
-              renderedFontSize * BG_SAMPLE_STRIDE_EM,
-            )
+            const candidates =
+              explicitPadBackground === null
+                ? backgroundsUnderRun(
+                    left,
+                    left + width,
+                    ty - renderedFontSize * TEXT_INK_ASCENT_RATIO,
+                    ty + renderedFontSize * TEXT_INK_DESCENT_RATIO,
+                    renderedFontSize * BG_SAMPLE_STRIDE_EM,
+                  )
+                : []
             const required = requiredRatioFor(currentTier, renderedFontSize)
             // `background` (the anchor point's own answer) is always in the
             // running, even for a zero-width run the grid would otherwise

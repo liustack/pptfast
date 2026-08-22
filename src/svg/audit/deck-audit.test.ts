@@ -595,6 +595,19 @@ describe("findContrastIssues — low-contrast", () => {
     expect(findContrastIssues(markup)).toEqual([])
   })
 
+  it("pairs an emphasis pad only with its marked tspan instead of adjacent runs", () => {
+    const markup = page(
+      "#051C2C",
+      `<rect data-emphasis-pad="" x="138" y="183" width="44" height="22" fill="#F5C518"/>
+      <text font-size="20">
+        <tspan x="100" y="200" fill="#F5C518">前文</tspan>
+        <tspan data-emphasis-pad-fill="#F5C518" x="140" y="200" fill="#051C2C">重点</tspan>
+        <tspan x="180" y="200" fill="#F5C518">后文</tspan>
+      </text>`,
+    )
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
   it("uses the relaxed 3:1 threshold at the 24px large-text cutoff", () => {
     // #808080 vs #F7F7F2 computes to a 3.68:1 ratio (WCAG relative-luminance
     // formula) — between the two thresholds: fails 4.5:1 but clears 3:1 — so

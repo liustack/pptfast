@@ -2,9 +2,9 @@
  * Render-side component form assignment table. Forms are not IR: one
  * theme + one component maps to at most one form, looked up here and
  * ignored by renderers until a later commit wires dispatch. campaign ×
- * cycle is hub_spoke (first-listed wins), never petal_wheel. 65 rows
- * (41 prior + 24 callout). classroom is listed on callout like every
- * other canonical theme.
+ * cycle is hub_spoke (first-listed wins), never petal_wheel. 66 rows
+ * (41 prior + 24 callout + 1 emphasis). classroom is listed on callout
+ * like every other canonical theme.
  */
 
 export const COMPONENT_FORMS = [
@@ -25,6 +25,7 @@ export const COMPONENT_FORMS = [
   "tint_panel",
   "hanging_bare",
   "lead_word",
+  "pad",
 ] as const
 
 export type ComponentFormId = (typeof COMPONENT_FORMS)[number]
@@ -71,6 +72,9 @@ export interface FormAssignment {
 }
 
 const ASSIGNMENTS: Record<string, Record<string, FormAssignment>> = {
+  emphasis: {
+    consulting: { form: "pad" },
+  },
   icon_cards: {
     terra: {
       form: "icon_columns",
