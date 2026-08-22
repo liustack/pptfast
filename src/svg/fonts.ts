@@ -237,9 +237,16 @@ const SERIF_SAFE_FACES = new Set(
   ),
 )
 
+/** Lower-cased KaiTi / 楷体 faces, matched before the generic serif preview fallback. */
+const KAITI_SAFE_FACES = new Set(["KaiTi", "楷体"].map((f) => f.toLowerCase()))
+
 /** Preview-only fallback families, keyed by the resolved face's rendered look. */
 const PREVIEW_FALLBACK = {
+  // 仿宋不单开预览回落：macOS 没有 FangSong SC / STFangsong 这种和
+  // Kaiti SC / STKaiti 对等的家族名，所以 FangSong/仿宋仍走 serif 的
+  // Songti SC, STSong, serif。目前也没有任何主题把 FangSong 用作 heading。
   serif: "Songti SC, STSong, serif",
+  kaiti: "Kaiti SC, STKaiti, Songti SC, STSong, serif",
   sans: "PingFang SC, Helvetica Neue, sans-serif",
   mono: "Menlo, monospace",
 } as const
@@ -253,12 +260,15 @@ const PREVIEW_FALLBACK = {
  */
 export function resolveFontStack(stack: string[], role: FontRole): string {
   const face = resolveFontFace(stack, role)
+  const key = face.toLowerCase()
   const fallback =
     role === "mono"
       ? PREVIEW_FALLBACK.mono
-      : SERIF_SAFE_FACES.has(face.toLowerCase())
-        ? PREVIEW_FALLBACK.serif
-        : PREVIEW_FALLBACK.sans
+      : KAITI_SAFE_FACES.has(key)
+        ? PREVIEW_FALLBACK.kaiti
+        : SERIF_SAFE_FACES.has(key)
+          ? PREVIEW_FALLBACK.serif
+          : PREVIEW_FALLBACK.sans
   return `${face}, ${fallback}`
 }
 
@@ -292,8 +302,8 @@ export function resolveFontStack(stack: string[], role: FontRole): string {
  * "Consolas" only because it's listed first); what actually decides which
  * width model `code.tsx` uses is the *role*, not that specific face.
  * `resolveFontStack` appends `PREVIEW_FALLBACK.mono` only when
- * `role === "mono"` — no other role's fallback (`.serif`/`.sans`) can ever
- * produce this suffix — so keying off it tracks the renderer's real role
+ * `role === "mono"` — no other role's fallback (`.kaiti`/`.serif`/`.sans`) can
+ * ever produce this suffix — so keying off it tracks the renderer's real role
  * decision instead of one face name it currently happens to resolve to.
  */
 export function isMonoFontFamily(fontFamily: string): boolean {

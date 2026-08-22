@@ -45,6 +45,41 @@ describe("resolveFontStack", () => {
     // magazine's heading stack resolves to SimSun.
     const stack = resolveFontStack(["Sectra", "SimSun"], "heading")
     expect(stack).toBe("SimSun, Songti SC, STSong, serif")
+    expect(stack).not.toMatch(/Kaiti/i)
+  })
+
+  it("inserts macOS Kaiti SC/STKaiti before Songti for a KaiTi heading stack", () => {
+    expect(resolveFontStack(["KaiTi", "楷体", "SimSun"], "heading")).toBe(
+      "KaiTi, Kaiti SC, STKaiti, Songti SC, STSong, serif",
+    )
+  })
+
+  it("inserts the same macOS kaiti preview fallback for the 楷体 alias", () => {
+    expect(resolveFontStack(["楷体"], "heading")).toBe(
+      "楷体, Kaiti SC, STKaiti, Songti SC, STSong, serif",
+    )
+  })
+
+  it("keeps Georgia on the generic serif preview fallback, with no kaiti names", () => {
+    const stack = resolveFontStack(["Georgia"], "heading")
+    expect(stack).toBe("Georgia, Songti SC, STSong, serif")
+    expect(stack).not.toMatch(/Kaiti/i)
+  })
+
+  it("keeps FangSong on the Songti preview fallback, with no kaiti or FangSong SC names", () => {
+    // macOS has no FangSong SC / STFangsong counterpart to Kaiti SC / STKaiti.
+    const stack = resolveFontStack(["FangSong"], "heading")
+    expect(stack).toBe("FangSong, Songti SC, STSong, serif")
+    expect(stack).not.toMatch(/Kaiti/i)
+    expect(stack).not.toMatch(/FangSong SC/i)
+  })
+
+  it("keeps the KaiTi export face as the stack's first member", () => {
+    const faces = ["KaiTi", "楷体"] as const
+    expect(resolveFontFace([...faces], "heading")).toBe("KaiTi")
+    expect(resolveFontStack([...faces], "heading").split(",")[0].trim()).toBe(
+      resolveFontFace([...faces], "heading"),
+    )
   })
 
   it("appends a sans-serif preview fallback for a sans-resolved face", () => {
