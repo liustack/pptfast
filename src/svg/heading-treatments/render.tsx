@@ -7,7 +7,7 @@ import { hasCjk } from "../layouts/minimal-shared"
 import { stacksVertically } from "../../lib/text-script"
 import { parseEmphasis } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
+import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import { fitHeadingLines } from "../heading-fit"
 import {
   resolveHeadingTreatment,
@@ -22,6 +22,124 @@ const PAGE_LEFT = 96
 const PAGE_RIGHT = 1184
 const PAGE_BOTTOM = 640
 const NO_TITLE_Y = 64
+const RESERVE_GAP = 20
+const RAIL_MIN_X = 64
+
+/** Axis-aligned rects the layout will still paint in the heading band. Treatment ink must not intersect these. */
+export interface HeadingBandReserve {
+  rects: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[]
+}
+
+interface BandRect {
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+}
+
+function aabbIntersect(a: BandRect, b: BandRect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function glyphBox(
+  x: number,
+  y: number,
+  fontSize: number,
+  width: number,
+  anchor: "start" | "middle" | "end" = "start",
+): BandRect {
+  const left = anchor === "end" ? x - width : anchor === "middle" ? x - width / 2 : x
+  return { x: left, y: y - fontSize, w: width, h: fontSize * 1.25 }
+}
+
+function headingWidth(text: string, fontSize: number, fontFamily: string): number {
+  return measureTextUnits(text.replace(/\*\*/g, ""), { bold: true, fontFamily }) * fontSize
+}
+
+function leftTitleX(
+  defaultX: number,
+  y: number,
+  fontSize: number,
+  text: string,
+  fontFamily: string,
+  reserve: HeadingBandReserve | undefined,
+): number {
+  if (!reserve?.rects.length) return defaultX
+  const box = glyphBox(defaultX, y, fontSize, headingWidth(text, fontSize, fontFamily))
+  let x = defaultX
+  for (const r of reserve.rects) {
+    if (aabbIntersect(box, r)) x = Math.max(x, r.x + r.w + RESERVE_GAP)
+  }
+  return x
+}
+
+function titleMaxWidthFor(titleX: number): number {
+  return Math.max(1, PAGE_RIGHT - titleX)
+}
+
+function centerTitleMaxWidth(reserve: HeadingBandReserve | undefined, defaultMax: number): number {
+  if (!reserve?.rects.length) return defaultMax
+  let maxW = defaultMax
+  for (const r of reserve.rects) {
+    const minLeft = r.x + r.w + RESERVE_GAP
+    const half = 640 - minLeft
+    if (half > 0) maxW = Math.min(maxW, half * 2)
+  }
+  return Math.max(1, maxW)
+}
+
+type KickerSide = "default" | "left" | "right"
+
+interface KickerLayout {
+  x: number
+  y: number
+  fontSize: number
+  side: KickerSide
+}
+
+function stackedGlyphBoxes(
+  source: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  fontFamily: string,
+): BandRect[] {
+  const step = fontSize + 6
+  return Array.from(source).map((ch, i) => {
+    const ty = y + i * step
+    const w = measureTextUnits(ch, { fontFamily }) * fontSize
+    return glyphBox(x, ty, fontSize, w)
+  })
+}
+
+function kickerMarkBox(knobs: HeadingKnobs, short: boolean): BandRect | null {
+  if (knobs.kickerMark === "vermilion-dot") return { x: 99, y: 72, w: 10, h: 10 }
+  if (knobs.kickerMark === "gold-rule") return { x: 96, y: 64, w: 1, h: short ? 96 : 120 }
+  return null
+}
+
+function resolveKickerLayout(
+  source: string,
+  knobs: HeadingKnobs,
+  fontFamily: string,
+  reserve: HeadingBandReserve | undefined,
+  short: boolean,
+): KickerLayout {
+  const fontSize = short ? 14 : verticalKickerFontSize(knobs)
+  const pos = verticalKickerPos(knobs)
+  if (!reserve?.rects.length) return { x: pos.x, y: pos.y, fontSize, side: "default" }
+  const boxes = stackedGlyphBoxes(source, pos.x, pos.y, fontSize, fontFamily)
+  const mark = kickerMarkBox(knobs, short)
+  const hits = reserve.rects.filter(
+    (r) => boxes.some((b) => aabbIntersect(b, r)) || (mark !== null && aabbIntersect(mark, r)),
+  )
+  if (hits.length === 0) return { x: pos.x, y: pos.y, fontSize, side: "default" }
+  const leftBound = Math.min(...hits.map((r) => r.x))
+  const rightBound = Math.max(...hits.map((r) => r.x + r.w))
+  const leftX = leftBound - fontSize - 8
+  if (leftX >= RAIL_MIN_X) return { x: leftX, y: pos.y, fontSize, side: "left" }
+  return { x: rightBound + RESERVE_GAP, y: pos.y, fontSize, side: "right" }
+}
 
 function bodyRect(x: number, y: number): ContentRect {
   return { x, y, w: PAGE_RIGHT - x, h: PAGE_BOTTOM - y }
@@ -69,6 +187,7 @@ function extraTitleY(fitted: ReturnType<typeof fitHeadingLines>): number {
 
 export function tryContentHeadingTreatment(
   props: SvgTemplateProps,
+  reserve?: HeadingBandReserve,
 ): { chrome: ReactNode; contentRect: ContentRect } | null {
   const { ir, slide, index, ctx } = props
   if (slide.type !== "content") return null
@@ -92,6 +211,7 @@ export function tryContentHeadingTreatment(
     chapterNumber,
     cjk,
     anchor,
+    reserve,
   }
 
   if (!heading) return renderNoTitle(treatment, args)
@@ -121,6 +241,7 @@ interface RenderArgs {
   chapterNumber: number
   cjk: boolean
   anchor: NoTitleAnchor
+  reserve?: HeadingBandReserve
 }
 
 function renderNoTitle(
@@ -169,35 +290,50 @@ function renderShortKicker(args: RenderArgs): { chrome: ReactNode; contentRect: 
   if (!source || !stacksVertically(source)) {
     return { chrome: null, contentRect: bodyRect(PAGE_LEFT, NO_TITLE_Y) }
   }
+  const kicker = resolveKickerLayout(source, args.knobs, args.ctx.fonts.heading, args.reserve, true)
+  let contentX = insetX
+  if (kicker.side === "right") {
+    contentX = Math.max(contentX, kicker.x + kicker.fontSize + RESERVE_GAP)
+  }
   return {
-    contentRect: bodyRect(insetX, NO_TITLE_Y),
-    chrome: <>{verticalSign(args, source, { short: true })}</>,
+    contentRect: bodyRect(contentX, NO_TITLE_Y),
+    chrome: <>{verticalSign(args, source, { short: true, layout: kicker })}</>,
   }
 }
 
-function verticalSign(args: RenderArgs, source: string, opts: { short: boolean }): ReactNode {
+function verticalSign(
+  args: RenderArgs,
+  source: string,
+  opts: { short: boolean; layout?: KickerLayout },
+): ReactNode {
   const { colors, fonts } = args.ctx
   const mark = args.knobs.kickerMark ?? "none"
-  const fontSize = opts.short ? 14 : verticalKickerFontSize(args.knobs)
   const pos = verticalKickerPos(args.knobs)
+  const layout = opts.layout ?? {
+    x: pos.x,
+    y: pos.y,
+    fontSize: opts.short ? 14 : verticalKickerFontSize(args.knobs),
+    side: "default" as const,
+  }
+  const dx = layout.x - pos.x
   const fill = verticalKickerFill(args.knobs, colors)
   return (
     <>
       {mark === "vermilion-dot" && (
         <g data-decor="">
-          <rect x={99} y={72} width={10} height={10} fill={colors.accent} />
+          <rect x={99 + dx} y={72} width={10} height={10} fill={colors.accent} />
         </g>
       )}
       {mark === "gold-rule" && (
         <g data-decor="">
-          <rect x={96} y={64} width={1} height={opts.short ? 96 : 120} fill={colors.accent} />
+          <rect x={96 + dx} y={64} width={1} height={opts.short ? 96 : 120} fill={colors.accent} />
         </g>
       )}
       {stackChars(source, {
-        x: pos.x,
-        y: pos.y,
-        fontSize,
-        fill: ink(fill, args.ctx, fontSize),
+        x: layout.x,
+        y: layout.y,
+        fontSize: layout.fontSize,
+        fill: ink(fill, args.ctx, layout.fontSize),
         fontFamily: fonts.heading,
       })}
     </>
@@ -223,7 +359,8 @@ function verticalKickerFill(knobs: HeadingKnobs, colors: ComponentCtx["colors"])
 function renderGhostIndex(args: RenderArgs): { chrome: ReactNode; contentRect: ContentRect } {
   const { colors, fonts } = args.ctx
   const hasSub = args.subheading.length > 0
-  const title = fitTitle(args.heading, 42, 1088, fonts.heading)
+  const titleX = leftTitleX(PAGE_LEFT, 128, 42, args.heading, fonts.heading, args.reserve)
+  const title = fitTitle(args.heading, 42, titleMaxWidthFor(titleX), fonts.heading)
   const y = (hasSub ? 238 : 196) + extraTitleY(title)
   const index = padded(args.chapterNumber)
   const strokeCorner = args.knobs.indexStyle === "stroke-corner"
@@ -268,7 +405,7 @@ function renderGhostIndex(args: RenderArgs): { chrome: ReactNode; contentRect: C
         {title.lines.map((line, i) => (
           <text
             key={i}
-            x={96}
+            x={titleX}
             y={128 + i * title.lineHeight}
             fontSize={title.fontSize}
             fontWeight={700}
@@ -306,7 +443,8 @@ function renderBaseline(args: RenderArgs): { chrome: ReactNode; contentRect: Con
   const sidePhrase = insightSide
     ? fitSvgLine(args.subheading, { maxWidth: 200, fontSize: 16, minFontSize: 16, fontFamily: fonts.body })
     : null
-  const title = fitTitle(args.heading, 40, 1088, fonts.heading)
+  const titleX = leftTitleX(PAGE_LEFT, 132, 40, args.heading, fonts.heading, args.reserve)
+  const title = fitTitle(args.heading, 40, titleMaxWidthFor(titleX), fonts.heading)
   const lift = extraTitleY(title)
   const contentY = (journalEnhanced ? 248 : 210) + lift
   const numero =
@@ -320,7 +458,7 @@ function renderBaseline(args: RenderArgs): { chrome: ReactNode; contentRect: Con
         {title.lines.map((line, i) => (
           <text
             key={i}
-            x={96}
+            x={titleX}
             y={132 + i * title.lineHeight}
             fontSize={title.fontSize}
             fontWeight={700}
@@ -404,7 +542,8 @@ function renderTagBox(args: RenderArgs): { chrome: ReactNode; contentRect: Conte
   const label = formatChapterLabel(labelKind, args.chapterNumber, hasCjk(args.sectionName ?? ""))
   const labelY = hud ? 77 : 82
   const labelSize = hud ? 15 : box === "solid-primary" ? 17 : 18
-  const title = fitTitle(args.heading, 44, 1088, fonts.heading)
+  const titleX = leftTitleX(PAGE_LEFT, 150, 44, args.heading, fonts.heading, args.reserve)
+  const title = fitTitle(args.heading, 44, titleMaxWidthFor(titleX), fonts.heading)
   const lift = extraTitleY(title)
   return {
     contentRect: bodyRect(PAGE_LEFT, (hasSub ? 240 : 206) + lift),
@@ -433,7 +572,7 @@ function renderTagBox(args: RenderArgs): { chrome: ReactNode; contentRect: Conte
         {title.lines.map((line, i) => (
           <text
             key={i}
-            x={96}
+            x={titleX}
             y={150 + i * title.lineHeight}
             fontSize={title.fontSize}
             fontWeight={700}
@@ -500,7 +639,8 @@ function renderLeadAccent(args: RenderArgs): { chrome: ReactNode; contentRect: C
       })
     : null
   const noteYs = [106, 130]
-  const titleFit = hasEmph ? null : fitTitle(args.heading, 42, 1088, fonts.heading)
+  const titleX = leftTitleX(PAGE_LEFT, 120, 42, args.heading, fonts.heading, args.reserve)
+  const titleFit = hasEmph ? null : fitTitle(args.heading, 42, titleMaxWidthFor(titleX), fonts.heading)
   const lift = titleFit ? extraTitleY(titleFit) : 0
   return {
     contentRect: bodyRect(PAGE_LEFT, (hasSub ? 200 : 184) + lift),
@@ -510,7 +650,7 @@ function renderLeadAccent(args: RenderArgs): { chrome: ReactNode; contentRect: C
           titleFit.lines.map((line, i) => (
             <text
               key={i}
-              x={96}
+              x={titleX}
               y={120 + i * titleFit.lineHeight}
               fontSize={titleFit.fontSize}
               fontWeight={700}
@@ -523,7 +663,7 @@ function renderLeadAccent(args: RenderArgs): { chrome: ReactNode; contentRect: C
           ))
         ) : (
           <text
-            x={96}
+            x={titleX}
             y={120}
             fontSize={42}
             fontWeight={700}
@@ -536,12 +676,12 @@ function renderLeadAccent(args: RenderArgs): { chrome: ReactNode; contentRect: C
         )}
         {args.knobs.tail === "gold-dot" && (
           <g data-decor="">
-            <circle cx={102} cy={152 + lift} r={3} fill={colors.accent} />
+            <circle cx={titleX + 6} cy={152 + lift} r={3} fill={colors.accent} />
           </g>
         )}
         {args.knobs.tail === "olive-rule" && (
           <g data-decor="">
-            <rect x={96} y={142 + lift} width={64} height={2} fill={colors.primary} />
+            <rect x={titleX} y={142 + lift} width={64} height={2} fill={colors.primary} />
           </g>
         )}
         {notes &&
@@ -568,16 +708,29 @@ function renderVerticalKicker(args: RenderArgs): { chrome: ReactNode; contentRec
   const { colors, fonts } = args.ctx
   const source = kickerSource(args)
   const stackable = source.length > 0 && stacksVertically(source)
-  const insetX = stackable ? (args.knobs.insetX ?? PAGE_LEFT) : PAGE_LEFT
-  const titleX = stackable ? (args.knobs.insetX ?? PAGE_LEFT) : PAGE_LEFT
-  const maxW = 1184 - titleX
-  const title = fitTitle(args.heading, 42, maxW, fonts.heading)
+  const defaultTitleX = stackable ? (args.knobs.insetX ?? PAGE_LEFT) : PAGE_LEFT
+  const kicker = stackable
+    ? resolveKickerLayout(source, args.knobs, fonts.heading, args.reserve, false)
+    : null
+  let titleX = leftTitleX(defaultTitleX, 126, 42, args.heading, fonts.heading, args.reserve)
+  if (kicker?.side === "right") {
+    titleX = Math.max(titleX, kicker.x + kicker.fontSize + RESERVE_GAP)
+  }
+  const title = fitTitle(args.heading, 42, titleMaxWidthFor(titleX), fonts.heading)
   const contentY = (args.knobs.kickerMark === "vermilion-dot" ? 200 : 196) + extraTitleY(title)
+  let contentX = defaultTitleX
+  if (kicker?.side === "right") {
+    const lastY = kicker.y + (Array.from(source).length - 1) * (kicker.fontSize + 6)
+    const lastBottom = lastY + kicker.fontSize * 0.25
+    if (lastBottom > contentY) {
+      contentX = Math.max(contentX, kicker.x + kicker.fontSize + RESERVE_GAP)
+    }
+  }
   return {
-    contentRect: bodyRect(insetX, contentY),
+    contentRect: bodyRect(contentX, contentY),
     chrome: (
       <>
-        {stackable && verticalSign(args, source, { short: false })}
+        {stackable && kicker && verticalSign(args, source, { short: false, layout: kicker })}
         {title.lines.map((line, i) => (
           <text
             key={i}
@@ -595,7 +748,7 @@ function renderVerticalKicker(args: RenderArgs): { chrome: ReactNode; contentRec
         {args.knobs.titleRule === "chalk" && (
           <g data-decor="">
             <path
-              d="M 166 148 q 160 8 330 3"
+              d={`M ${titleX + 2} 148 q 160 8 330 3`}
               fill="none"
               stroke={warningStroke(colors)}
               strokeWidth={3}
@@ -614,7 +767,7 @@ function renderCenterMirror(args: RenderArgs): { chrome: ReactNode; contentRect:
   const hasSub = args.subheading.length > 0
   const mirror = args.knobs.mirror ?? "hairline"
   const titleFill = mirror === "hairline" ? colors.accent : mirror === "gold-rule" ? colors.primary : colors.text
-  const title = fitTitle(args.heading, 42, 1088, fonts.heading)
+  const title = fitTitle(args.heading, 42, centerTitleMaxWidth(args.reserve, 1088), fonts.heading)
   const lift = extraTitleY(title)
   const contentY = (hasSub ? 236 : mirror === "hairline" ? 216 : 212) + lift
   const eyebrowKind = args.knobs.chapterLabel ?? "chapter"
