@@ -25,7 +25,7 @@ export interface Job {
   /** Theme id, layout id, or component label — what this page is here to show. */
   readonly subject: string
   readonly language: LanguageId
-  /** Human-readable language name, for the gallery's own chrome. */
+  /** Human-readable language name, for the gallery's own shell. */
   readonly languageLabel: string
   /** Which theme actually rendered — the subject for the theme table, the baseline elsewhere. */
   readonly theme: string

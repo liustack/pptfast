@@ -4,7 +4,7 @@
  * box — same-source blind spot: an estimation bug can hide layout bugs from
  * itself. This module trades the estimate for the browser's own
  * `SVGGraphicsElement.getBBox()`, so it must run inside an actual page
- * (Chrome 103-class), not jsdom.
+ * (Chromium 103-class), not jsdom.
  *
  * `collectBBoxOverflows` is designed to be shipped into that page verbatim:
  * `evals/gallery/bbox.ts` embeds `collectBBoxOverflows.toString()` in a

@@ -436,7 +436,7 @@ window.__ModuleLoader__.load({
        * while the colour never moves. The alternative is `!important` on four
        * declarations, which is the same bug with an override on top.
        *
-       * Sized against the harness's chrome rather than the card's: these sit
+       * Sized against the harness's shell rather than the card's: these sit
        * over a full-screen view, so at the card's 13px/23px they read as
        * smaller than the controls they are covering. Solid marks the errand —
        * taking the deck away is why the row exists — and the outline marks

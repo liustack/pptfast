@@ -185,7 +185,7 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Signature node-line motif: 9 nodes at varying radii (not a uniform
           dot grid) connected by a single faint polyline, with the largest
           node picking up a soft concentric glow — same glow technique the
-          bento KPI card body uses (no SVG filter; Chrome 103's controlled
+          bento KPI card body uses (no SVG filter; Chromium 103's controlled
           subset has none). */}
       <polyline
         points={COVER_MOTIF_POINTS.map((p) => `${p.x},${p.y}`).join(" ")}

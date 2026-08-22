@@ -45,7 +45,7 @@ the codebase owns fidelity.
    Never depend on a specific commercial font being present.
 5. **Decoration keeps out of five content regions**: the heading area,
    the body area, the footer meta strip (content pages under explicit
-   `chrome: "full"`), the bottom-right logo box (96×40 at x1120 y630,
+   `branding: "full"`), the bottom-right logo box (96×40 at x1120 y630,
    on cover and chapter pages, and on content pages under `"full"` or
    `"minimal"`), and the full-width band at y620-664. That fifth band
    is where the cover meta line, chart-source footnotes, and the logo

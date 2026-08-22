@@ -10,7 +10,7 @@ type MatrixItem = MatrixComponent["items"][number]
 /**
  * 二维定位矩阵（2026-07-14 用户 showcase deck 借鉴，取代手绘补页）：可选
  * XY 轴标签 + 色格网格。items 按行优先填格，`tone` 决定象限底色（中性/
- * accent 金调/info 冷调，从主题 token 派生实底色，Chrome 103 安全）。每格
+ * accent 金调/info 冷调，从主题 token 派生实底色，Chromium 103 安全）。每格
  * 标题 + 可选 tag，文本实测。
  */
 const CARD_GAP = 16

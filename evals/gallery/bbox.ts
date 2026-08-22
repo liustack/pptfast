@@ -349,8 +349,8 @@ export async function auditBBoxes(svgs: ReadonlyMap<string, string>, opts: BBoxO
   }
 
   const playwright = await loadPlaywright()
-  // `channel: "chrome"` first: this repo's browser target is Chrome 103-class,
-  // and a machine with Chrome installed needs no Playwright browser download
+  // `channel: "chrome"` first: this repo's browser target is Chromium 103-class,
+  // and a machine with Chromium installed needs no Playwright browser download
   // at all. Bundled Chromium is the fallback.
   let browser: any
   try {

@@ -60,7 +60,7 @@ export function Branding({
   const font = ctx.fonts.body
 
   // 背景图 + 卡片态 content 页整页抑制页脚——是否生效由 theme 的 brand 配置
-  // 驱动（W1 从 manifest.chrome 拆出，见 themes/definitions.ts resolveBrand；
+  // 驱动（W1 从旧 theme-manifest 的页脚开关拆出，见 themes/definitions.ts resolveBrand；
   // enterprise 持有 suppressFooterOnCardContent，其余主题不设 = 默认 false）。
   const bgAsset =
     slide.background?.kind === "asset" ? assets.images[slide.background.asset_id] : null

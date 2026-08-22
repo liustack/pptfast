@@ -42,7 +42,7 @@ export interface Person {
 
 export interface Lexicon {
   readonly id: LanguageId
-  /** Human-readable name for the gallery's own chrome. */
+  /** Human-readable name for the gallery's own shell. */
   readonly display: string
 
   readonly deckTitle: string

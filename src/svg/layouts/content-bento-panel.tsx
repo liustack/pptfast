@@ -183,7 +183,7 @@ const BENTO_KPI_DELTA_SIZE = 16
 const BENTO_KPI_VALUE_LABEL_GAP = 22
 // Task 2 "发光点缀": a solid dot + two concentric stroked rings anchored just
 // past the value (+unit) text's estimated right edge, simulating a glow
-// without an actual SVG filter (Chrome 103 / the controlled subset has
+// without an actual SVG filter (Chromium 103 / the controlled subset has
 // none) — see renderKpiCardBody's glowCx/glowCy math. Radii/opacities are
 // brief-literal values, not derived from anything else.
 const BENTO_KPI_GLOW_DOT_R = 3

@@ -188,7 +188,7 @@ export type StyleOverride = z.infer<typeof StyleOverrideSchema>
 
 /**
  * Brand (logical slide-master) config: branding behavior owned by a theme.
- * W1 scope was exactly the two flags migrated from the old manifest.chrome;
+ * W1 scope was exactly the two flags migrated from the old theme-manifest footer flags;
  * the ink v3 redesign (2026-08-18) added a third, orthogonal one.
  * Single source of truth — the TS type is inferred, never hand-written.
  *
