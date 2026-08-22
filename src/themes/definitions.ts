@@ -166,6 +166,43 @@ const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
 }
 
 /**
+ * Gallery r2 D20: outer-frame themes must not receive top-title / top-image
+ * layouts. Framed themes do not sample banner-heading / split-band /
+ * stacked-poster. lecture and luxe share this explicit set. Tendency ids
+ * (`rail-numbered` / `bento-panel` for lecture, `quiet-frame` /
+ * `tone-adaptive-content` for luxe) stay inside it.
+ */
+const FRAMED_CONTENT_LAYOUTS: readonly string[] = [
+  "narrow-column",
+  "two-column",
+  "rail-numbered",
+  "bento-panel",
+  "tone-adaptive-content",
+  "side-highlight",
+  "asymmetric-triptych",
+  "quiet-frame",
+]
+
+/**
+ * Gallery r2 E22: consulting only drops `side-highlight` (its 176px primary
+ * chrome reads as a right vertical card). Playbill keeps the full auto
+ * content pool. consulting's content tendencies (`banner-heading` /
+ * `split-band`) stay inside this set.
+ */
+const CONSULTING_CONTENT_LAYOUTS: readonly string[] = [
+  "narrow-column",
+  "two-column",
+  "rail-numbered",
+  "banner-heading",
+  "stacked-poster",
+  "bento-panel",
+  "tone-adaptive-content",
+  "asymmetric-triptych",
+  "quiet-frame",
+  "split-band",
+]
+
+/**
  * Formerly "the full chapter set minus `fashion-chapter`" — three W4
  * fix-round exclusions (bloom/classroom/heritage), **reverted** in the
  * post-v0.3 W8 fix round (backlog item 2,
@@ -244,8 +281,11 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 对这三个主题的 accent 色不够精确，产出 <3:1）——但这处排除已在 post-v0.3
  * W8 fix round（backlog item 2，`readableOn` 改为两墨实测对比度取优）随根因
  * 一起撤销：三个主题重测后的 accent-ink 对比度分别是 8.23:1/8.19:1/6.65:1，
- * `auditDeck` 复核零 low-contrast 发现。`LAYOUTS` 现在是十三主题不折不扣的
- * {@link FULL_LAYOUTS} 全集，四页型均无任何例外残留。
+ * `auditDeck` 复核零 low-contrast 发现。W4 当时的终态是十三主题不折不扣的
+ * {@link FULL_LAYOUTS} 全集。Gallery r2（2026-08-22）在 content 轴重新收窄：
+ * D10 退订 image-lead-split 后自动池 11。D20 把 lecture / luxe 换成
+ * `FRAMED_CONTENT_LAYOUTS`。E22 把 consulting 换成
+ * `CONSULTING_CONTENT_LAYOUTS`。其余主题的 content 仍是全集。
  */
 /**
  * classroom 的结构身份，被 classroom 和 bloom 两个 theme id **共用同一个对象**
@@ -327,7 +367,8 @@ const CLASSROOM_LAYOUTS: ThemeDefinition["layouts"] = {
  * 只有 7 个 id，非空转二元集共 20 个，**少于 24 家**，所以至少 4 家必须用三元集
  * （本波 5 家：consulting 既有、luxe 出于设计、lecture / swiss / memo 是排不开
  * 的让位）。chapter 池 8 个 id，非空转二元集 27 个，24 家排完只剩 3 个位。
- * content 池 12 个 id，二元集 66 个，宽裕。**下一个新主题落地时 ending 轴基本
+ * content 池当时 12 个自动 id（gallery r2 D10 退订 image-lead-split 后自动
+ * 池 11，二元集 55），宽裕。**下一个新主题落地时 ending 轴基本
  * 无位可加**，只能走三元集或扩池。
  *
  * playbill 不收窄 `layouts`。content 格用三元集（split-band / stacked-poster /
@@ -339,7 +380,7 @@ const CLASSROOM_LAYOUTS: ThemeDefinition["layouts"] = {
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
-    layouts: { cover: ["verdict-index"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["verdict-index"], chapter: FULL_LAYOUTS.chapter, content: CONSULTING_CONTENT_LAYOUTS, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
     // Theme-structure wave, task T2: consulting's own motif is
     // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
@@ -689,7 +730,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     hex，全吃 ctx.colors，同一构图两种气质。
   luxe: {
     // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
-    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FRAMED_CONTENT_LAYOUTS, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：烫金细线（原 P3「motif 可选」验证品，补齐）
     motif: "luxe-motif",
     layoutTendencies: {
@@ -1240,18 +1281,20 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 方块秩序的 medium，lecture 是 26px 内缩细框的 light。封面锁定
   // `board-head`（板面是左轴板书，池里没有这个构造，新建进共享池。
   // 历史曾软倾向 banner-title / tone-adaptive-header）。
-  // chapter / ending 的 layouts 收窄待下版本设计板后锁定。content 走全集加
-  // 分配表倾向。classroom 是白日讲义纸，lecture 是夜校黑板。
+  // chapter / ending 的 layouts 收窄待下版本设计板后锁定。content 走框底
+  // 池（gallery r2 D20），不加顶标题 / 顶图 layout。classroom 是白日讲义纸，
+  // lecture 是夜校黑板。
   lecture: {
     // 第七波封面保真：板面是左轴板书，池里没有这个构造，新建 board-head
     // 进共享池并收窄 cover。粉笔槽细框仍走 lecture-motif。
     // chapter / ending 的 layouts 收窄待下版本设计板后锁定。
-    layouts: { cover: ["board-head"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["board-head"], chapter: FULL_LAYOUTS.chapter, content: FRAMED_CONTENT_LAYOUTS, ending: FULL_LAYOUTS.ending },
     motif: "lecture-motif",
     layoutTendencies: {
       cover: ["board-head"],
       // Second-front wave (2026-08-22)，四轴 L / top-band / light / tight：
-      // chapter / content / ending 走分配表软倾向。layouts 收窄仍待设计板。
+      // chapter / ending 走分配表软倾向。gallery r2 D20 收窄 content 池，
+      // 框底主题不抽 banner-heading / split-band / stacked-poster。
       // - chapter `banner-chapter` + `tone-adaptive-chapter`：整版板面压白字，
       //   或只留一枚角落水印。两个 id 里后者是万金油。
       // - content `rail-numbered` + `bento-panel`：编号步骤加拼盘。前者与

@@ -85,10 +85,11 @@ describe("THEME_DEFINITIONS", () => {
   // chapter）、以及 W4 fix round 全矩阵扫描新发现的三处（bloom/classroom/
   // heritage 的 chapter 排除 fashion-chapter）——共九处——已随 `src/svg/ink.ts`
   // 的 readableOn 两轮根因修复（W4 引入自适应 ink helper；post-v0.3 W8 把
-  // 固定 0.4 明度阈值换成两墨实测对比度取优）全部撤销：十三主题四页型现在
-  // **没有任何例外**，均为各页型全集。四个 FULL_* 常量是手工钉的字面数组
-  // （人审基线，不经 layoutsForSlideType 派生）——未来 registry 新增/删除
-  // layout 时，这里必须跟着人工重推，而不是无声通过。
+  // 固定 0.4 明度阈值换成两墨实测对比度取优）全部撤销。四个 FULL_* 常量是
+  // 手工钉的字面数组（人审基线，不经 layoutsForSlideType 派生）——未来
+  // registry 新增/删除 layout 时，这里必须跟着人工重推，而不是无声通过。
+  // Gallery r2 D10 退订 image-lead-split，自动 content 池 12 -> 11。D20 / E22
+  // 再收窄 lecture / luxe / consulting 的 content 集合，其它主题仍用全集。
   const FULL_COVER = [
     "banner-title",
     "poster-center",
@@ -138,9 +139,33 @@ describe("THEME_DEFINITIONS", () => {
     "side-highlight",
     "asymmetric-triptych",
     "quiet-frame",
-    // content-layout expansion wave, task T1: content pool 10 -> 11.
-    "image-lead-split",
-    // content-layout expansion wave, task T2: content pool 11 -> 12.
+    // content-layout expansion wave, task T2. Gallery r2 D10 retired
+    // image-lead-split. Auto-selectable content pool is 11.
+    "split-band",
+  ]
+  // Gallery r2 D20: framed themes do not sample banner-heading / split-band /
+  // stacked-poster.
+  const FRAMED_CONTENT = [
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "bento-panel",
+    "tone-adaptive-content",
+    "side-highlight",
+    "asymmetric-triptych",
+    "quiet-frame",
+  ]
+  // Gallery r2 E22: consulting drops side-highlight. Playbill keeps FULL_CONTENT.
+  const CONSULTING_CONTENT = [
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "banner-heading",
+    "stacked-poster",
+    "bento-panel",
+    "tone-adaptive-content",
+    "asymmetric-triptych",
+    "quiet-frame",
     "split-band",
   ]
   const FULL_ENDING = [
@@ -152,14 +177,22 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-ending",
     "fashion-ending",
   ]
-  it("W4 全集放开基线：chapter/content/ending stay full. every builtin now locks cover", () => {
+  it("W4 全集放开基线：chapter/ending stay full. content is full except lecture/luxe/consulting", () => {
     expect(__fullLayoutSet("cover")).toEqual(FULL_COVER)
+    expect(__fullLayoutSet("content")).toEqual(FULL_CONTENT)
+    const NARROWED_CONTENT = new Set(["lecture", "luxe", "consulting"])
     for (const id of CANONICAL_THEME_IDS) {
       expect(THEME_DEFINITIONS[id].layouts.cover.length, `${id}.cover is a singleton lock`).toBe(1)
       expect(THEME_DEFINITIONS[id].layouts.chapter, `${id}.chapter`).toEqual(FULL_CHAPTER)
-      expect(THEME_DEFINITIONS[id].layouts.content, `${id}.content`).toEqual(FULL_CONTENT)
       expect(THEME_DEFINITIONS[id].layouts.ending, `${id}.ending`).toEqual(FULL_ENDING)
+      if (!NARROWED_CONTENT.has(id)) {
+        expect(THEME_DEFINITIONS[id].layouts.content, `${id}.content`).toEqual(FULL_CONTENT)
+      }
     }
+    expect(THEME_DEFINITIONS.lecture.layouts.content).toEqual(FRAMED_CONTENT)
+    expect(THEME_DEFINITIONS.luxe.layouts.content).toEqual(FRAMED_CONTENT)
+    expect(THEME_DEFINITIONS.consulting.layouts.content).toEqual(CONSULTING_CONTENT)
+    expect(THEME_DEFINITIONS.playbill.layouts.content).toEqual(FULL_CONTENT)
     expect(THEME_DEFINITIONS.insight.motif).toBe("poster-motif")
     expect(THEME_DEFINITIONS.academic.motif).toBe("rail-motif")
     expect(THEME_DEFINITIONS.tech.motif).toBe("constellation-motif")
