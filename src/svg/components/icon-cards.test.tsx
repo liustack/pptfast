@@ -114,17 +114,14 @@ describe("icon_cards component: render", () => {
     })
   })
 
-  it("renders an accent bar, an icon, a title, and description text for every card", () => {
+  it("renders an icon, a title, and description text for every card, with no accent bar", () => {
     const { container } = svg(
       iconCards.render(component, { x: 0, y: 0, w: 1088 }, ctx)
     )
     const accentBars = Array.from(container.querySelectorAll("rect")).filter(
       (r) => r.getAttribute("height") === "3"
     )
-    expect(accentBars).toHaveLength(4)
-    accentBars.forEach((bar) => {
-      expect(bar.getAttribute("fill")).toBe(ctx.colors.accent)
-    })
+    expect(accentBars).toHaveLength(0)
 
     const paths = container.querySelectorAll("path")
     expect(paths.length).toBeGreaterThanOrEqual(4) // >=1 icon glyph per card
@@ -319,7 +316,7 @@ describe("icon_cards component: W2.5 full lucide catalog (new icons)", () => {
     }
   })
 
-  it("renders a card for each newly imported icon with an accent bar and its title/text", () => {
+  it("renders a card for each newly imported icon with its title/text and no accent bar", () => {
     const component = newIconCardsComponent()
     const { container } = svg(
       iconCards.render(component, { x: 0, y: 0, w: 1088 }, ctx)
@@ -327,7 +324,7 @@ describe("icon_cards component: W2.5 full lucide catalog (new icons)", () => {
     const accentBars = Array.from(container.querySelectorAll("rect")).filter(
       (r) => r.getAttribute("height") === "3"
     )
-    expect(accentBars).toHaveLength(NEW_ICON_NAMES.length)
+    expect(accentBars).toHaveLength(0)
 
     const texts = Array.from(container.querySelectorAll("text"))
     for (const item of component.items) {

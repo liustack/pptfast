@@ -4,6 +4,14 @@ import { renderSvgMarkup } from "../serialize"
 import { auditSvgMarkup } from "../audit/svg-audit"
 import { rowCards } from "./row-cards"
 import type { ComponentCtx } from "./types"
+import { layoutContentFit } from "../layout"
+import { buildCtx } from "../full-slide-svg"
+import { resolveStyle } from "../../themes"
+import { renderSlideSvg } from "../../api"
+import { installNodePlatform } from "../../platform/node"
+import { COMPONENT_BUILDERS } from "../../../evals/gallery/corpus/components"
+import { LEXICONS } from "../../../evals/gallery/corpus/lexicon"
+import { componentPage, corpusAssets } from "../../../evals/gallery/corpus/decks"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -174,5 +182,60 @@ describe("row_cards title-to-source air", () => {
     const source = texts.find((t) => t.textContent === "来源说明")!
     const gap = Number(source.getAttribute("y")) - Number(title.getAttribute("y"))
     expect(gap).toBeGreaterThanOrEqual(30)
+  })
+})
+
+describe("row_cards EN gallery trio is not silently dropped (r2 A6)", () => {
+  const consulting = buildCtx(resolveStyle("consulting"), {})
+  const BENTO_BODY = { x: 96, y: 234, w: 1088, h: 378 }
+
+  it("three EN cards plus the lead-in paragraph fit the 378px bento body", () => {
+    const rows = COMPONENT_BUILDERS.row_cards!(LEXICONS.en)
+    const leadIn = { type: "paragraph" as const, text: LEXICONS.en.sentences[0]! }
+    const { placed, dropped } = layoutContentFit("single", [leadIn, rows], BENTO_BODY, consulting)
+    expect(dropped).toBe(0)
+    expect(placed.map((p) => p.component.type)).toEqual(["paragraph", "row_cards"])
+    const rowBox = placed.find((p) => p.component.type === "row_cards")!.box
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">{rowCards.render(rows as never, rowBox, consulting)}</svg>,
+    )
+    expect(markup).not.toContain("data-dropped")
+    if (rows.type === "row_cards") {
+      for (const item of rows.items) {
+        expect(markup).toContain(item.title)
+      }
+    }
+  })
+
+  it("a tight box.h still paints every card instead of dropping the tail", () => {
+    const rows = COMPONENT_BUILDERS.row_cards!(LEXICONS.en)
+    const natural = rowCards.measure(rows as never, 1088, consulting)
+    const tight = natural - 20
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        {rowCards.render(rows as never, { x: 0, y: 0, w: 1088, h: tight }, consulting)}
+      </svg>,
+    )
+    expect(markup).not.toContain("data-dropped")
+    if (rows.type === "row_cards") {
+      for (const item of rows.items) {
+        expect(markup).toContain(item.title)
+      }
+    }
+  })
+
+  it("the EN component page on bento-panel shows three titles and no data-dropped-silent", async () => {
+    installNodePlatform()
+    const assets = await corpusAssets(LEXICONS.en)
+    const ir = componentPage("row_cards", COMPONENT_BUILDERS.row_cards!, LEXICONS.en, assets)
+    ir.slides[0]!.layout = "bento-panel"
+    const svg = renderSlideSvg(ir, 0)
+    expect(svg).not.toMatch(/data-dropped-silent/)
+    const rows = COMPONENT_BUILDERS.row_cards!(LEXICONS.en)
+    if (rows.type === "row_cards") {
+      for (const item of rows.items) {
+        expect(svg).toContain(item.title)
+      }
+    }
   })
 })

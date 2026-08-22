@@ -66,11 +66,12 @@ describe("insight_panel component", () => {
     expect(y).toBeGreaterThan(bottom - 80)
   })
 
-  it("paints the title on an accent bar with rounded top (a <path>)", () => {
+  it("paints the title in accent ink on the panel face, with no top bar", () => {
     const { container } = svg(insightPanel.render(panel, { x: 0, y: 0, w: 400 }, ctx))
-    const bar = container.querySelector("path")
-    expect(bar?.getAttribute("fill")).toBe(ctx.colors.accent)
-    expect(bar?.getAttribute("d")).toContain("A ")
+    expect(container.querySelector("path")).toBeNull()
+    const title = [...container.querySelectorAll("text")].find((t) => t.textContent === panel.title)
+    expect(title).toBeTruthy()
+    expect(title!.getAttribute("font-weight")).toBe("700")
   })
 
   it("measure() grows with more rows", () => {

@@ -11,13 +11,13 @@ import {
 // unknown / unassigned pairs stay undefined so today's default face is
 // unchanged. campaign × cycle is hub_spoke (first-listed wins), never
 // petal_wheel. bloom is a classroom recolor preset and is not in the
-// table. 41 rows, not 42.
+// table. 65 rows (41 prior + 24 callout).
 
 type AssignmentRow = {
   componentType: string
   themeId: string
   form: ComponentFormId
-  knobs: FormKnobs
+  knobs?: FormKnobs
 }
 
 const ASSIGNMENTS: AssignmentRow[] = [
@@ -273,6 +273,30 @@ const ASSIGNMENTS: AssignmentRow[] = [
     form: "numbered_photos",
     knobs: { caption: "below", numberBadge: "accent" },
   },
+  { componentType: "callout", themeId: "heritage", form: "tint_panel", knobs: { radius: "soft" } },
+  { componentType: "callout", themeId: "swiss", form: "tint_panel", knobs: { radius: "square", weight: "bold" } },
+  { componentType: "callout", themeId: "tech", form: "tint_panel", knobs: { radius: "round" } },
+  { componentType: "callout", themeId: "academic", form: "tint_panel", knobs: { radius: "square" } },
+  { componentType: "callout", themeId: "enterprise", form: "tint_panel", knobs: { radius: "square" } },
+  { componentType: "callout", themeId: "consulting", form: "tint_panel", knobs: { radius: "soft" } },
+  { componentType: "callout", themeId: "journal", form: "tint_panel", knobs: { radius: "soft" } },
+  { componentType: "callout", themeId: "classroom", form: "tint_panel", knobs: { radius: "round" } },
+  { componentType: "callout", themeId: "lecture", form: "tint_panel", knobs: { radius: "soft" } },
+  { componentType: "callout", themeId: "memo", form: "hanging_bare", knobs: { stamp: true } },
+  { componentType: "callout", themeId: "insight", form: "hanging_bare" },
+  { componentType: "callout", themeId: "ink", form: "hanging_bare" },
+  { componentType: "callout", themeId: "stage", form: "hanging_bare" },
+  { componentType: "callout", themeId: "terra", form: "hanging_bare" },
+  { componentType: "callout", themeId: "crayon", form: "hanging_bare" },
+  { componentType: "callout", themeId: "museum", form: "hanging_bare" },
+  { componentType: "callout", themeId: "luxe", form: "lead_word", knobs: { iconInk: "accent" } },
+  { componentType: "callout", themeId: "vermilion", form: "lead_word" },
+  { componentType: "callout", themeId: "playbill", form: "lead_word", knobs: { weight: "black" } },
+  { componentType: "callout", themeId: "campaign", form: "lead_word" },
+  { componentType: "callout", themeId: "arena", form: "lead_word" },
+  { componentType: "callout", themeId: "pulse", form: "lead_word" },
+  { componentType: "callout", themeId: "runway", form: "lead_word" },
+  { componentType: "callout", themeId: "ember", form: "lead_word" },
 ]
 
 const FORM_COMPONENT_TYPES = [
@@ -284,6 +308,7 @@ const FORM_COMPONENT_TYPES = [
   "steps",
   "timeline",
   "image_grid",
+  "callout",
 ] as const
 
 describe("resolveComponentForm", () => {
@@ -313,7 +338,9 @@ describe("resolveComponentForm", () => {
     it.each(ASSIGNMENTS)(
       "$componentType × $themeId → $form with spec knobs",
       ({ componentType, themeId, form, knobs }) => {
-        expect(resolveComponentForm(componentType, themeId)).toEqual({ form, knobs })
+        expect(resolveComponentForm(componentType, themeId)).toEqual(
+          knobs === undefined ? { form } : { form, knobs },
+        )
       },
     )
   })
@@ -349,9 +376,10 @@ describe("resolveComponentForm", () => {
     expect(resolveComponentForm("cycle", "campaign")?.form).not.toBe("petal_wheel")
   })
 
-  it("bloom + numbered_cards / timeline → undefined (bloom not in the table)", () => {
+  it("bloom + numbered_cards / timeline / callout → undefined (bloom not in the table)", () => {
     expect(resolveComponentForm("numbered_cards", "bloom")).toBeUndefined()
     expect(resolveComponentForm("timeline", "bloom")).toBeUndefined()
+    expect(resolveComponentForm("callout", "bloom")).toBeUndefined()
   })
 
   it("consulting + comparison → pill_panels, consulting + icon_cards → undefined", () => {
@@ -379,13 +407,13 @@ describe("resolveComponentForm", () => {
     })
   })
 
-  it("assignment count is 41 (sum of assignedThemeIds across the 8 component types)", () => {
+  it("assignment count is 65 (sum of assignedThemeIds across the 9 component types)", () => {
     const total = FORM_COMPONENT_TYPES.reduce(
       (n, componentType) => n + assignedThemeIds(componentType).length,
       0,
     )
-    expect(total).toBe(41)
-    expect(ASSIGNMENTS).toHaveLength(41)
+    expect(total).toBe(65)
+    expect(ASSIGNMENTS).toHaveLength(65)
   })
 })
 
@@ -393,5 +421,10 @@ describe("assignedThemeIds", () => {
   it("unknown component → []", () => {
     expect(assignedThemeIds("paragraph")).toEqual([])
     expect(assignedThemeIds("not-a-component")).toEqual([])
+  })
+
+  it("callout lists 24 themes (bloom omitted)", () => {
+    expect(assignedThemeIds("callout")).toHaveLength(24)
+    expect(assignedThemeIds("callout")).not.toContain("bloom")
   })
 })

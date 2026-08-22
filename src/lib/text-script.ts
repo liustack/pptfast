@@ -81,3 +81,12 @@ const HAS_SQUARE_GLYPH_RE = new RegExp(`[${SQUARE_SCRIPT}]`)
 export function stacksVertically(text: string): boolean {
   return HAS_SQUARE_GLYPH_RE.test(text) && STACKABLE_ONLY_RE.test(text)
 }
+
+/**
+ * True when `text` carries at least one square-script glyph. Callout lead
+ * words pick the CJK lexicon (风险/注意/提示) vs the English one
+ * (Risk/Note/Tip) from this, not from a locale flag.
+ */
+export function isCjk(text: string): boolean {
+  return HAS_SQUARE_GLYPH_RE.test(text)
+}

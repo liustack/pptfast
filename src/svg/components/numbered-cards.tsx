@@ -10,11 +10,10 @@ type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
 
 /**
  * 编号网格列表（2026-07-11 用户借鉴编辑部大数字目录页）：自动编号
- * 01..N，无卡壳设计——每格顶边细线 + accent 大编号 + title 粗体 +
- * text/sub 两级描述。≤4 项单行 n 列，5-8 项两行 ceil(n/2) 列。
- * 左缘竖线已禁（gallery review 2026-08-22）：改顶边 hairline。
+ * 01..N，无卡壳设计——accent 大编号 + title 粗体 + text/sub 两级描述。
+ * ≤4 项单行 n 列，5-8 项两行 ceil(n/2) 列。左缘竖线与顶边 hairline 均已禁
+ * （gallery review r2 E0：单边强调条全禁，字重与编号即标记）。
  */
-const TOP_RULE_H = 3
 const COL_GAP = 28
 const ROW_GAP = 36
 const INDENT = 22
@@ -121,23 +120,15 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
           const textTop = cellY + NUM_BLOCK_H + TITLE_BLOCK_H
           return (
             <g key={i}>
-              <rect
-                x={cellX}
-                y={cellY}
-                width={cellW}
-                height={TOP_RULE_H}
-                fill={ctx.colors.accent}
-              />
               {/* Bench-driven fix round, defect B: this component paints no
-                  card/panel of its own (only the thin accent top hairline),
-                  so the big digit sits directly on the page's ambient
-                  default background — `ctx.defaultBg ?? colors.bg`, same
-                  fallback every other card-less component in this codebase
-                  uses. `colors.accent` unwrapped measured <3:1 on classroom
-                  (2.09:1) and academic (2.92:1, a near-miss) once actually
-                  re-measured against a real render (not assumed) —
-                  `accessibleInk` keeps `colors.accent` on every other theme,
-                  byte-identical. */}
+                  card/panel of its own, so the big digit sits directly on
+                  the page's ambient default background — `ctx.defaultBg ??
+                  colors.bg`, same fallback every other card-less component
+                  in this codebase uses. `colors.accent` unwrapped measured
+                  <3:1 on classroom (2.09:1) and academic (2.92:1, a
+                  near-miss) once actually re-measured against a real render
+                  (not assumed) — `accessibleInk` keeps `colors.accent` on
+                  every other theme, byte-identical. */}
               <text
                 x={cellX + INDENT}
                 y={numBaseline}
@@ -192,7 +183,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                   // routed — pinned as a known gap in
                   // `full-matrix-contrast.test.ts` by commit c523994 before
                   // this fix landed): this cell paints no background of its
-                  // own (only the accent top hairline above), so `sub`
+                  // own, so `sub`
                   // sits directly on the page background like `text` above
                   // it — `ctx.defaultBg ?? ctx.colors.bg`, the same fallback
                   // `chapter-rail-chapter.tsx`/`chapter-banner-chapter.tsx`

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { stacksVertically } from "./text-script"
+import { isCjk, stacksVertically } from "./text-script"
 
 describe("stacksVertically", () => {
   it("stacks pure Chinese", () => {
@@ -62,7 +62,23 @@ describe("stacksVertically", () => {
     expect(stacksVertically("——")).toBe(false)
     expect(stacksVertically("%")).toBe(false)
   })
+})
 
+describe("isCjk", () => {
+  it("is true when the string carries a square-script glyph", () => {
+    expect(isCjk("风电行业的取数链路仍在打磨")).toBe(true)
+    expect(isCjk("K8s 托管")).toBe(true)
+    expect(isCjk("売上高")).toBe(true)
+  })
+
+  it("is false for Latin-only callout copy", () => {
+    expect(isCjk("The data path still needs another quarter of work.")).toBe(false)
+    expect(isCjk("Risk")).toBe(false)
+    expect(isCjk("")).toBe(false)
+  })
+})
+
+describe("stacksVertically purity", () => {
   it("is a pure function of the string — same input, same answer, no hidden state", () => {
     // The regexes are module-level; a `lastIndex` leak from a stateful (`/g`)
     // regex would make the second call disagree with the first.
