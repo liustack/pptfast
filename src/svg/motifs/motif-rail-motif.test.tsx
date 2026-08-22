@@ -51,13 +51,13 @@ function draw(theme: string, slide: Slide) {
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
 /**
- * rail-motif v2「进度轨」（2026-08-20 冷调组皮肤重设计）。
+ * rail-motif v2「顶带点轨」（2026-08-20 冷调组皮肤重设计）。
  * 设计源：`.issues/2026-08-18-theme-redesign/skins/group3-cool-boards.dc.html`
  * 的 academic 设计表。本文件在本轮整体重写——v1 的四分之一圆盘（含它自己的
  * `readableOn` 反白分支与 br logo 盒重叠说明）随圆盘一并退役。
  */
-describe("RailMotif（进度轨）", () => {
-  it("cover/content/ending 各画五枚进度点 + 两条角标线", () => {
+describe("RailMotif（顶带点轨）", () => {
+  it("cover/content/ending 各画五枚相同空心圆 + 两条角标线", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("academic", slide)
       expect(Array.from(root.querySelectorAll("circle")), `dots on ${slide.type}`).toHaveLength(5)
@@ -74,34 +74,39 @@ describe("RailMotif（进度轨）", () => {
     expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：点轨走 primary（首点实心、其余空心 1.5 描边），角标走 accent", () => {
+  it("颜色一律读 token：五枚点全部空心、走 primary 1.5 描边（不是一实四空），角标走 accent", () => {
     const t = resolveStyle("academic")
     const { root } = draw("academic", contentSlide)
     const dots = Array.from(root.querySelectorAll("circle"))
-    expect(dots[0].getAttribute("fill")).toBe(t.colors.primary)
-    for (const d of dots.slice(1)) {
-      expect(d.getAttribute("fill")).toBe("none")
+    expect(dots).toHaveLength(5)
+    for (const d of dots) {
+      expect(d.getAttribute("fill"), "a filled first-dot still reads as progress").toBe("none")
       expect(d.getAttribute("stroke")).toBe(t.colors.primary)
       expect(d.getAttribute("stroke-width")).toBe("1.5")
+      expect(num(d, "r")).toBe(6)
     }
     const cornerGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.accent)
     expect(cornerGroup, "corner marks must read colors.accent").toBeTruthy()
     expect(cornerGroup!.getAttribute("stroke-width")).toBe("1.5")
   })
 
-  it("点轨几何：默认锚 x106 起、间距 46、y30 上的五枚 r6", () => {
+  it("点轨几何：默认锚落在 x96-296 顶带槽内居中、间距 46、y30 上的五枚 r6", () => {
     const { root } = draw("academic", contentSlide)
     const dots = Array.from(root.querySelectorAll("circle")).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])
     expect(dots).toEqual([
-      [106, 30, 6],
-      [152, 30, 6],
-      [198, 30, 6],
-      [244, 30, 6],
-      [290, 30, 6],
+      [104, 30, 6],
+      [150, 30, 6],
+      [196, 30, 6],
+      [242, 30, 6],
+      [288, 30, 6],
     ])
+    const mid = (dots[0]![0] + dots[4]![0]) / 2
+    expect(mid, "five-dot cluster must sit on the x96-296 band midpoint").toBe(196)
+    expect(dots[0]![0] - 6).toBeGreaterThanOrEqual(96)
+    expect(dots[4]![0] + 6).toBeLessThanOrEqual(296)
   })
 
-  it("cover 档整组让位到右板 x570 起（left-anchor 的通高色块盖不到）", () => {
+  it("cover 档整组让位到右板 x570-760 槽内居中（left-anchor 的通高色块盖不到）", () => {
     const { root } = draw("academic", coverSlide)
     const dots = Array.from(root.querySelectorAll("circle")).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])
     expect(dots).toEqual([
@@ -111,8 +116,12 @@ describe("RailMotif（进度轨）", () => {
       [708, 30, 6],
       [754, 30, 6],
     ])
+    const mid = (dots[0]![0] + dots[4]![0]) / 2
+    // 板上这档是首点圆心 570、末点右沿 760。组已经把 196px 视觉宽吃满这条槽。
+    expect(mid).toBe(662)
+    expect(dots[4]![0] + 6).toBe(760)
     // 让位的全部意义：首点左沿必须在色块右沿之外，否则它会被色块整个盖掉。
-    expect(570 - 6).toBeGreaterThan(COVER_BLOCK_W)
+    expect(dots[0]![0] - 6).toBeGreaterThan(COVER_BLOCK_W)
   })
 
   it("角标几何：x1200/x1224 起、都止于 x1256 的两条线（y20 长、y30 短）", () => {

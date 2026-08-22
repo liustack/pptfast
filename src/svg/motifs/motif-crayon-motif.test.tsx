@@ -93,15 +93,14 @@ const intersects = (b: Box, z: { x: number; y: number; w: number; h: number }) =
   b.x0 < z.x + z.w && b.x1 > z.x && b.y0 < z.y + z.h && b.y1 > z.y
 
 function parts(root: Element) {
-  const paths = Array.from(root.querySelectorAll("path"))
   const lines = Array.from(root.querySelectorAll("line"))
   return {
     edge: root.querySelector("polygon"),
-    star: paths.find((p) => p.getAttribute("fill") !== "none"),
     sunCircles: Array.from(root.querySelectorAll("circle")),
     scratches: lines.filter((l) => num(l, "y1") === 1.5),
     dashes: lines.filter((l) => num(l, "y1") === 644),
     rays: lines.filter((l) => num(l, "y1") !== 1.5 && num(l, "y1") !== 644),
+    paths: Array.from(root.querySelectorAll("path")),
   }
 }
 
@@ -137,11 +136,6 @@ function circleBox(c: Element): Box {
   return { x0: num(c, "cx") - r, y0: num(c, "cy") - r, x1: num(c, "cx") + r, y1: num(c, "cy") + r }
 }
 
-function starBox(): Box {
-  // 板上路径从 (56,628) 起笔的墨迹外接：x42-70, y628-656。
-  return { x0: 42, y0: 628, x1: 70, y1: 656 }
-}
-
 function sunBoxFromParts(p: ReturnType<typeof parts>): Box {
   const boxes = [...p.sunCircles.map(circleBox), ...p.rays.map(lineBox)]
   return {
@@ -160,7 +154,6 @@ function allBoxes(root: Element): { label: string; box: Box }[] {
   for (const l of p.scratches) out.push({ label: `scratch@${num(l, "x1")}`, box: lineBox(l) })
   for (const l of p.rays) out.push({ label: `ray@${num(l, "x1")}`, box: lineBox(l) })
   for (const l of p.dashes) out.push({ label: `dash@${num(l, "x1")}`, box: lineBox(l) })
-  if (p.star) out.push({ label: "star", box: starBox() })
   return out
 }
 
@@ -169,7 +162,7 @@ function allBoxes(root: Element): { label: string; box: Box }[] {
  * 设计源：蜡笔涂边 `EdgeShading.dc.html`、太阳涂鸦 `SunDoodle.dc.html`。
  */
 describe("CrayonMotif（蜡笔描边）", () => {
-  it("content/ending 画全家福：涂边 + 划痕 + 太阳 + 彩虹划 + 左下星", () => {
+  it("content/ending 画全家福：涂边 + 划痕 + 太阳 + 彩虹划，不画左下星", () => {
     for (const slide of [contentSlide, endingSlide]) {
       const { root } = draw("crayon", slide)
       const p = parts(root)
@@ -178,7 +171,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
       expect(p.sunCircles, `wrong sun circle count on ${slide.type}`).toHaveLength(3)
       expect(p.rays, `wrong ray count on ${slide.type}`).toHaveLength(8)
       expect(p.dashes, `wrong dash count on ${slide.type}`).toHaveLength(CRAYON_DASH_DRAWN)
-      expect(p.star, `no star on ${slide.type}`).toBeTruthy()
+      expect(p.paths, `star path survived on ${slide.type}`).toHaveLength(0)
     }
   })
 
@@ -192,7 +185,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
     expect(p.sunCircles).toHaveLength(0)
     expect(p.rays).toHaveLength(0)
     expect(p.dashes).toHaveLength(0)
-    expect(p.star).toBeUndefined()
+    expect(p.paths).toHaveLength(0)
   })
 
   it("cover 涂边不压 tone-adaptive-header 顶部 org 标签", () => {
@@ -319,13 +312,12 @@ describe("CrayonMotif（蜡笔描边）", () => {
     expect([...seen]).toEqual(t.colors.chartPalette)
   })
 
-  it("左下星贴纸走 accent，板上路径从 (56,628) 起笔", () => {
-    const t = resolveStyle("crayon")
-    const { root } = draw("crayon", contentSlide)
-    const { star } = parts(root)
-    expect(star).toBeTruthy()
-    expect(star!.getAttribute("fill")).toBe(t.colors.accent)
-    expect(star!.getAttribute("d")?.startsWith("M56,628")).toBe(true)
+  it("任何页型都不画左下星贴纸（M56,628 路径整族退役）", () => {
+    for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+      const { markup, root } = draw("crayon", slide)
+      expect(markup, `M56,628 survived on ${slide.type}`).not.toContain("M56,628")
+      expect(Array.from(root.querySelectorAll("path")), `star path survived on ${slide.type}`).toHaveLength(0)
+    }
   })
 
   it("content/ending 在同一页结构下画同一张（cover 另有撤底带且太阳让位档）", () => {
@@ -363,7 +355,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
     expect(markups.size).toBe(1)
   })
 
-  describe("heavy 降档（密页半场：太阳与星撤场，涂边＋淡彩虹划留下）", () => {
+  describe("heavy 降档（密页半场：太阳撤场，涂边＋淡彩虹划留下）", () => {
     const threshold = PACING_BUDGETS.dense.maxComponentsPerSlide
     const sparse = slideOf("content", Array.from({ length: threshold - 1 }, (_, i) => para(`第 ${i} 段`)))
     const dense = slideOf("content", Array.from({ length: threshold }, (_, i) => para(`第 ${i} 段`)))
@@ -374,10 +366,10 @@ describe("CrayonMotif（蜡笔描边）", () => {
       const denseParts = parts(draw("crayon", dense).root)
       expect(sparseParts.sunCircles).toHaveLength(3)
       expect(sparseParts.rays).toHaveLength(8)
-      expect(sparseParts.star).toBeTruthy()
+      expect(sparseParts.paths).toHaveLength(0)
       expect(denseParts.sunCircles).toHaveLength(0)
       expect(denseParts.rays).toHaveLength(0)
-      expect(denseParts.star).toBeUndefined()
+      expect(denseParts.paths).toHaveLength(0)
       expect(denseParts.edge).toBeTruthy()
       expect(denseParts.scratches).toHaveLength(5)
       expect(denseParts.dashes).toHaveLength(CRAYON_DASH_DRAWN)
@@ -437,7 +429,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
     expect(TITLE_RIGHT).toBe(1136)
   })
 
-  it("安全区：全部装饰不进板上四条红虚线禁区（底带划与星住在第五带，划是减淡豁免，星是板上左下几何）", () => {
+  it("安全区：全部装饰不进板上四条红虚线禁区（底带划住在第五带，划是减淡豁免）", () => {
     const four = {
       title: BOARD_ZONES.title,
       body: BOARD_ZONES.body,
@@ -457,7 +449,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
     const { root } = draw("crayon", contentSlide)
     const p = parts(root)
     expect(intersects(lineBox(p.dashes[0]!), BOARD_ZONES.fifthBand)).toBe(true)
-    expect(intersects(starBox(), BOARD_ZONES.fifthBand)).toBe(true)
+    expect(p.paths).toHaveLength(0)
   })
 
   it("不画任何左竖条", () => {
