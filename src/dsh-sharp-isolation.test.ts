@@ -165,6 +165,8 @@ describe("runtime sharp loads in src are lazy", () => {
       const pathRel = rel(abs)
       const source = readFileSync(abs, "utf8")
       expect(source.match(SHARP_SPECIFIER), `${pathRel} is on the src/index.ts closure and must not load sharp`).toBeNull()
+      expect(source, `${pathRel} is on the src/index.ts closure and must not import undici`).not.toMatch(/["']undici["']/)
+      expect(source, `${pathRel} is on the src/index.ts closure and must not import child_process`).not.toMatch(/child_process/)
     }
   })
 })
@@ -194,7 +196,7 @@ describe("CLI child isolation in dsh/preview-tool.js", () => {
 
   it("runCli spawns resolveCliCommand with cliChildEnv, and never import()s the CLI", () => {
     const body = functionSource(previewTool, "runCli")
-    expect(body).toMatch(/\bspawn\s*\(\s*resolveCliCommand\s*\(\s*\)/)
+    expect(body).toMatch(/\brunChild\s*\(\s*resolveCliCommand\s*\(\s*\)/)
     expect(body).toMatch(/\benv\s*:\s*cliChildEnv\s*\(\s*\)/)
     expect(body).not.toMatch(/\bimport\s*\(/)
     expect(body).not.toMatch(/spawn\s*\(\s*process\.execPath/)

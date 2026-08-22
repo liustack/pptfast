@@ -12,10 +12,10 @@
 // produces a structured report and never prints, renderDoctorReport turns that
 // report into text. `--json` hands the structure straight through, and the
 // tests assert against the structure instead of scraping formatted output.
-import { constants, lstatSync } from "node:fs"
+import { lstatSync } from "node:fs"
 import { access, readFile, readdir } from "node:fs/promises"
 import { homedir } from "node:os"
-import { delimiter, join } from "node:path"
+import { join } from "node:path"
 import { formatIssues, generatePptx, renderSlideSvg, validateIr } from "../api"
 import { isMissingModuleError } from "../platform/node"
 import { VERSION } from "../version"
@@ -23,6 +23,7 @@ import { findConfig, findUserConfig } from "./config"
 import { userConfigPath } from "./home"
 import { resolveGenerators, resolveImageKeys, type GeneratorId, type ImageProviderId, type KeySource } from "./image-config"
 import { probeGenerators, type ProcessRunner } from "./image-generators"
+import { findOnPath } from "./path-lookup"
 import { compareVersions, PACKAGE_NAME } from "./update"
 import { inspectWorkspace, type GitIgnoreStatus, type GitRunner } from "./workspace"
 
@@ -239,28 +240,6 @@ async function pathExists(target: string): Promise<boolean> {
   } catch {
     return false
   }
-}
-
-/** First executable named `bin` on PATH, or null. Never spawns anything — a
- *  diagnosis must not have side effects, and "is it installed" is a lookup. */
-async function findOnPath(bin: string, env: NodeJS.ProcessEnv): Promise<string | null> {
-  const dirs = (env.PATH ?? env.Path ?? "").split(delimiter).filter(Boolean)
-  const names =
-    process.platform === "win32"
-      ? (env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";").map((ext) => bin + ext.toLowerCase())
-      : [bin]
-  for (const dir of dirs) {
-    for (const name of names) {
-      const full = join(dir, name)
-      try {
-        await access(full, constants.X_OK)
-        return full
-      } catch {
-        // not here — keep walking PATH
-      }
-    }
-  }
-  return null
 }
 
 /**
